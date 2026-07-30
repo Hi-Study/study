@@ -1,0 +1,37 @@
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+
+# env — never commit real keys
+.env
+.env.local
+
+# EAS
+.easignore
+
+# oh-my-claudecode 세션 상태(추적 불필요)
+.omc/

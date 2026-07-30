@@ -1,0 +1,176 @@
+// DiscussionDetail — Slack 스레드형 토론. 여는 메시지 + 답글(메시지 행) + 이모지 리액션 + 인용 답글 + 방장 고정(결론).
+function DiscussionDetail({ study, discId, discussions, onParticipate, profileRole, isOwner }) {
+  const all = discussions || study.discussions;
+  const topic = all.find((d) => d.id === discId) || all[0];
+  const myRole = () => (profileRole || "").trim() || "멤버";
+
+  // 댓글/답글을 Slack 스레드 메시지(평면) + 인용으로 정규화
+  const fresh = () => {
+    const out = [];
+    (topic.comments || []).forEach((c) => {
+      out.push({ id: c.id, author: c.author, role: c.role, time: c.time, text: c.text, quote: null, reactions: seed(c.up) });
+      (c.replies || []).forEach((r) => out.push({ id: r.id, author: r.author, role: r.role, time: r.time, text: r.text, quote: r.quote ? { author: c.author, text: r.quote } : { author: c.author, text: c.text }, reactions: [] }));
+    });
+    return out;
+  };
+  function seed(up) { return up > 0 ? [{ emoji: "👍", count: up, mine: false }] : []; }
+
+  const [list, setList] = React.useState(fresh);
+  const [draft, setDraft] = React.useState("");
+  const [replyTo, setReplyTo] = React.useState(null);
+  const [pinnedId, setPinnedId] = React.useState(null);
+  const [reactOpen, setReactOpen] = React.useState(null);
+  React.useEffect(() => { setList(fresh()); setPinnedId(null); setReplyTo(null); setDraft(""); }, [discId]);
+
+  const EMOJI = ["👍", "❤️", "🙌", "👀", "🔥", "💡"];
+  const pinned = list.find((m) => m.id === pinnedId);
+
+  const post = () => {
+    if (!draft.trim()) return;
+    const msg = { id: Date.now(), author: "나", role: myRole(), time: "방금", text: draft.trim(), quote: replyTo ? { author: replyTo.author, text: replyTo.text } : null, reactions: [] };
+    setList([...list, msg]); setDraft(""); setReplyTo(null); onParticipate && onParticipate(topic.id);
+  };
+  const toggleReact = (mid, emoji) => {
+    setList(list.map((m) => {
+      if (m.id !== mid) return m;
+      const rx = [...m.reactions]; const i = rx.findIndex((r) => r.emoji === emoji);
+      if (i < 0) rx.push({ emoji, count: 1, mine: true });
+      else { const r = rx[i]; const mine = !r.mine; const count = r.count + (mine ? 1 : -1); if (count <= 0) rx.splice(i, 1); else rx[i] = { ...r, mine, count }; }
+      return { ...m, reactions: rx };
+    }));
+    setReactOpen(null);
+  };
+
+  const hue = (n) => { let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; };
+  const Avatar = ({ name, size = 36 }) => (
+    <div style={{ width: size, height: size, borderRadius: 8, background: `hsl(${hue(name)} 42% 42%)`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: size * 0.42, flexShrink: 0, fontFamily: "var(--font-display)" }}>{name[0]}</div>
+  );
+  const ToolIcon = ({ d }) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{d}</svg>;
+
+  // Slack 스타일 메시지 행
+  const Message = ({ m, opening }) => {
+    const isPinned = m.id === pinnedId;
+    return (
+      <div className="slk-msg" style={{ position: "relative", display: "flex", gap: 8, padding: "8px 10px", borderRadius: 8, background: isPinned ? "var(--accent-tint)" : "transparent", boxShadow: isPinned ? "inset 3px 0 0 var(--color-primary)" : "none" }}>
+        <Avatar name={m.author} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {isPinned && <div style={{ fontSize: 11, fontWeight: 700, color: "var(--color-primary)", marginBottom: 3, display: "flex", alignItems: "center", gap: 4 }}>📌 방장이 고정한 결론</div>}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 7, flexWrap: "wrap" }}>
+            <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15, color: "var(--color-ink)" }}>{m.author}</span>
+            {opening && <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--color-primary)", background: "var(--tint-lavender)", borderRadius: 3, padding: "1px 6px" }}>주최</span>}
+            <span style={{ fontSize: 12, color: "var(--color-ink-muted-48)" }}>{m.role}{m.time ? ` · ${m.time}` : ""}</span>
+          </div>
+          {m.quote && (
+            <div style={{ margin: "6px 0", paddingLeft: 9, borderLeft: "3px solid var(--color-hairline)" }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--color-ink-muted-48)" }}>{m.quote.author}</span>
+              <div style={{ fontSize: 13, color: "var(--color-ink-muted-48)", lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{m.quote.text}</div>
+            </div>
+          )}
+          {(m.text || "").split("\n").map((t, i) => (
+            <p key={i} style={{ fontSize: 15, lineHeight: 1.46, color: "var(--color-ink)", margin: i ? "3px 0 0" : "2px 0 0", textWrap: "pretty" }}>{t}</p>
+          ))}
+
+          {/* 액션 */}
+          <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 8 }}>
+            {(() => { const t = m.reactions.find((r) => r.emoji === "👍"); const on = !!(t && t.mine); const n = t ? t.count : 0; return (
+              <button onClick={() => toggleReact(m.id, "👍")} style={{ display: "inline-flex", alignItems: "center", gap: 5, border: "none", background: "transparent", color: on ? "var(--color-primary)" : "var(--color-ink-muted-48)", fontSize: 12.5, fontWeight: 600, cursor: "pointer", padding: 0 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill={on ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+                좋아요{n > 0 ? ` ${n}` : ""}
+              </button>
+            ); })()}
+            <button onClick={() => { setReplyTo(m); }} style={{ display: "inline-flex", alignItems: "center", gap: 4, border: "none", background: "transparent", color: "var(--color-ink-muted-48)", fontSize: 12.5, fontWeight: 600, cursor: "pointer", padding: "0 4px" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 17l-5-5 5-5"/><path d="M4 12h11a4 4 0 0 1 4 4v2"/></svg>
+              답글
+            </button>
+            {isOwner && !opening && (
+              <button onClick={() => setPinnedId(isPinned ? null : m.id)} style={{ marginLeft: "auto", border: "none", background: "transparent", color: isPinned ? "var(--color-primary)" : "var(--color-ink-muted-48)", fontSize: 12.5, fontWeight: 600, cursor: "pointer", padding: "0 2px" }}>{isPinned ? "고정 해제" : "📌 결론 고정"}</button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const opening = { id: "op", author: study.name, role: "스터디", time: topic.week, text: (topic.body || []).join("\n"), quote: null, reactions: [] };
+
+  return (
+    <div style={{ minHeight: "100%", background: "var(--surface-card)", display: "flex", flexDirection: "column" }}>
+      {/* 스레드 헤더 */}
+      <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--color-hairline)" }}>
+        <div style={{ fontSize: 11.5, color: "var(--color-ink-muted-48)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".6px" }}>토론 · {topic.week}</div>
+        <h1 style={{ fontFamily: "var(--font-display)", fontSize: 19, fontWeight: 700, lineHeight: 1.3, letterSpacing: "-.3px", color: "var(--color-ink)", margin: "4px 0 0", textWrap: "balance" }}>{topic.title}</h1>
+      </div>
+
+      <div style={{ flex: 1, padding: "10px 6px 4px" }}>
+        {/* 링크 북마크 카드 (읽기용) */}
+        {topic.url && (
+          <div style={{ margin: "4px 10px 10px", paddingLeft: 12, borderLeft: "4px solid var(--color-primary)" }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--color-ink)", lineHeight: 1.35, margin: "0 0 6px" }}>{topic.title}</div>
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <p style={{ flex: 1, fontSize: 13.5, color: "var(--color-ink-muted-80)", margin: 0, lineHeight: 1.5 }}>이 글을 함께 읽고 토론해요. 원문은 아래 버튼으로 열 수 있어요.</p>
+              <div style={{ width: 76, height: 56, borderRadius: 8, background: "var(--color-canvas-parchment)", border: "1px solid var(--color-hairline)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🖼️</div>
+            </div>
+            <a href={topic.url} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 10, padding: "7px 14px", borderRadius: "var(--radius-pill)", background: "var(--action)", color: "#fff", fontSize: 12.5, fontWeight: 700, textDecoration: "none" }}>원문 보기 ↗</a>
+          </div>
+        )}
+
+        {/* 여는 메시지 */}
+        <Message m={opening} opening />
+
+        {/* 고정된 결론 (있으면 상단 복제 표시) */}
+        {pinned && (
+          <div style={{ margin: "6px 10px" }}>
+            <Message m={pinned} />
+          </div>
+        )}
+
+        {/* 답글 divider */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px 4px" }}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--color-ink-muted-48)" }}>답글 {list.length}개</span>
+          <span style={{ flex: 1, height: 1, background: "var(--color-hairline)" }} />
+        </div>
+
+        {/* 답글 메시지들 */}
+        <div className="slk-list">
+          {list.map((m) => <Message key={m.id} m={m} />)}
+        </div>
+      </div>
+
+      {/* Slack 메시지 입력창 */}
+      <div style={{ position: "sticky", bottom: 0, background: "var(--surface-card)", padding: "8px 12px 14px", borderTop: "1px solid var(--color-hairline)" }}>
+        {replyTo && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--tint-lavender)", borderRadius: 8, padding: "6px 10px", marginBottom: 6 }}>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "var(--color-ink-muted-80)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><b style={{ color: "var(--color-primary)" }}>{replyTo.author}</b>님에게 답글 · {replyTo.text}</span>
+            <button onClick={() => setReplyTo(null)} aria-label="취소" style={{ border: "none", background: "transparent", color: "var(--color-ink-muted-48)", cursor: "pointer", fontSize: 16, lineHeight: 1 }}>✕</button>
+          </div>
+        )}
+        <div style={{ border: "1px solid var(--color-hairline)", borderRadius: 10, overflow: "hidden", background: "var(--surface-card)" }}>
+          {/* 포맷 툴바 */}
+          <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "6px 8px", borderBottom: "1px solid var(--color-divider-soft)", color: "var(--color-ink-muted-48)" }}>
+            <span style={{ fontWeight: 800, fontSize: 13, padding: "2px 6px" }}>B</span>
+            <span style={{ fontStyle: "italic", fontSize: 13, padding: "2px 6px", fontWeight: 600 }}>I</span>
+            <span style={{ textDecoration: "line-through", fontSize: 13, padding: "2px 6px", fontWeight: 600 }}>S</span>
+            <span style={{ width: 1, height: 14, background: "var(--color-hairline)", margin: "0 4px" }} />
+            <ToolIcon d={<><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></>} />
+            <span style={{ padding: "0 4px" }} />
+            <ToolIcon d={<><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></>} />
+          </div>
+          <textarea value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={`${study.name}에 메시지 보내기`}
+            style={{ width: "100%", minHeight: 44, maxHeight: 120, border: "none", outline: "none", resize: "none", fontFamily: "var(--font-text)", fontSize: 15, lineHeight: 1.5, color: "var(--color-ink)", background: "transparent", boxSizing: "border-box", padding: "10px 12px" }} />
+          {/* 하단 액션 */}
+          <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 8px", color: "var(--color-ink-muted-48)" }}>
+            <ToolIcon d={<><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>} />
+            <span style={{ padding: "0 3px" }} />
+            <ToolIcon d={<><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></>} />
+            <span style={{ padding: "0 3px" }} />
+            <span style={{ fontWeight: 700, fontSize: 15 }}>@</span>
+            <button onClick={post} disabled={!draft.trim()} aria-label="보내기" style={{ marginLeft: "auto", width: 30, height: 30, borderRadius: 7, border: "none", cursor: draft.trim() ? "pointer" : "default", background: draft.trim() ? "var(--color-primary)" : "var(--color-canvas-parchment)", color: draft.trim() ? "#fff" : "var(--color-ink-muted-48)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+window.DiscussionDetail = DiscussionDetail;

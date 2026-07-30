@@ -1,0 +1,31 @@
+// StudyManage — 리스트의 ⚙에서 진입. 내가 만든 스터디 수정/삭제/생성.
+function StudyManage({ go, studies, onDeleteStudy }) {
+  const owned = studies.filter((s) => s.role === "방장");
+  return (
+    <div style={{ padding: "52px 16px 24px", display: "flex", flexDirection: "column", minHeight: "100%" }}>
+      <button onClick={() => go("my")} aria-label="뒤로" style={{ alignSelf: "flex-start", border: "none", background: "transparent", color: "var(--color-ink-muted-48)", fontSize: 15, cursor: "pointer", padding: "0 0 8px", marginLeft: -2 }}>‹ 내 스터디</button>
+      <h1 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 600, letterSpacing: "-.5px", color: "var(--color-ink)", margin: "0 2px 4px" }}>스터디 관리</h1>
+      <p style={{ fontSize: 13.5, color: "var(--color-ink-muted-48)", margin: "0 2px 22px" }}>내가 만든 스터디를 수정하거나 삭제할 수 있어요.</p>
+
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-ink-muted-48)", textTransform: "uppercase", letterSpacing: ".3px", padding: "0 4px 8px" }}>내가 만든 스터디</div>
+      <div style={{ background: "var(--surface-card)", border: "1px solid var(--color-hairline)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+        {owned.length ? owned.map((s, i) => (
+          <div key={s.id} style={{ display: "flex", alignItems: "center", padding: "14px 16px", borderBottom: i === owned.length - 1 ? "none" : "1px solid var(--color-divider-soft)" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
+              <div style={{ fontSize: 12.5, color: "var(--color-ink-muted-48)" }}>멤버 {s.members}명 · 코드 {s.code}</div>
+            </div>
+            <button style={pillM} onClick={() => go("create")}>수정</button>
+            <button style={{ ...pillM, color: "#c0392b", borderColor: "#c0392b", marginLeft: 8 }} onClick={() => { if (confirm(`'${s.name}' 스터디를 삭제할까요?`)) onDeleteStudy(s.id); }}>삭제</button>
+          </div>
+        )) : (
+          <div style={{ padding: "24px 16px", textAlign: "center", fontSize: 14, color: "var(--color-ink-muted-48)" }}>직접 만든 스터디가 없어요.</div>
+        )}
+      </div>
+
+      <button onClick={() => go("create")} style={{ width: "100%", padding: "15px", marginTop: 20, border: "none", borderRadius: "var(--radius-pill)", background: "var(--action)", color: "#fff", fontFamily: "var(--font-text)", fontSize: 17, fontWeight: 600, letterSpacing: "-.3px", cursor: "pointer" }}>+ 새 스터디 만들기</button>
+    </div>
+  );
+}
+const pillM = { border: "1px solid var(--color-hairline)", background: "transparent", color: "var(--color-ink)", borderRadius: "var(--radius-pill)", padding: "6px 14px", fontFamily: "var(--font-text)", fontSize: 13, fontWeight: 600, cursor: "pointer" };
+window.StudyManage = StudyManage;

@@ -1,0 +1,13 @@
+/* ============================================================
+   BASE — minimal resets + default link styling.
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:var(--font-text);font-size:var(--type-body-size);line-height:var(--type-body-lh);letter-spacing:var(--type-body-ls);color:var(--text-primary);background:var(--surface-page);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+h1,h2,h3,h4{font-family:var(--font-display);font-weight:var(--fw-semibold);margin:0}
+p{margin:0}
+
+/* Links — Action Blue, no underline by default; underline on hover. */
+a{color:var(--text-link);text-decoration:none}
+a:hover{text-decoration:underline}
+/* On dark surfaces, use the brighter Sky Link Blue. */
+.on-dark a{color:var(--text-link-on-dark)}

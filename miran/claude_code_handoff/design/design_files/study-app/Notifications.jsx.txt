@@ -1,0 +1,69 @@
+// Notifications — 알림 센터. 미참여 토론 + 최근 활동(공유/댓글/멤버).
+function Notifications({ go, studies, participated = {}, cadences = {} }) {
+  const recent = (window.STUDY_DATA.recent || []).filter((r) => studies.some((s) => s.id === r.studyId));
+  const nameOf = (id) => (studies.find((s) => s.id === id) || {}).name || "";
+  const cadenceOf = (s) => cadences[s.id] || s.cadence || "주 2회";
+
+  // 공유 주기 미완료 알림 (이번 주 내가 공유한 글이 없으면)
+  const cadence = studies.filter((s) => !s.shares.some((x) => x.sharedBy === "나")).map((s) => ({ study: s, label: cadenceOf(s) }));
+
+  // 미참여 토론 알림
+  const pending = [];
+  studies.forEach((s) => s.discussions.filter((d) => d.active && !participated[d.id]).forEach((d) => pending.push({ studyId: s.id, disc: d, study: s })));
+
+  const dot = (color) => <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0, marginTop: 6 }} />;
+  const typeColor = { comment: "var(--color-primary)", share: "#2e9e5b", member: "#a0862b" };
+
+  const Row = ({ children, onClick }) => (
+    <button onClick={onClick} disabled={!onClick} style={{ display: "flex", gap: 11, alignItems: "flex-start", width: "100%", textAlign: "left", cursor: onClick ? "pointer" : "default", background: "transparent", border: "none", padding: "14px 16px", borderBottom: "1px solid var(--color-divider-soft)" }}>{children}</button>
+  );
+
+  const total = pending.length + cadence.length + recent.length;
+
+  return (
+    <div style={{ padding: "52px 16px 24px" }}>
+      <button onClick={() => go("my")} aria-label="뒤로" style={{ border: "none", background: "transparent", color: "var(--color-ink-muted-48)", fontSize: 15, cursor: "pointer", padding: "0 0 8px", marginLeft: -2 }}>‹ 내 스터디</button>
+      <h1 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 600, letterSpacing: "-.5px", color: "var(--color-ink)", margin: "0 2px 16px" }}>알림</h1>
+
+      {total === 0 ? (
+        <div style={{ border: "1px dashed var(--color-hairline)", borderRadius: "var(--radius-lg)", padding: "40px 16px", textAlign: "center" }}>
+          <p style={{ fontSize: 14, color: "var(--color-ink-muted-48)", margin: 0 }}>새로운 알림이 없어요.</p>
+        </div>
+      ) : (
+        <div style={{ background: "var(--surface-card)", border: "1px solid var(--color-hairline)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+          {/* 미참여 토론 (액션 필요) */}
+          {pending.map((p) => (
+            <Row key={"p" + p.disc.id} onClick={() => go("discdetail", p.studyId, p.disc.id)}>
+              {dot("#c0392b")}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, color: "var(--color-ink)", lineHeight: 1.45 }}><b>{p.study.name}</b> · 이번 주 토론 ‘{p.disc.title}’에 아직 참여하지 않았어요</div>
+                <div style={{ fontSize: 12, color: "var(--color-primary)", fontWeight: 600, marginTop: 4 }}>지금 참여하기 ›</div>
+              </div>
+            </Row>
+          ))}
+          {/* 공유 주기 리마인드 */}
+          {cadence.map((c) => (
+            <Row key={"c" + c.study.id} onClick={() => go("cal", c.study.id)}>
+              {dot("#a0862b")}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, color: "var(--color-ink)", lineHeight: 1.45 }}><b>{c.study.name}</b> · 이번 주 공유 주기(<b>{c.label}</b>)를 아직 채우지 못했어요</div>
+                <div style={{ fontSize: 12, color: "var(--color-primary)", fontWeight: 600, marginTop: 4 }}>글 공유하기 ›</div>
+              </div>
+            </Row>
+          ))}
+          {/* 최근 활동 */}
+          {recent.map((r) => (
+            <Row key={"r" + r.id} onClick={() => go("cal", r.studyId)}>
+              {dot(typeColor[r.type] || "var(--color-ink-muted-48)")}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, color: "var(--color-ink)", lineHeight: 1.45 }}>{r.text}</div>
+                <div style={{ fontSize: 12, color: "var(--color-ink-muted-48)", marginTop: 4 }}>{nameOf(r.studyId)} · {r.time}</div>
+              </div>
+            </Row>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+window.Notifications = Notifications;

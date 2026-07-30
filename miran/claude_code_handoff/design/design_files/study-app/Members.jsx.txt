@@ -1,0 +1,94 @@
+// Members — 멤버 목록 + 방장 권한(강퇴·위임) + 초대 코드 재발급 + 공유 주기 설정.
+function Members({ study, profileName, profileRole, isOwner, code, onRegen, cadence, onCadence, onDelegate, onLeave }) {
+  const me = (profileName || "").trim() || "게스트";
+  const others = study.memberList || [];
+  const [kicked, setKicked] = React.useState([]);
+  const list = others.filter((m) => !kicked.includes(m.name));
+  const cadences = ["매일 1회", "주 2회", "주 3회", "주 5회"];
+
+  const Avatar = ({ name, me }) => (
+    <span style={{ width: 40, height: 40, borderRadius: "50%", background: me ? "var(--color-primary)" : "var(--color-canvas-parchment)", color: me ? "#fff" : "var(--color-ink)", border: me ? "none" : "1px solid var(--color-hairline)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 600, marginRight: 12, flexShrink: 0 }}>{name[0]}</span>
+  );
+  const smallBtn = (extra) => ({ border: "1px solid var(--color-hairline)", background: "transparent", color: "var(--color-ink-muted-48)", borderRadius: "var(--radius-pill)", padding: "5px 11px", fontFamily: "var(--font-text)", fontSize: 12, fontWeight: 600, cursor: "pointer", ...extra });
+  const Section = ({ title, children }) => (
+    <div style={{ marginTop: 22 }}>
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-ink-muted-48)", textTransform: "uppercase", letterSpacing: ".3px", padding: "0 4px 8px" }}>{title}</div>
+      <div style={{ background: "var(--surface-card)", border: "1px solid var(--color-hairline)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>{children}</div>
+    </div>
+  );
+
+  return (
+    <div style={{ padding: "8px 16px 24px" }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", padding: "6px 2px 8px" }}>
+        <span style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 600, letterSpacing: "-.4px", color: "var(--color-ink)" }}>멤버</span>
+        <span style={{ fontSize: 13, color: "var(--color-ink-muted-48)" }}>{study.members}명</span>
+      </div>
+
+      {/* 멤버 목록 */}
+      <div style={{ background: "var(--surface-card)", border: "1px solid var(--color-hairline)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", borderBottom: "1px solid var(--color-divider-soft)" }}>
+          <Avatar name={me} me />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-ink)" }}>{me} <span style={{ fontSize: 12, color: "var(--color-ink-muted-48)", fontWeight: 400 }}>· 나</span></div>
+            <div style={{ fontSize: 12.5, color: "var(--color-ink-muted-48)" }}>{[isOwner ? "스터디 개설자" : "멤버", profileRole].filter(Boolean).join(" · ")}</div>
+          </div>
+          {isOwner && <span style={{ fontSize: 10.5, color: "var(--color-primary)", border: "1px solid var(--color-primary)", borderRadius: "var(--radius-pill)", padding: "1px 8px" }}>방장</span>}
+        </div>
+        {list.map((m, i) => (
+          <div key={m.name} style={{ display: "flex", alignItems: "center", padding: "12px 16px", borderBottom: i === list.length - 1 ? "none" : "1px solid var(--color-divider-soft)" }}>
+            <Avatar name={m.name} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-ink)" }}>{m.name}</div>
+              <div style={{ fontSize: 12.5, color: "var(--color-ink-muted-48)" }}>{m.role}</div>
+            </div>
+            {isOwner && <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+              <button onClick={() => { if (confirm(`${m.name}님에게 방장을 위임할까요? 위임 후 나는 일반 멤버가 됩니다.`)) onDelegate(study.id, m.name); }} style={smallBtn({ color: "var(--color-primary)", borderColor: "var(--color-primary)" })}>위임</button>
+              <button onClick={() => { if (confirm(`${m.name}님을 내보낼까요?`)) setKicked([...kicked, m.name]); }} style={smallBtn()}>내보내기</button>
+            </div>}
+          </div>
+        ))}
+      </div>
+      {study.members > others.length + 1 && <div style={{ fontSize: 12.5, color: "var(--color-ink-muted-48)", textAlign: "center", marginTop: 12 }}>외 {study.members - others.length - 1}명</div>}
+
+      {/* 방장 전용: 초대 코드 */}
+      {isOwner && (
+        <Section title="초대 코드">
+          <div style={{ padding: "16px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 700, letterSpacing: "4px", color: "var(--color-ink)" }}>{code}</span>
+              <button onClick={() => { if (confirm("코드를 재발급하면 기존 코드는 사용할 수 없어요. 계속할까요?")) onRegen(study.id); }} style={smallBtn({ color: "var(--color-primary)", borderColor: "var(--color-primary)", padding: "7px 14px", fontSize: 13 })}>재발급</button>
+            </div>
+            <div style={{ fontSize: 12.5, color: "var(--color-ink-muted-48)", marginTop: 10 }}>이 코드는 발급일로부터 <b style={{ color: "var(--color-ink)" }}>7일 후 만료</b>됩니다. 재발급 시 새 코드로 갱신돼요.</div>
+          </div>
+        </Section>
+      )}
+
+      {/* 방장 전용: 공유 주기 */}
+      {isOwner && (
+        <Section title="글 공유 주기">
+          <div style={{ padding: "14px 16px" }}>
+            <div style={{ fontSize: 12.5, color: "var(--color-ink-muted-48)", marginBottom: 10 }}>멤버들이 얼마나 자주 글을 공유할지 정해요. 주기가 지나면 미공유 멤버에게 알림이 갑니다.</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {cadences.map((c) => {
+                const on = c === cadence;
+                return <button key={c} onClick={() => onCadence(study.id, c)} style={{ cursor: "pointer", background: "var(--surface-card)", color: on ? "var(--color-primary)" : "var(--color-ink)", border: on ? "2px solid var(--color-primary-focus)" : "1px solid var(--color-hairline)", borderRadius: "var(--radius-pill)", padding: on ? "7px 13px" : "8px 14px", fontFamily: "var(--font-text)", fontSize: 13, fontWeight: 600 }}>{c}</button>;
+              })}
+            </div>
+          </div>
+        </Section>
+      )}
+      {!isOwner && (
+        <Section title="글 공유 주기">
+          <div style={{ padding: "14px 16px", fontSize: 14, color: "var(--color-ink)" }}>이 스터디는 <b>{cadence}</b> 공유가 목표예요.</div>
+        </Section>
+      )}
+
+      {/* 나가기 */}
+      <button onClick={() => { if (confirm(isOwner ? `방장인 '${study.name}'에서 나가면 스터디가 삭제됩니다. 계속할까요?` : `'${study.name}'에서 나갈까요?`)) onLeave(study.id); }}
+        style={{ width: "100%", marginTop: 24, padding: "14px", border: "1px solid #c0392b", borderRadius: "var(--radius-pill)", background: "transparent", color: "#c0392b", fontFamily: "var(--font-text)", fontSize: 16, fontWeight: 600, cursor: "pointer" }}>
+        {isOwner ? "스터디 삭제하고 나가기" : "스터디 나가기"}
+      </button>
+    </div>
+  );
+}
+window.Members = Members;

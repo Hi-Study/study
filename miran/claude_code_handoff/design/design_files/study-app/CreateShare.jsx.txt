@@ -1,0 +1,79 @@
+// CreateShare — 글 공유 등록. ① 링크 공유(URL+메모→프리뷰) ② 직접 작성(제목+본문).
+function CreateShare({ study, onCreate, go, profileRole }) {
+  const days = [["mon", "월"], ["tue", "화"], ["wed", "수"], ["thu", "목"], ["fri", "금"]];
+  const todayKey = ({ 1: "mon", 2: "tue", 3: "wed", 4: "thu", 5: "fri" })[new Date().getDay()] || "mon";
+  const [mode, setMode] = React.useState("link");
+  const [day, setDay] = React.useState(todayKey);
+  const [url, setUrl] = React.useState("");
+  const [title, setTitle] = React.useState("");
+  const [note, setNote] = React.useState("");
+  const [body, setBody] = React.useState("");
+
+  const domain = (() => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch (e) { return ""; } })();
+  const canSubmit = mode === "link" ? !!domain : (title.trim() && body.trim());
+
+  const submit = () => {
+    if (!canSubmit) return;
+    const base = { id: "s-" + Date.now(), day, sharedBy: "나", role: (profileRole || "").trim() || "멤버", likes: 0, comments: 0 };
+    const share = mode === "link"
+      ? { ...base, type: "link", url, source: domain, title: title.trim() || domain, note: note.trim() }
+      : { ...base, type: "text", title: title.trim(), body: body.split("\n").filter(Boolean) };
+    onCreate(study.id, share);
+    go("sharedetail", study.id, share.id, "cal");
+  };
+
+  const field = { width: "100%", boxSizing: "border-box", padding: "13px 15px", border: "1px solid var(--color-hairline)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-text)", fontSize: 16, color: "var(--color-ink)", outline: "none", background: "var(--surface-card)" };
+  const lbl = { fontSize: 13, fontWeight: 600, color: "var(--color-ink)", marginBottom: 8, display: "block" };
+  const seg = (k, label) => (
+    <button onClick={() => setMode(k)} style={{ flex: 1, padding: "10px", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer", fontFamily: "var(--font-text)", fontSize: 14, fontWeight: 600, background: mode === k ? "var(--surface-card)" : "transparent", color: mode === k ? "var(--color-ink)" : "var(--color-ink-muted-48)", boxShadow: mode === k ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}>{label}</button>
+  );
+
+  return (
+    <div style={{ padding: "8px 20px 24px", display: "flex", flexDirection: "column", minHeight: "100%" }}>
+      <h1 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, letterSpacing: "-.4px", color: "var(--color-ink)", margin: "6px 0 16px" }}>글 공유하기</h1>
+
+      {/* 모드 토글 */}
+      <div style={{ display: "flex", gap: 4, padding: 4, background: "var(--color-canvas-parchment)", borderRadius: "var(--radius-md)", marginBottom: 20 }}>
+        {seg("link", "링크 공유")}{seg("text", "직접 작성")}
+      </div>
+
+      {/* 요일 */}
+      <label style={lbl}>어느 요일에 공유할까요?</label>
+      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+        {days.map(([k, l]) => {
+          const on = k === day;
+          return <button key={k} onClick={() => setDay(k)} style={{ flex: 1, cursor: "pointer", background: "var(--surface-card)", color: on ? "var(--color-primary)" : "var(--color-ink)", border: on ? "2px solid var(--color-primary-focus)" : "1px solid var(--color-hairline)", borderRadius: "var(--radius-md)", padding: "10px 0", fontFamily: "var(--font-text)", fontSize: 14, fontWeight: 600 }}>{l}</button>;
+        })}
+      </div>
+
+      {mode === "link" ? (
+        <>
+          <label style={lbl}>글 URL</label>
+          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." style={field} inputMode="url" />
+          {domain && (
+            <div style={{ marginTop: 12, border: "1px solid var(--color-hairline)", borderRadius: "var(--radius-lg)", overflow: "hidden", background: "var(--surface-card)" }}>
+              <div style={{ height: 96, background: "var(--color-canvas-parchment)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-ink-muted-48)", fontSize: 13 }}>링크 미리보기 (원문 썸네일)</div>
+              <div style={{ padding: 13 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-ink)", lineHeight: 1.3 }}>{title.trim() || "원문에서 제목을 불러옵니다"}</div>
+              </div>
+            </div>
+          )}
+          <label style={{ ...lbl, marginTop: 18 }}>제목 (선택 · 비우면 원문 제목 사용)</label>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="예: 좋은 기획서의 조건" style={field} />
+          <label style={{ ...lbl, marginTop: 18 }}>내용</label>
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="이 글을 왜 공유하나요? 읽고 느낌 점을 게시글 쓰듯 자유롭게 적어주세요" style={{ ...field, minHeight: 130, resize: "none" }} />
+        </>
+      ) : (
+        <>
+          <label style={lbl}>제목</label>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="글 제목" style={field} />
+          <label style={{ ...lbl, marginTop: 18 }}>내용</label>
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="스터디에 나누고 싶은 생각을 자유롭게 적어주세요" style={{ ...field, minHeight: 160, resize: "none" }} />
+        </>
+      )}
+
+      <button onClick={submit} disabled={!canSubmit} style={{ width: "100%", padding: "15px", marginTop: "24px", border: "none", borderRadius: "var(--radius-pill)", background: "var(--action)", color: "#fff", fontFamily: "var(--font-text)", fontSize: 17, fontWeight: 600, letterSpacing: "-.3px", opacity: canSubmit ? 1 : 0.4, cursor: canSubmit ? "pointer" : "default" }}>공유하기</button>
+    </div>
+  );
+}
+window.CreateShare = CreateShare;

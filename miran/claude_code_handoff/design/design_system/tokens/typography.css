@@ -1,0 +1,48 @@
+/* ============================================================
+   TYPOGRAPHY — exact scale from the Apple-reference analysis.
+   Font substitution: SF Pro (proprietary) -> Pretendard (see fonts.css).
+   Ladder is 300 / 400 / 600 / 700 — weight 500 is deliberately absent.
+   ============================================================ */
+:root{
+  /* Both display & text collapse to one Pretendard-led stack (Pretendard
+     mirrors SF Pro's proportions and includes Korean glyphs). */
+  --font-display:"Pretendard","Pretendard Variable",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+  --font-text:"Pretendard","Pretendard Variable",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+
+  /* --- Weights --- */
+  --fw-light:300;    /* @kind font */
+  --fw-regular:400;  /* @kind font */
+  --fw-semibold:600; /* @kind font */
+  --fw-bold:700;     /* @kind font */
+
+  /* --- Type scale: size / line-height / letter-spacing --- */
+  --type-hero-size:56px;      --type-hero-lh:1.07;  --type-hero-ls:-0.28px;   /* hero headline */
+  --type-display-lg-size:40px;--type-display-lg-lh:1.10;--type-display-lg-ls:0; /* tile headline */
+  --type-display-md-size:34px;--type-display-md-lh:1.47;--type-display-md-ls:-0.374px;
+  --type-lead-size:28px;      --type-lead-lh:1.14;  --type-lead-ls:0.196px;   /* tile subcopy */
+  --type-lead-airy-size:24px; --type-lead-airy-lh:1.5;--type-lead-airy-ls:0;  /* airy lead (weight 300) */
+  --type-tagline-size:21px;   --type-tagline-lh:1.19;--type-tagline-ls:0.231px;
+  --type-body-size:17px;      --type-body-lh:1.47;  --type-body-ls:-0.374px;  /* default paragraph — 17px, not 16 */
+  --type-body-strong-lh:1.24;
+  --type-dense-link-lh:2.41;  /* footer / link stacks */
+  --type-caption-size:14px;   --type-caption-lh:1.43;--type-caption-ls:-0.224px;
+  --type-caption-strong-lh:1.29;
+  --type-button-lg-size:18px; --type-button-lg-lh:1.0;--type-button-lg-ls:0;  /* store hero CTA (weight 300) */
+  --type-button-util-size:14px;--type-button-util-lh:1.29;--type-button-util-ls:-0.224px;
+  --type-fine-size:12px;      --type-fine-lh:1.0;   --type-fine-ls:-0.12px;
+  --type-micro-size:10px;     --type-micro-lh:1.3;  --type-micro-ls:-0.08px;
+  --type-nav-size:12px;       --type-nav-lh:1.0;    --type-nav-ls:-0.12px;
+}
+
+/* ---- Reusable text classes (optional; components may inline instead) ---- */
+.t-hero{font-family:var(--font-display);font-size:var(--type-hero-size);font-weight:var(--fw-semibold);line-height:var(--type-hero-lh);letter-spacing:var(--type-hero-ls)}
+.t-display-lg{font-family:var(--font-display);font-size:var(--type-display-lg-size);font-weight:var(--fw-semibold);line-height:var(--type-display-lg-lh);letter-spacing:var(--type-display-lg-ls)}
+.t-display-md{font-family:var(--font-text);font-size:var(--type-display-md-size);font-weight:var(--fw-semibold);line-height:var(--type-display-md-lh);letter-spacing:var(--type-display-md-ls)}
+.t-lead{font-family:var(--font-display);font-size:var(--type-lead-size);font-weight:var(--fw-regular);line-height:var(--type-lead-lh);letter-spacing:var(--type-lead-ls)}
+.t-lead-airy{font-family:var(--font-text);font-size:var(--type-lead-airy-size);font-weight:var(--fw-light);line-height:var(--type-lead-airy-lh);letter-spacing:var(--type-lead-airy-ls)}
+.t-tagline{font-family:var(--font-display);font-size:var(--type-tagline-size);font-weight:var(--fw-semibold);line-height:var(--type-tagline-lh);letter-spacing:var(--type-tagline-ls)}
+.t-body{font-family:var(--font-text);font-size:var(--type-body-size);font-weight:var(--fw-regular);line-height:var(--type-body-lh);letter-spacing:var(--type-body-ls)}
+.t-body-strong{font-family:var(--font-text);font-size:var(--type-body-size);font-weight:var(--fw-semibold);line-height:var(--type-body-strong-lh);letter-spacing:var(--type-body-ls)}
+.t-caption{font-family:var(--font-text);font-size:var(--type-caption-size);font-weight:var(--fw-regular);line-height:var(--type-caption-lh);letter-spacing:var(--type-caption-ls)}
+.t-caption-strong{font-family:var(--font-text);font-size:var(--type-caption-size);font-weight:var(--fw-semibold);line-height:var(--type-caption-strong-lh);letter-spacing:var(--type-caption-ls)}
+.t-fine{font-family:var(--font-text);font-size:var(--type-fine-size);font-weight:var(--fw-regular);line-height:var(--type-fine-lh);letter-spacing:var(--type-fine-ls)}

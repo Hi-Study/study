@@ -1,0 +1,72 @@
+/* ============================================================
+   COLORS — Notion design language (warm paper canvas, single blue,
+   near-black ink, decorative sticker palette). Base + semantic aliases.
+   ============================================================ */
+:root{
+  /* --- Brand & Accent (the single structural action color) --- */
+  --color-primary:#0075de;          /* Notion Blue — CTAs, links, active/focus */
+  --color-primary-focus:#0075de;    /* focus signal = primary */
+  --color-primary-active:#005bab;   /* pressed */
+  --color-primary-on-dark:#62aef0;  /* sky link on the dark night band */
+
+  /* --- Ink / Text --- */
+  --color-ink:#191817;              /* soft true-black (Notion ink ~95%) */
+  --color-body:#191817;
+  --color-body-on-dark:#ffffff;
+  --color-body-muted:#c9c7c3;       /* secondary copy on dark */
+  --color-ink-muted-80:#31302e;     /* warm charcoal — secondary copy */
+  --color-ink-muted-48:#615d59;     /* stone — muted copy */
+  --color-ink-faint:#a39e98;        /* ash — captions, metadata */
+
+  /* --- Surfaces --- */
+  --color-canvas:#ffffff;           /* cards, fields */
+  --color-canvas-parchment:#f6f5f4; /* warm paper — page canvas, chips, avatars */
+  --color-surface-pearl:#faf9f8;
+  --color-surface-tile-1:#213183;   /* deep indigo "night" band */
+  --color-surface-tile-2:#26307a;
+  --color-surface-tile-3:#1c2a6f;
+  --color-surface-black:#191817;    /* nav-adjacent dark */
+  --color-surface-chip-translucent:#e6e6e6;
+
+  /* --- Hairlines & Borders --- */
+  --color-divider-soft:#efeeec;
+  --color-hairline:#e6e6e6;
+  --color-border-translucent:rgba(0,0,0,0.08);
+
+  /* --- Sticker palette (decorative only — never CTAs/structure) --- */
+  --sticker-sky:#62aef0;
+  --sticker-purple:#d6b6f6;
+  --sticker-pink:#ff64c8;
+  --sticker-orange:#dd5b00;
+  --sticker-teal:#2a9d99;
+  --sticker-green:#1aae39;
+  --sticker-brown:#523410;
+
+  /* --- On-color --- */
+  --color-on-primary:#ffffff;
+  --color-on-dark:#ffffff;
+
+  /* ============================================================
+     SEMANTIC ALIASES
+     ============================================================ */
+  --text-primary:var(--color-ink);
+  --text-secondary:var(--color-ink-muted-80);
+  --text-muted:var(--color-ink-muted-48);
+  --text-on-dark:var(--color-body-on-dark);
+  --text-on-dark-muted:var(--color-body-muted);
+  --text-link:var(--color-primary);
+  --text-link-on-dark:var(--color-primary-on-dark);
+
+  --surface-page:var(--color-canvas-parchment); /* warm paper page canvas */
+  --surface-page-alt:var(--color-canvas-parchment);
+  --surface-card:var(--color-canvas);
+  --surface-dark:var(--color-surface-tile-1);
+  --surface-nav:var(--color-surface-black);
+
+  --border-card:var(--color-hairline);
+  --border-input:var(--color-hairline);
+
+  --action:var(--color-primary);
+  --action-on:var(--color-on-primary);
+  --focus-ring:var(--color-primary);
+}

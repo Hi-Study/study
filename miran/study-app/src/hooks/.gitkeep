@@ -1,0 +1,3 @@
+# 데이터 훅 위치 (아직 비어 있음)
+# TanStack Query 기반 훅: useStudies, useShares, useDiscussions, useComments,
+# useLikeToggle, useNotifications 등 — dev/api.md 매핑대로 supabase 호출 래핑

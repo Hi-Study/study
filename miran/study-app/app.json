@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "기획 스터디",
+    "slug": "study-app",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "studyapp",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
+    "newArchEnabled": true,
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.example.studyapp"
+    },
+    "android": {
+      "package": "com.example.studyapp",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6d4bd6"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png",
+      "name": "기획 스터디",
+      "shortName": "기획 스터디",
+      "lang": "ko",
+      "themeColor": "#4a154b",
+      "backgroundColor": "#f7f6f8",
+      "display": "standalone"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-notifications"
+    ],
+    "extra": {
+      "supabaseUrl": "",
+      "supabaseAnonKey": "",
+      "eas": {
+        "projectId": "6e1002ff-65bb-4135-9e5e-8113c759dacc"
+      }
+    }
+  }
+}

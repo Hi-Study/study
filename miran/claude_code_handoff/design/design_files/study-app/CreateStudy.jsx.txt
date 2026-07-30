@@ -1,0 +1,55 @@
+// CreateStudy — 스터디 생성 폼 → 무작위 초대 코드 생성 결과.
+function CreateStudy({ go }) {
+  const [name, setName] = React.useState("");
+  const [desc, setDesc] = React.useState("");
+  const [code, setCode] = React.useState(null);
+  const [copied, setCopied] = React.useState(false);
+
+  const gen = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let c = ""; for (let i = 0; i < 6; i++) c += chars[Math.floor(Math.random() * chars.length)];
+    setCode(c);
+  };
+  const copy = () => { try { navigator.clipboard.writeText(code); } catch (e) {} setCopied(true); setTimeout(() => setCopied(false), 1500); };
+
+  const field = { width: "100%", boxSizing: "border-box", padding: "13px 15px", border: "1px solid var(--color-hairline)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-text)", fontSize: 16, color: "var(--color-ink)", outline: "none", background: "var(--surface-card)" };
+
+  if (code) {
+    return (
+      <div style={{ padding: "70px 20px 24px", display: "flex", flexDirection: "column", minHeight: "100%", textAlign: "center" }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--accent-tint)", color: "var(--color-primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, margin: "12px auto 0" }}>✓</div>
+        <h1 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, letterSpacing: "-.4px", color: "var(--color-ink)", margin: "20px 0 6px" }}>스터디를 만들었어요</h1>
+        <p style={{ fontSize: 14.5, color: "var(--color-ink-muted-80)", margin: 0, lineHeight: 1.5 }}>아래 초대 코드를 멤버에게 공유하세요.<br />코드를 입력하면 스터디에 참여할 수 있어요.</p>
+
+        <div style={{ margin: "28px 0", padding: "24px", border: "1px dashed var(--color-primary)", borderRadius: "var(--radius-lg)", background: "var(--accent-tint)" }}>
+          <div style={{ fontSize: 12, color: "var(--color-ink-muted-48)", marginBottom: 8 }}>{name || "새 스터디"} 초대 코드</div>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 40, fontWeight: 700, letterSpacing: "6px", color: "var(--color-ink)" }}>{code}</div>
+        </div>
+
+        <button onClick={copy} style={{ ...ctaGhost, marginBottom: 10 }}>{copied ? "복사됨 ✓" : "코드 복사"}</button>
+        <button onClick={() => go("my")} style={ctaPrimary}>완료</button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: "70px 20px 24px", display: "flex", flexDirection: "column", minHeight: "100%" }}>
+      <button onClick={() => go("my")} aria-label="뒤로" style={backBtn}>‹ 취소</button>
+      <h1 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 600, letterSpacing: "-.5px", color: "var(--color-ink)", margin: "0 0 6px" }}>새 스터디 만들기</h1>
+      <p style={{ fontSize: 14, color: "var(--color-ink-muted-48)", margin: "0 0 24px" }}>만들면 초대 코드가 자동으로 생성돼요.</p>
+
+      <label style={lbl}>스터디 이름</label>
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="예: 기획 뜯어보기" style={field} />
+
+      <label style={{ ...lbl, marginTop: 18 }}>소개</label>
+      <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="어떤 스터디인지 한 줄로 소개해주세요" style={{ ...field, minHeight: 80, resize: "none" }} />
+
+      <button onClick={gen} disabled={!name.trim()} style={{ ...ctaPrimary, marginTop: "auto", opacity: name.trim() ? 1 : 0.4, cursor: name.trim() ? "pointer" : "default" }}>만들고 코드 생성</button>
+    </div>
+  );
+}
+const lbl = { fontSize: 13, fontWeight: 600, color: "var(--color-ink)", marginBottom: 8, display: "block" };
+const backBtn = { alignSelf: "flex-start", border: "none", background: "transparent", color: "var(--color-ink-muted-48)", fontSize: 15, cursor: "pointer", padding: "0 0 14px", marginLeft: -2 };
+const ctaPrimary = { width: "100%", padding: "15px", border: "none", borderRadius: "var(--radius-pill)", background: "var(--action)", color: "#fff", fontFamily: "var(--font-text)", fontSize: 17, fontWeight: 600, letterSpacing: "-.3px", cursor: "pointer" };
+const ctaGhost = { width: "100%", padding: "14px", border: "1px solid var(--color-primary)", borderRadius: "var(--radius-pill)", background: "transparent", color: "var(--color-primary)", fontFamily: "var(--font-text)", fontSize: 17, fontWeight: 600, letterSpacing: "-.3px", cursor: "pointer" };
+window.CreateStudy = CreateStudy;

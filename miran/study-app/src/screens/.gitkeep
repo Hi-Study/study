@@ -1,0 +1,5 @@
+# 화면 컴포넌트 위치 (아직 비어 있음 — 이번 뼈대 단계에서는 미구현)
+# design/README.md 스펙 + dev/README §3 매핑대로 이식 예정:
+#   MyStudies, StudyCalendar, Weekly, DiscussionList, DiscussionDetail,
+#   ShareDetail, CreateShare, CreateDiscussion, MyPage, ProfileEdit,
+#   DisplaySettings, Members, StudyManage, CreateStudy, JoinStudy, Notifications

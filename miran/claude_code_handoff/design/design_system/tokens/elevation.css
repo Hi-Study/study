@@ -1,0 +1,18 @@
+/* ============================================================
+   ELEVATION — the system uses exactly ONE drop shadow, reserved for
+   product/photographic imagery resting on a surface. Never on cards,
+   buttons, or text. UI elevation comes from surface-color change and
+   backdrop-blur only.
+   ============================================================ */
+:root{
+  --shadow-none:none;
+  /* The single signature product shadow */
+  --shadow-product:rgba(0,0,0,0.22) 3px 5px 30px 0;
+
+  /* Frosted glass for sticky bars / sub-nav (functional, not decorative) */
+  --blur-frosted:saturate(180%) blur(20px); /* @kind other */
+  --frosted-parchment:rgba(245,245,247,0.8); /* parchment @ 80% for backdrop-filter */
+
+  /* Soft hairline "ring" (border, not shadow) on secondary buttons */
+  --ring-soft:0 0 0 1px rgba(0,0,0,0.04);
+}

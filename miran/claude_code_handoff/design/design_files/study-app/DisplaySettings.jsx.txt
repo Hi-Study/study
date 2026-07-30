@@ -1,0 +1,20 @@
+// DisplaySettings — My > 화면 설정. 밤/낮 모드.
+function DisplaySettings({ dark, onToggleDark }) {
+  const Opt = ({ label, on, onClick }) => (
+    <button onClick={onClick} style={{ flex: 1, cursor: "pointer", padding: "18px 0", borderRadius: "var(--radius-lg)", border: on ? "2px solid var(--color-primary-focus)" : "1px solid var(--color-hairline)", background: "var(--surface-card)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+      <span style={{ width: 56, height: 40, borderRadius: 8, background: label === "밤" ? "#000" : "#fff", border: "1px solid var(--color-hairline)", display: "flex", alignItems: "center", justifyContent: "center", color: label === "밤" ? "#fff" : "#000", fontSize: 13, fontWeight: 600 }}>Aa</span>
+      <span style={{ fontSize: 14, fontWeight: 600, color: on ? "var(--color-primary)" : "var(--color-ink)" }}>{label} 모드</span>
+    </button>
+  );
+  return (
+    <div style={{ padding: "8px 16px 24px" }}>
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-ink-muted-48)", textTransform: "uppercase", letterSpacing: ".3px", padding: "0 4px 10px" }}>화면 모드</div>
+      <div style={{ display: "flex", gap: 12 }}>
+        <Opt label="낮" on={!dark} onClick={() => dark && onToggleDark()} />
+        <Opt label="밤" on={dark} onClick={() => !dark && onToggleDark()} />
+      </div>
+      <p style={{ fontSize: 13, color: "var(--color-ink-muted-48)", margin: "16px 4px 0", lineHeight: 1.5 }}>선택한 화면 모드는 앱 전체에 즉시 적용됩니다.</p>
+    </div>
+  );
+}
+window.DisplaySettings = DisplaySettings;

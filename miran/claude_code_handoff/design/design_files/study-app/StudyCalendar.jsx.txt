@@ -1,0 +1,98 @@
+// StudyCalendar — 특정 스터디의 달력 대시보드. 날짜별 공유 글 수 + 선택한 날 목록.
+function StudyCalendar({ study, go, shares: sharesProp }) {
+  const shares = sharesProp || study.shares;
+  const tsOf = (s) => typeof s.id === "string" ? Number((s.id.match(/\d+/) || [0])[0]) : s.id;
+  const hue = (n) => { let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; };
+  const Heart = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="#e0245e" style={{ flexShrink: 0, display: "inline-block", verticalAlign: "-2px" }}><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/></svg>;
+  const today = new Date();
+  const [view, setView] = React.useState({ y: today.getFullYear(), m: today.getMonth() });
+  const keyOf = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+
+  const dayOffset = { mon: 0, tue: 1, wed: 2, thu: 3, fri: 4 };
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+  const byDate = {};
+  shares.forEach((s) => { const d = new Date(monday); d.setDate(monday.getDate() + dayOffset[s.day]); (byDate[keyOf(d)] ||= []).push(s); });
+
+  const [sel, setSel] = React.useState(keyOf(today));
+  const selShares = [...(byDate[sel] || [])].sort((a, b) => tsOf(b) - tsOf(a));
+  const selDate = (() => { const [y, m, d] = sel.split("-").map(Number); return new Date(y, m, d); })();
+
+  const first = new Date(view.y, view.m, 1);
+  const startPad = first.getDay();
+  const dim = new Date(view.y, view.m + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < startPad; i++) cells.push(null);
+  for (let d = 1; d <= dim; d++) cells.push(new Date(view.y, view.m, d));
+  while (cells.length % 7) cells.push(null);
+  const wd = ["일", "월", "화", "수", "목", "금", "토"];
+  const shift = (n) => setView((v) => { const d = new Date(v.y, v.m + n, 1); return { y: d.getFullYear(), m: d.getMonth() }; });
+
+  return (
+    <div style={{ padding: "8px 16px 20px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 2px 14px" }}>
+        <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, letterSpacing: "-.4px", color: "var(--color-ink)" }}>{view.y}. {view.m + 1}</div>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button onClick={() => shift(-1)} aria-label="이전 달" style={navBtn}>‹</button>
+          <button onClick={() => shift(1)} aria-label="다음 달" style={navBtn}>›</button>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", marginBottom: 4 }}>
+        {wd.map((w, i) => (
+          <div key={w} style={{ textAlign: "center", fontSize: 12, fontWeight: 600, color: i === 0 ? "#c0392b" : i === 6 ? "var(--color-primary)" : "var(--color-ink-muted-48)", paddingBottom: 6 }}>{w}</div>
+        ))}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", rowGap: 2 }}>
+        {cells.map((d, i) => {
+          if (!d) return <div key={i} style={{ height: 52 }} />;
+          const k = keyOf(d);
+          const n = (byDate[k] || []).length;
+          const isToday = k === keyOf(today);
+          const isSel = k === sel;
+          return (
+            <button key={i} onClick={() => setSel(k)} style={{ height: 52, border: "none", background: "transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "4px 0", borderRadius: 12 }}>
+              <span style={{ width: 28, height: 28, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display)", fontSize: 15, fontWeight: 600, background: isSel ? "var(--color-primary)" : "transparent", color: isSel ? "#fff" : (isToday ? "var(--color-primary)" : (d.getDay() === 0 ? "#c0392b" : "var(--color-ink)")) }}>{d.getDate()}</span>
+              {n > 0 ? <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--color-primary)", display: "inline-block" }} /> : <span style={{ height: 6 }} />}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ marginTop: 18, borderTop: "1px solid var(--color-hairline)", paddingTop: 16 }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
+          <span style={{ fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 600, color: "var(--color-ink)" }}>{selDate.getMonth() + 1}월 {selDate.getDate()}일 ({wd[selDate.getDay()]})</span>
+          <button onClick={() => go("sharecreate", study.id, undefined, "cal")} style={{ border: "none", background: "transparent", color: "var(--color-primary)", fontFamily: "var(--font-text)", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>+ 글 공유</button>
+        </div>
+        {selShares.length ? (
+          <div style={{ display: "flex", flexDirection: "column", margin: "0 -8px" }}>
+            {selShares.map((s) => (
+              <button key={s.id} onClick={() => go("sharedetail", study.id, s.id, "cal")} className="slk-ch" style={{ textAlign: "left", width: "100%", cursor: "pointer", background: "transparent", border: "none", borderRadius: 8, padding: "10px 8px", display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <span style={{ width: 38, height: 38, borderRadius: 8, background: `hsl(${hue(s.sharedBy)} 42% 42%)`, color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, flexShrink: 0, fontFamily: "var(--font-display)" }}>{s.sharedBy[0]}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
+                    <span style={{ fontFamily: "var(--font-display)", fontSize: 14.5, fontWeight: 700, color: "var(--color-ink)" }}>{s.sharedBy}</span>
+                    <span style={{ fontSize: 11.5, color: "var(--color-ink-muted-48)" }}>{s.role || "멤버"} · {s.source || "직접 작성"}</span>
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-ink)", lineHeight: 1.3, margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.title}</div>
+                  <p style={{ fontSize: 13, color: "var(--color-ink-muted-80)", margin: "2px 0 0", lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.note || (s.body ? s.body[0] : "")}</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 7, fontSize: 12, color: "var(--color-ink-muted-48)" }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Heart /> {s.likes}</span>
+                    <span>💬 {s.comments}</span>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div style={{ padding: "28px 16px", textAlign: "center" }}>
+            <p style={{ fontSize: 13.5, color: "var(--color-ink-muted-48)", margin: 0 }}>이 날 공유된 글이 없습니다.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+const navBtn = { width: 30, height: 30, borderRadius: 6, border: "none", background: "transparent", color: "var(--color-ink-muted-48)", cursor: "pointer", fontSize: 17, lineHeight: 1 };
+window.StudyCalendar = StudyCalendar;

@@ -1,0 +1,82 @@
+// DiscussionList — 월 이동 + 검색 + 미참여 알림 + 토론 만들기. (Notion 스타일)
+function DiscussionList({ discussions, go, participated = {} }) {
+  const monthOf = (w) => (parseInt(w, 10) || 1) - 1;
+  const today = new Date();
+  const [m, setM] = React.useState(today.getMonth());
+  const [q, setQ] = React.useState("");
+  const query = q.trim().toLowerCase();
+  const shift = (n) => setM((v) => (v + n + 12) % 12);
+
+  const inMonth = discussions.filter((d) => monthOf(d.week) === m);
+  const list = inMonth.filter((d) => !query || [d.title, d.prompt, d.week].some((t) => t.toLowerCase().includes(query)));
+  const pending = discussions.filter((d) => d.active && !participated[d.id]);
+
+  return (
+    <div style={{ padding: "10px 14px 20px" }}>
+      {/* 미참여 알림 */}
+      {pending.length > 0 && (
+        <button onClick={() => go("discdetail", undefined, pending[0].id)} className="np-row" style={{ textAlign: "left", width: "100%", cursor: "pointer", display: "flex", alignItems: "center", gap: 10, background: "var(--accent-tint)", border: "none", borderRadius: 8, padding: "11px 12px", marginBottom: 14 }}>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--color-primary)", flexShrink: 0 }} />
+          <span style={{ flex: 1, fontSize: 13, color: "var(--color-ink)", lineHeight: 1.4 }}>진행 중 토론 <b>‘{pending[0].title}’</b>에 아직 의견을 안 남겼어요</span>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-primary)", flexShrink: 0 }}>참여 ›</span>
+        </button>
+      )}
+
+      {/* 월 이동 + 만들기 */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 2px 10px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <button onClick={() => shift(-1)} aria-label="이전 달" style={navBtnD}>‹</button>
+          <span style={{ fontFamily: "var(--font-display)", fontSize: 19, fontWeight: 700, letterSpacing: "-.4px", color: "var(--color-ink)", minWidth: 48, textAlign: "center" }}>{m + 1}월</span>
+          <button onClick={() => shift(1)} aria-label="다음 달" style={navBtnD}>›</button>
+        </div>
+        <button onClick={() => go("disccreate")} className="np-btn-primary" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "9px 18px", border: "none", borderRadius: 90, background: "var(--action)", color: "#fff", fontFamily: "var(--font-text)", fontSize: 13.5, fontWeight: 700, letterSpacing: ".2px", cursor: "pointer" }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          토론
+        </button>
+      </div>
+
+      {/* 검색 */}
+      <div style={{ display: "flex", alignItems: "center", gap: 7, height: 40, padding: "0 14px", background: "var(--surface-page-alt)", borderRadius: 8, marginBottom: 16 }}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--color-ink-muted-48)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="토론 주제 검색" style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: "var(--font-text)", fontSize: 14, color: "var(--color-ink)" }} />
+      </div>
+
+      {list.length ? (
+        <div style={{ display: "flex", flexDirection: "column", margin: "0 -6px" }}>
+          {list.map((d) => {
+            const notJoined = d.active && !participated[d.id];
+            return (
+            <button key={d.id} onClick={() => go("discdetail", undefined, d.id)} className="slk-ch" style={{ textAlign: "left", width: "100%", cursor: "pointer", background: "transparent", border: "none", borderRadius: 8, padding: "10px 8px", display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <span style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 9, background: d.active ? "var(--color-primary)" : "var(--color-canvas-parchment)", color: d.active ? "#fff" : "var(--color-ink-muted-48)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontFamily: "var(--font-display)", fontSize: 15.5, fontWeight: notJoined ? 800 : 600, letterSpacing: "-.3px", color: "var(--color-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: "0 1 auto" }}>{d.title}</span>
+                  {d.active && <span style={tag("var(--accent-tint)", "var(--color-primary)")}>진행 중</span>}
+                </div>
+                <p style={{ fontSize: 13, color: notJoined ? "var(--color-ink-muted-80)" : "var(--color-ink-muted-48)", fontWeight: notJoined ? 600 : 400, margin: "2px 0 0", lineHeight: 1.45, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.prompt}</p>
+                <div style={{ fontSize: 12, color: "var(--color-ink-muted-48)", marginTop: 6, display: "flex", alignItems: "center", gap: 5 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  답글 {d.count}
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
+                <span style={{ fontSize: 11, color: "var(--color-ink-muted-48)" }}>{d.week}</span>
+                {notJoined && <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#e03e3e" }} />}
+              </div>
+            </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div style={{ padding: "44px 16px", textAlign: "center" }}>
+          <p style={{ fontSize: 14, color: "var(--color-ink-muted-48)", margin: 0 }}>{query ? "검색 결과가 없어요." : `${m + 1}월에는 토론이 없어요.`}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+const navBtnD = { width: 30, height: 30, borderRadius: 6, border: "none", background: "transparent", color: "var(--color-ink-muted-48)", cursor: "pointer", fontSize: 17, lineHeight: 1 };
+const tag = (bg, fg) => ({ fontSize: 10.5, fontWeight: 700, color: fg, background: bg, borderRadius: 90, padding: "2px 9px", flexShrink: 0, lineHeight: 1.5, letterSpacing: ".2px" });
+window.DiscussionList = DiscussionList;

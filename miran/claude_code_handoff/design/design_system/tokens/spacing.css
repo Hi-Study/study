@@ -1,0 +1,19 @@
+/* ============================================================
+   SPACING — base unit 8px. Sub-base values (2,4,5,6,7) allowed for
+   tight typographic adjustments; structure snaps to 8/12/16/20/24.
+   ============================================================ */
+:root{
+  --space-xxs:4px;
+  --space-xs:8px;
+  --space-sm:12px;
+  --space-md:17px;    /* mirrors the 17px body rhythm */
+  --space-lg:24px;    /* card padding */
+  --space-xl:32px;
+  --space-xxl:48px;
+  --space-section:80px; /* vertical padding inside a full-bleed tile */
+
+  /* Layout containers */
+  --container-text:980px;   /* text-heavy sections */
+  --container-grid:1440px;  /* product / utility grids */
+  --gutter:24px;            /* gap between grid cards (20–24px) */
+}

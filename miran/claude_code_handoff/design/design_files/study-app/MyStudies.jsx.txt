@@ -1,0 +1,81 @@
+// MyStudies (메인) — Slack 워크스페이스/채널 목록형. 워크스페이스 헤더 + 검색 + 채널(스터디) 행.
+function MyStudies({ go, studies, participated = {} }) {
+  studies = studies || window.STUDY_DATA.studies;
+  const hasPending = studies.some((s) => s.discussions.some((d) => d.active && !participated[d.id]));
+  const hue = (n) => { let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; };
+
+  const ghostIcon = { width: 32, height: 32, borderRadius: 8, border: "none", background: "transparent", color: "var(--color-ink-muted-48)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100%", background: "var(--surface-page)" }}>
+      {/* 워크스페이스 헤더 */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "50px 14px 10px" }}>
+        <span style={{ width: 34, height: 34, borderRadius: 9, background: "var(--color-primary)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 17, flexShrink: 0 }}>기</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 19, fontWeight: 800, letterSpacing: "-.4px", color: "var(--color-ink)", lineHeight: 1.1 }}>기획 스터디</div>
+          <div style={{ fontSize: 11.5, color: "var(--color-ink-muted-48)" }}>워크스페이스 · {studies.length}</div>
+        </div>
+        <button onClick={() => go("notifications")} aria-label="알림" style={{ ...ghostIcon, position: "relative" }}>
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          {hasPending && <span style={{ position: "absolute", top: 5, right: 6, width: 7, height: 7, borderRadius: "50%", background: "#e03e3e", border: "1.5px solid var(--surface-page)" }} />}
+        </button>
+        <button onClick={() => go("manage")} aria-label="스터디 관리" style={ghostIcon}>
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+
+      {/* 검색 */}
+      <div style={{ padding: "4px 12px 10px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, height: 38, padding: "0 12px", background: "var(--surface-page-alt)", borderRadius: 8 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--color-ink-muted-48)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+          <span style={{ fontSize: 14, color: "var(--color-ink-muted-48)" }}>스터디 검색 또는 점프하기</span>
+        </div>
+      </div>
+
+      {/* 섹션 헤더 */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 16px 4px" }}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-ink-muted-48)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-ink-muted-80)", letterSpacing: ".2px", flex: 1 }}>내 스터디</span>
+        <button onClick={() => go("create")} aria-label="스터디 추가" style={{ ...ghostIcon, width: 26, height: 26 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
+
+      {/* 채널(스터디) 행 — Slack DM/채널 리스트 */}
+      <div style={{ padding: "0 8px" }}>
+        {studies.map((s) => {
+          const topic = s.discussions.find((d) => d.active);
+          const unread = s.discussions.filter((d) => d.active && !participated[d.id]).length;
+          return (
+          <button key={s.id} onClick={() => go("cal", s.id)} className="slk-ch" style={{ textAlign: "left", width: "100%", cursor: "pointer", background: "transparent", border: "none", borderRadius: 8, padding: "9px 8px", display: "flex", gap: 10, alignItems: "center" }}>
+            <span style={{ flexShrink: 0, width: 40, height: 40, borderRadius: 11, background: `hsl(${hue(s.name)} 34% 44%)`, color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display)", fontSize: 17, fontWeight: 700 }}>{s.name.slice(0, 1)}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontFamily: "var(--font-display)", fontSize: 15.5, fontWeight: unread ? 800 : 600, letterSpacing: "-.3px", color: "var(--color-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
+                {s.role === "방장" && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--color-primary)", background: "var(--tint-lavender)", borderRadius: 3, padding: "1px 5px", flexShrink: 0 }}>방장</span>}
+              </div>
+              <div style={{ fontSize: 12.5, color: unread ? "var(--color-ink-muted-80)" : "var(--color-ink-muted-48)", fontWeight: unread ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 1 }}>{topic ? `💬 ${topic.title}` : `멤버 ${s.members}명`}</div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
+              <span style={{ fontSize: 11, color: "var(--color-ink-muted-48)" }}>{s.members}명</span>
+              {unread > 0 && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#e03e3e" }} title="안 읽은 토론" />}
+            </div>
+          </button>
+          );
+        })}
+      </div>
+
+      {/* 하단 액션 */}
+      <div style={{ marginTop: "auto", padding: "20px 14px 8px", display: "flex", flexDirection: "column", gap: 8 }}>
+        <button onClick={() => go("create")} className="np-btn-primary" style={ctaPrimary}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          새 스터디 만들기
+        </button>
+        <button onClick={() => go("join")} className="np-btn-ghost" style={ctaGhost}>초대 코드로 참여하기</button>
+      </div>
+    </div>
+  );
+}
+const ctaPrimary = { width: "100%", padding: "13px", border: "none", borderRadius: "var(--radius-pill)", background: "var(--action)", color: "#fff", fontFamily: "var(--font-text)", fontSize: 15.5, fontWeight: 700, letterSpacing: ".2px", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7 };
+const ctaGhost = { width: "100%", padding: "13px", border: "none", borderRadius: "var(--radius-pill)", background: "var(--surface-page-alt)", color: "var(--color-primary)", fontFamily: "var(--font-text)", fontSize: 15.5, fontWeight: 700, letterSpacing: ".2px", cursor: "pointer" };
+window.MyStudies = MyStudies;

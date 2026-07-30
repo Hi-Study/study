@@ -1,0 +1,180 @@
+<!-- @dsCard group="스터디 앱" viewport="460x940" name="기획 스터디 · 모바일 앱" subtitle="내 스터디 · 스터디 생성/코드 참여 · 달력 · 주차별 토론 (iOS)" -->
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>기획 스터디 · 앱</title>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<script src="data.js"></script>
+<style>html,body{height:100%}body{margin:0;background:#e9e9ec;display:flex;align-items:flex-start;justify-content:center;min-height:100vh;padding:20px 0}
+.app-scroll{scrollbar-width:none;-ms-overflow-style:none}.app-scroll::-webkit-scrollbar{display:none;width:0;height:0}
+.np-row{transition:background .12s ease}.np-row:hover{background:var(--surface-page-alt)!important}
+.np-btn-primary{transition:filter .12s ease}.np-btn-primary:hover{filter:brightness(.94)}.np-btn-primary:active{filter:brightness(.88)}
+.np-btn-ghost{transition:background .12s ease}.np-btn-ghost:hover{background:var(--color-divider-soft)!important}
+.np-card{transition:background .12s ease}.np-card:hover{background:var(--color-divider-soft)!important}
+.slk-msg{transition:background .1s ease}.slk-msg:hover{background:var(--color-divider-soft)}
+.slk-list .slk-msg{border-top:1px solid transparent}
+.slk-ch{transition:background .1s ease}.slk-ch:hover{background:var(--color-divider-soft)!important}
+.app-scope{
+  --tabbar-bg:rgba(255,255,255,0.94);
+  /* 기획 스터디 — Slacc aubergine identity */
+  --color-primary:#4a154b;--color-primary-focus:#611f69;--color-primary-on-dark:#d9bdde;
+  --action:#4a154b;--action-on:#ffffff;--focus-ring:#611f69;
+  --action-press:#611f69;
+  --accent-amber:#4a154b;
+  --color-ink:#1d1d1d;--color-body:#1d1d1d;--color-ink-muted-80:#454545;--color-ink-muted-48:#696969;
+  --text-primary:#1d1d1d;--text-secondary:#454545;--text-muted:#696969;--text-link:#1264a3;
+  --surface-page:#ffffff;--surface-page-alt:#f9f0ff;--surface-card:#ffffff;
+  --surface-nav:#ffffff;--color-canvas:#ffffff;--color-canvas-parchment:#f4ede4;--color-surface-pearl:#f4ede4;
+  --color-hairline:#e6e6e6;--color-divider-soft:#f0f0f0;--border-card:#e6e6e6;--color-border-translucent:rgba(0,0,0,0.1);
+  --semantic-error:#cc4117;--semantic-success:#007a5a;
+  /* Slacc: over-padded 90px pill buttons; cards at 12–16px */
+  --radius-pill:90px;--radius-lg:16px;--radius-md:8px;--radius-sm:4px;
+  --accent-tint:#f4ede4;--accent-tint-border:rgba(74,21,75,0.22);
+  --tint-lavender:#f9f0ff;
+}
+.app-dark{
+  --tabbar-bg:rgba(30,16,32,0.92);
+  --color-primary:#c99fce;--color-primary-focus:#d8b6dc;--action:#c99fce;--action-on:#2a0e2c;--text-link:#9fc0f0;--action-press:#b98fbf;
+  --accent-amber:#c99fce;
+  --surface-page:#1a121b;--surface-page-alt:#241a26;--surface-card:#241a26;
+  --color-ink:#f0e9f1;--color-body:#f0e9f1;--color-ink-muted-80:#c8bccb;--color-ink-muted-48:#9a8a9d;
+  --text-primary:#f0e9f1;--text-secondary:#c8bccb;--text-muted:#9a8a9d;
+  --color-hairline:#3a2c3d;--color-divider-soft:#2c1f2f;--color-canvas:#241a26;--color-canvas-parchment:#2c1f2f;--border-card:#3a2c3d;
+  --accent-tint:#2c1f2f;--accent-tint-border:rgba(201,159,206,0.4);--tint-lavender:#2c1f2f;
+}</style>
+</head><body><div id="root"></div>
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="MyStudies.jsx"></script>
+<script type="text/babel" src="StudyManage.jsx"></script>
+<script type="text/babel" src="Notifications.jsx"></script>
+<script type="text/babel" src="MyPage.jsx"></script>
+<script type="text/babel" src="Members.jsx"></script>
+<script type="text/babel" src="ProfileEdit.jsx"></script>
+<script type="text/babel" src="DisplaySettings.jsx"></script>
+<script type="text/babel" src="CreateStudy.jsx"></script>
+<script type="text/babel" src="JoinStudy.jsx"></script>
+<script type="text/babel" src="StudyCalendar.jsx"></script>
+<script type="text/babel" src="ShareDetail.jsx"></script>
+<script type="text/babel" src="CreateShare.jsx"></script>
+<script type="text/babel" src="Weekly.jsx"></script>
+<script type="text/babel" src="DiscussionList.jsx"></script>
+<script type="text/babel" src="CreateDiscussion.jsx"></script>
+<script type="text/babel" src="DiscussionDetail.jsx"></script>
+<script type="text/babel">
+const genCode = () => { const ch = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let c = ""; for (let i = 0; i < 6; i++) c += ch[Math.floor(Math.random() * ch.length)]; return c; };
+function TabIcon({ name }) {
+  const p = { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };
+  if (name === "cal") return <svg {...p}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>;
+  if (name === "weekly") return <svg {...p}><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>;
+  if (name === "disclist") return <svg {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
+  if (name === "mypage") return <svg {...p}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+  return null;
+}
+const STUDY_TABS = [
+  { key: "cal", label: "달력" },
+  { key: "weekly", label: "이번 주" },
+  { key: "disclist", label: "토론", match: ["disclist", "discdetail", "disccreate"] },
+  { key: "mypage", label: "마이페이지", match: ["mypage", "profileedit", "display"] },
+];
+
+function App(){
+  const { studies } = window.STUDY_DATA;
+  const [route, setRoute] = React.useState({ name: "my" });
+  const [extra, setExtra] = React.useState({});
+  const [extraShares, setExtraShares] = React.useState({});
+  const [removed, setRemoved] = React.useState([]);
+  const [dark, setDark] = React.useState(false);
+  const [profileName, setProfileName] = React.useState("");
+  const [profileRole, setProfileRole] = React.useState("");
+  const [participated, setParticipated] = React.useState({});
+  const markParticipated = (discId) => setParticipated((p) => ({ ...p, [discId]: true }));
+  const [codes, setCodes] = React.useState({});
+  const [cadences, setCadences] = React.useState({});
+  const [delegated, setDelegated] = React.useState({});
+  const isOwner = (s) => !!s && s.role === "방장" && !delegated[s.id];
+  const effCode = (s) => (s && codes[s.id]) || (s && s.code) || "";
+  const effCadence = (s) => (s && cadences[s.id]) || (s && s.cadence) || "주 2회";
+  const regenCode = (id) => setCodes((c) => ({ ...c, [id]: genCode() }));
+  const setCadence = (id, v) => setCadences((c) => ({ ...c, [id]: v }));
+  const delegate = (id, name) => setDelegated((d) => ({ ...d, [id]: name }));
+  const go = (name, studyId, id, from) => setRoute((r) => ({ name, studyId: studyId ?? r.studyId, discId: id ?? r.discId, from: from ?? r.from }));
+  const addDiscussion = (studyId, disc) => setExtra((e) => ({ ...e, [studyId]: [disc, ...(e[studyId] || [])] }));
+  const addShare = (studyId, share) => setExtraShares((e) => ({ ...e, [studyId]: [share, ...(e[studyId] || [])] }));
+  const removeStudy = (id) => setRemoved((r) => [...r, id]);
+  const visibleStudies = studies.filter((s) => !removed.includes(s.id));
+  const study = studies.find((s) => s.id === route.studyId) || visibleStudies[0] || studies[0];
+  const discussionsOf = (s) => [...(extra[s.id] || []), ...s.discussions];
+  const sharesOf = (s) => [...(extraShares[s.id] || []), ...s.shares];
+  const inStudy = ["cal", "weekly", "disclist", "discdetail", "disccreate", "sharedetail", "sharecreate", "mypage", "profileedit", "display", "members"].includes(route.name);
+
+  const backArrow = (onBack) => (
+    <button onClick={onBack} aria-label="뒤로" style={{ width:34, height:34, border:"none", background:"transparent", cursor:"pointer", fontSize:22, color:"var(--color-ink)", lineHeight:1, marginLeft:-6 }}>‹</button>
+  );
+
+  const leaveStudy = (id) => { removeStudy(id); go("my"); };
+
+  let content;
+  if (route.name === "my") content = <window.MyStudies go={go} studies={visibleStudies} participated={participated} />;
+  else if (route.name === "manage") content = <window.StudyManage go={go} studies={visibleStudies} onDeleteStudy={removeStudy} />;
+  else if (route.name === "notifications") content = <window.Notifications go={go} studies={visibleStudies} participated={participated} cadences={cadences} />;
+  else if (route.name === "mypage") content = <window.MyPage go={go} profileName={profileName} profileRole={profileRole} studies={visibleStudies} participated={participated} study={study} onLeave={leaveStudy} />;
+  else if (route.name === "members") content = <window.Members study={study} profileName={profileName} profileRole={profileRole} isOwner={isOwner(study)} code={effCode(study)} onRegen={regenCode} cadence={effCadence(study)} onCadence={setCadence} onDelegate={delegate} onLeave={leaveStudy} />;
+  else if (route.name === "profileedit") content = <window.ProfileEdit profileName={profileName} onChangeName={setProfileName} profileRole={profileRole} onChangeRole={setProfileRole} />;
+  else if (route.name === "display") content = <window.DisplaySettings dark={dark} onToggleDark={() => setDark((v) => !v)} />;
+  else if (route.name === "create") content = <window.CreateStudy go={go} />;
+  else if (route.name === "join") content = <window.JoinStudy go={go} />;
+  else if (route.name === "cal") content = <window.StudyCalendar study={study} shares={sharesOf(study)} go={go} />;
+  else if (route.name === "weekly") content = <window.Weekly study={study} shares={sharesOf(study)} go={go} />;
+  else if (route.name === "sharedetail") content = <window.ShareDetail study={study} shares={sharesOf(study)} shareId={route.discId} profileRole={profileRole} />;
+  else if (route.name === "sharecreate") content = <window.CreateShare study={study} onCreate={addShare} go={go} profileRole={profileRole} />;
+  else if (route.name === "disclist") content = <window.DiscussionList discussions={discussionsOf(study)} go={go} participated={participated} />;
+  else if (route.name === "disccreate") content = <window.CreateDiscussion study={study} onCreate={addDiscussion} go={go} />;
+  else if (route.name === "discdetail") content = <window.DiscussionDetail study={study} discussions={discussionsOf(study)} discId={route.discId} onParticipate={markParticipated} profileRole={profileRole} isOwner={isOwner(study)} />;
+
+  return (
+    <window.IOSDevice height={812} dark={dark}>
+      <div className={"app-scope" + (dark ? " app-dark" : "")} style={{ height:"100%", display:"flex", flexDirection:"column", background:"var(--surface-page)" }}>
+        {/* 상단 바 (스터디 화면에서만) */}
+        {inStudy && (
+          <div style={{ flex:"none", paddingTop:52, paddingBottom:10, borderBottom:"1px solid var(--color-hairline)", background:"var(--surface-page)" }}>
+            <div style={{ display:"flex", alignItems:"center", padding:"0 12px" }}>
+              {backArrow(() => {
+                if (route.name === "discdetail" || route.name === "disccreate") return go("disclist");
+                if (route.name === "sharedetail" || route.name === "sharecreate") return go(route.from || "cal");
+                if (route.name === "profileedit" || route.name === "display") return go("mypage");
+                if (route.name === "members") return go("mypage");
+                return go("my");
+              })}
+              <div style={{ flex:1, textAlign:"center", fontFamily:"var(--font-display)", fontSize:18, fontWeight:600, letterSpacing:"-.3px", color:"var(--color-ink)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", padding:"0 4px" }}>{{ cal:"달력", weekly:"이번 주", disclist:"토론", discdetail:"토론", disccreate:"토론 만들기", sharedetail:"공유 글", sharecreate:"글 공유", mypage:"마이페이지", profileedit:"프로필 설정", display:"화면 설정", members:"멤버" }[route.name] || ""}</div>
+              <div style={{ width:34, flexShrink:0 }} />
+            </div>
+          </div>
+        )}
+
+        {/* 콘텐츠 */}
+        <div className="app-scroll" style={{ flex:1, overflow:"auto", WebkitOverflowScrolling:"touch" }}>{content}</div>
+
+        {/* 하단 탭바 (스터디 화면에서만) */}
+        {inStudy && (
+          <div style={{ flex:"none", display:"flex", borderTop:"1px solid var(--color-hairline)", background:"var(--tabbar-bg)", backdropFilter:"var(--blur-frosted)", WebkitBackdropFilter:"var(--blur-frosted)", paddingBottom:30 }}>
+            {STUDY_TABS.map((t) => {
+              const shareTab = (route.name === "sharedetail" || route.name === "sharecreate") && (route.from || "cal") === t.key;
+              const memberTab = route.name === "members" && t.key === "mypage";
+              const on = (t.match || [t.key]).includes(route.name) || shareTab || memberTab;
+              return (
+                <button key={t.key} onClick={() => go(t.key)} style={{ flex:1, border:"none", background:"transparent", cursor:"pointer", padding:"9px 0 6px", display:"flex", flexDirection:"column", alignItems:"center", gap:3, color: on ? "var(--color-primary)" : "var(--color-ink-muted-48)" }}>
+                  <TabIcon name={t.key} />
+                  <span style={{ fontSize:10.5, fontWeight:600, letterSpacing:"-.1px" }}>{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </window.IOSDevice>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script></body></html>

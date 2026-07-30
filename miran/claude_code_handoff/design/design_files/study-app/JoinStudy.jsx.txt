@@ -1,0 +1,37 @@
+// JoinStudy — 초대 코드 입력 → 스터디 참여.
+function JoinStudy({ go }) {
+  const { studies } = window.STUDY_DATA;
+  const [code, setCode] = React.useState("");
+  const [error, setError] = React.useState("");
+  const clean = code.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+
+  const join = () => {
+    const found = studies.find((s) => s.code === clean);
+    if (found) go("cal", found.id);
+    else setError("존재하지 않는 코드예요. 다시 확인해주세요.");
+  };
+
+  return (
+    <div style={{ padding: "70px 20px 24px", display: "flex", flexDirection: "column", minHeight: "100%" }}>
+      <button onClick={() => go("my")} aria-label="뒤로" style={{ alignSelf: "flex-start", border: "none", background: "transparent", color: "var(--color-ink-muted-48)", fontSize: 15, cursor: "pointer", padding: "0 0 14px", marginLeft: -2 }}>‹ 취소</button>
+      <h1 style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 600, letterSpacing: "-.5px", color: "var(--color-ink)", margin: "0 0 6px" }}>초대 코드로 참여</h1>
+      <p style={{ fontSize: 14, color: "var(--color-ink-muted-48)", margin: "0 0 28px" }}>방장에게 받은 6자리 코드를 입력하세요.</p>
+
+      <input
+        value={clean}
+        onChange={(e) => { setCode(e.target.value); setError(""); }}
+        placeholder="ABC123"
+        maxLength={6}
+        autoCapitalize="characters"
+        style={{ width: "100%", boxSizing: "border-box", padding: "18px", textAlign: "center", border: error ? "1px solid #c0392b" : "1px solid var(--color-hairline)", borderRadius: "var(--radius-lg)", fontFamily: "var(--font-display)", fontSize: 32, fontWeight: 700, letterSpacing: "10px", color: "var(--color-ink)", outline: "none", background: "var(--surface-card)" }}
+      />
+      {error
+        ? <p style={{ fontSize: 13, color: "#c0392b", margin: "12px 2px 0" }}>{error}</p>
+        : <p style={{ fontSize: 12.5, color: "var(--color-ink-muted-48)", margin: "12px 2px 0" }}>예시 코드: K7F2QX · UX9M3T · PM4W8R</p>}
+
+      <button onClick={join} disabled={clean.length !== 6} style={{ ...ctaPrimary, marginTop: "auto", opacity: clean.length === 6 ? 1 : 0.4, cursor: clean.length === 6 ? "pointer" : "default" }}>참여하기</button>
+    </div>
+  );
+}
+window.JoinStudy = JoinStudy;
+const ctaPrimary = { width: "100%", padding: "15px", border: "none", borderRadius: "var(--radius-pill)", background: "var(--action)", color: "#fff", fontFamily: "var(--font-text)", fontSize: 17, fontWeight: 600, letterSpacing: "-.3px", cursor: "pointer" };

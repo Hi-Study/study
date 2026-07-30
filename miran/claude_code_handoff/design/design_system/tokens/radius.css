@@ -1,0 +1,14 @@
+/* ============================================================
+   RADIUS — do not mix grammars. sm=compact utility, lg=utility card,
+   pill=actions, md=rare pearl button.
+   ============================================================ */
+:root{
+  --radius-none:0px;
+  --radius-xs:4px;    /* form fields, small chips */
+  --radius-sm:6px;    /* menu items, list rows, status pills */
+  --radius-md:8px;    /* utility / nav buttons, smaller cards */
+  --radius-lg:12px;   /* feature cards, content tiles */
+  --radius-xl:16px;   /* large containers, image wells */
+  --radius-pill:9999px; /* marketing pill CTAs, badges */
+  --radius-full:9999px;
+}

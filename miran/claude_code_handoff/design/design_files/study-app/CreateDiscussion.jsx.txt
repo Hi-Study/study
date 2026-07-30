@@ -1,0 +1,76 @@
+// CreateDiscussion — 토론 등록. ① 링크 기반(외부 글 URL) ② 직접 작성. 같은 주차 다수 가능.
+function CreateDiscussion({ study, onCreate, go }) {
+  const weeks = ["7월 첫째 주", "7월 둘째 주", "7월 셋째 주", "7월 넷째 주", "8월 첫째 주"];
+  const [mode, setMode] = React.useState("link");
+  const [week, setWeek] = React.useState("7월 셋째 주");
+  const [url, setUrl] = React.useState("");
+  const [title, setTitle] = React.useState("");
+  const [content, setContent] = React.useState("");
+
+  const domain = (() => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch (e) { return ""; } })();
+  const canSubmit = title.trim() && (mode === "link" ? !!domain : true);
+
+  const submit = () => {
+    if (!canSubmit) return;
+    const body = content.trim() ? content.trim().split("\n").filter(Boolean) : ["함께 이야기해봐요."];
+    const disc = {
+      id: "new-" + Date.now(), week, title: title.trim(), active: true,
+      prompt: content.trim() || (mode === "link" ? "이 글을 함께 읽고 토론해요." : "함께 이야기해봐요."),
+      count: 0, comments: [], body,
+      ...(mode === "link" ? { url, source: domain } : {}),
+    };
+    onCreate(study.id, disc);
+    go("discdetail", study.id, disc.id);
+  };
+
+  const field = { width: "100%", boxSizing: "border-box", padding: "13px 15px", border: "1px solid var(--color-hairline)", borderRadius: "var(--radius-md)", fontFamily: "var(--font-text)", fontSize: 16, color: "var(--color-ink)", outline: "none", background: "var(--surface-card)" };
+  const lbl = { fontSize: 13, fontWeight: 600, color: "var(--color-ink)", marginBottom: 8, display: "block" };
+  const seg = (k, label) => (
+    <button onClick={() => setMode(k)} style={{ flex: 1, padding: "10px", border: "none", borderRadius: "var(--radius-md)", cursor: "pointer", fontFamily: "var(--font-text)", fontSize: 14, fontWeight: 600, background: mode === k ? "var(--surface-card)" : "transparent", color: mode === k ? "var(--color-ink)" : "var(--color-ink-muted-48)", boxShadow: mode === k ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}>{label}</button>
+  );
+
+  return (
+    <div style={{ padding: "8px 20px 24px", display: "flex", flexDirection: "column", minHeight: "100%" }}>
+      <h1 style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, letterSpacing: "-.4px", color: "var(--color-ink)", margin: "6px 0 4px" }}>토론 만들기</h1>
+      <p style={{ fontSize: 13.5, color: "var(--color-ink-muted-48)", margin: "0 0 18px" }}>{study.name} · 외부 글을 걸거나 직접 주제를 쓸 수 있어요.</p>
+
+      {/* 모드 토글 */}
+      <div style={{ display: "flex", gap: 4, padding: 4, background: "var(--color-canvas-parchment)", borderRadius: "var(--radius-md)", marginBottom: 20 }}>
+        {seg("link", "외부 글로 토론")}{seg("text", "직접 작성")}
+      </div>
+
+      <label style={lbl}>주차</label>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
+        {weeks.map((w) => {
+          const on = w === week;
+          return <button key={w} onClick={() => setWeek(w)} style={{ cursor: "pointer", background: "var(--surface-card)", color: on ? "var(--color-primary)" : "var(--color-ink)", border: on ? "2px solid var(--color-primary-focus)" : "1px solid var(--color-hairline)", borderRadius: "var(--radius-pill)", padding: on ? "7px 13px" : "8px 14px", fontFamily: "var(--font-text)", fontSize: 13, fontWeight: 600 }}>{w}</button>;
+        })}
+      </div>
+
+      {mode === "link" && (
+        <>
+          <label style={lbl}>글 URL</label>
+          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." style={field} inputMode="url" />
+          {domain && (
+            <div style={{ marginTop: 12, border: "1px solid var(--color-hairline)", borderRadius: "var(--radius-lg)", overflow: "hidden", background: "var(--surface-card)" }}>
+              <div style={{ height: 90, background: "var(--color-canvas-parchment)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-ink-muted-48)", fontSize: 13 }}>링크 미리보기 (원문 썸네일)</div>
+              <div style={{ padding: 13 }}>
+                <div style={{ fontSize: 11.5, color: "var(--color-ink-muted-48)", marginBottom: 4 }}>{domain}</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-ink)", lineHeight: 1.3 }}>{title.trim() || "토론 주제를 입력하세요"}</div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      <label style={{ ...lbl, marginTop: 18 }}>토론 주제</label>
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="예: 좋은 온보딩의 조건은?" style={field} />
+
+      <label style={{ ...lbl, marginTop: 18 }}>여는 글 (선택)</label>
+      <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder={mode === "link" ? "이 글의 어떤 점을 함께 이야기하고 싶나요?" : "토론을 여는 배경이나 질문을 적어주세요"} style={{ ...field, minHeight: 110, resize: "none" }} />
+
+      <button onClick={submit} disabled={!canSubmit} style={{ width: "100%", padding: "15px", marginTop: "24px", border: "none", borderRadius: "var(--radius-pill)", background: "var(--action)", color: "#fff", fontFamily: "var(--font-text)", fontSize: 17, fontWeight: 600, letterSpacing: "-.3px", opacity: canSubmit ? 1 : 0.4, cursor: canSubmit ? "pointer" : "default" }}>토론 등록</button>
+    </div>
+  );
+}
+window.CreateDiscussion = CreateDiscussion;

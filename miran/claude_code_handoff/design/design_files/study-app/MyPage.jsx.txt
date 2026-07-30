@@ -1,0 +1,61 @@
+// MyPage — 스터디 상세 하단 'My' 탭. 내 활동 대시보드 + 프로필/화면 설정 메뉴.
+function MyPage({ go, profileName, profileRole, studies = [], participated = {}, study, onLeave }) {
+  const shown = (profileName || "").trim() || "게스트";
+  const initial = shown[0];
+  const joined = studies.length;
+  const myComments = Object.keys(participated).length;
+  const pending = studies.reduce((n, s) => n + s.discussions.filter((d) => d.active && !participated[d.id]).length, 0);
+  const myShares = studies.flatMap((s) => s.shares).filter((x) => x.sharedBy === "나").length;
+
+  const Stat = ({ label, value, accent }) => (
+    <div style={{ background: "var(--surface-card)", border: "1px solid var(--color-hairline)", borderRadius: "var(--radius-lg)", padding: "16px 15px" }}>
+      <div style={{ fontFamily: "var(--font-display)", fontSize: 28, fontWeight: 600, letterSpacing: "-.6px", color: accent ? "#c0392b" : "var(--color-ink)" }}>{value}</div>
+      <div style={{ fontSize: 12.5, color: "var(--color-ink-muted-48)", marginTop: 2 }}>{label}</div>
+    </div>
+  );
+  const MenuRow = ({ title, desc, onClick, last }) => (
+    <button onClick={onClick} style={{ display: "flex", alignItems: "center", width: "100%", textAlign: "left", cursor: "pointer", background: "transparent", border: "none", padding: "15px 16px", borderBottom: last ? "none" : "1px solid var(--color-divider-soft)" }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-ink)" }}>{title}</div>
+        <div style={{ fontSize: 12.5, color: "var(--color-ink-muted-48)", marginTop: 2 }}>{desc}</div>
+      </div>
+      <span style={{ color: "var(--color-ink-muted-48)", fontSize: 18 }}>›</span>
+    </button>
+  );
+
+  return (
+    <div style={{ padding: "8px 16px 24px" }}>
+      {/* 프로필 요약 */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "8px 2px 20px" }}>
+        <span style={{ width: 60, height: 60, borderRadius: "50%", background: "var(--color-primary)", color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 600 }}>{initial}</span>
+        <div>
+          <div style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 600, color: "var(--color-ink)" }}>{shown}</div>
+          <div style={{ fontSize: 13, color: "var(--color-ink-muted-48)" }}>{profileRole ? profileRole : (profileName ? "내 프로필" : "기본 프로필 (미설정)")}</div>
+        </div>
+      </div>
+
+      {/* 내 활동 대시보드 */}
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-ink-muted-48)", textTransform: "uppercase", letterSpacing: ".3px", padding: "0 4px 10px" }}>내 활동</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 24 }}>
+        <Stat label="참여 스터디" value={joined} />
+        <Stat label="이번 주 공유" value={myShares} />
+        <Stat label="남긴 의견" value={myComments} />
+        <Stat label="미참여 토론" value={pending} accent={pending > 0} />
+      </div>
+
+      {/* 설정 메뉴 */}
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--color-ink-muted-48)", textTransform: "uppercase", letterSpacing: ".3px", padding: "0 4px 10px" }}>설정</div>
+      <div style={{ background: "var(--surface-card)", border: "1px solid var(--color-hairline)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+        <MenuRow title="멤버" desc={`함께하는 멤버 ${study ? study.members : 0}명`} onClick={() => go("members")} />
+        <MenuRow title="프로필 설정" desc="표시 이름과 아이콘" onClick={() => go("profileedit")} />
+        <MenuRow title="화면 설정" desc="밤/낮 모드" onClick={() => go("display")} last />
+      </div>
+
+      <button onClick={() => { if (study && confirm(study.role === "방장" ? `방장인 '${study.name}'에서 나가면 스터디가 삭제됩니다. 계속할까요?` : `'${study.name}'에서 나갈까요?`)) onLeave(study.id); }}
+        style={{ width: "100%", marginTop: 16, padding: "14px", border: "none", borderRadius: "var(--radius-pill)", background: "transparent", color: "#c0392b", fontFamily: "var(--font-text)", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
+        {study && study.role === "방장" ? "스터디 삭제하고 나가기" : "스터디 나가기"}
+      </button>
+    </div>
+  );
+}
+window.MyPage = MyPage;
