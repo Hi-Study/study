@@ -321,3 +321,38 @@ alter table public.user_words enable row level security;
 drop policy if exists uwords_all_own on public.user_words;
 create policy uwords_all_own on public.user_words for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- ============================================================
+-- 11) 의견(opinion) 좋아요 인기순 — opinions.like_count + 트리거
+--     (섹션 9의 아티클과 동일 방식. 토론 탭 인기순 정렬용.)
+-- ============================================================
+alter table public.opinions add column if not exists like_count int not null default 0;
+create index if not exists idx_opinions_like on public.opinions(like_count desc);
+
+create or replace function public.sync_opinion_like_count()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if (tg_op = 'INSERT' and new.target_type = 'opinion') then
+    update public.opinions set like_count = like_count + 1 where id = new.target_id;
+  elsif (tg_op = 'DELETE' and old.target_type = 'opinion') then
+    update public.opinions set like_count = greatest(0, like_count - 1) where id = old.target_id;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists trg_opinion_like on public.reactions;
+create trigger trg_opinion_like
+  after insert or delete on public.reactions
+  for each row execute function public.sync_opinion_like_count();
+
+-- 기존 데이터 정합성 재계산(재실행 안전).
+update public.opinions o
+  set like_count = (
+    select count(*) from public.reactions r
+    where r.target_type = 'opinion' and r.target_id = o.id
+  );

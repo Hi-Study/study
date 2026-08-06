@@ -17,9 +17,12 @@ export interface OpinionWithAuthor {
   article_id: string;
   author_id: string | null;
   insight: Insight;
+  like_count: number;
   created_at: string;
   author: OpinionAuthor | null;
 }
+
+export type OpinionSort = "latest" | "popular";
 
 // ---- raw ----
 export async function listOpinions(articleId: string): Promise<OpinionWithAuthor[]> {
@@ -94,13 +97,14 @@ export interface OpinionFeedItem extends OpinionWithAuthor {
 const OPINION_SELECT =
   "*, author:users(name, role_title), article:articles(id, title, og_image, topic, url, summary, blog:blogs(name, brand_color))";
 
-/** 전체 의견 피드(최신순) — 작성자 + 출처 글 요약 포함. */
-export async function listOpinionsFeed(): Promise<OpinionFeedItem[]> {
-  const { data, error } = await supabase
-    .from("opinions")
-    .select(OPINION_SELECT)
-    .order("created_at", { ascending: false })
-    .limit(50);
+/** 전체 의견 피드 — 작성자 + 출처 글 요약 포함. 인기순(like_count) 또는 최신순. */
+export async function listOpinionsFeed(sort: OpinionSort = "latest"): Promise<OpinionFeedItem[]> {
+  const base = supabase.from("opinions").select(OPINION_SELECT).limit(50);
+  const query =
+    sort === "popular"
+      ? base.order("like_count", { ascending: false }).order("created_at", { ascending: false })
+      : base.order("created_at", { ascending: false });
+  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as unknown as OpinionFeedItem[];
 }
@@ -115,8 +119,11 @@ export async function getOpinion(opinionId: string): Promise<OpinionFeedItem> {
   return data as unknown as OpinionFeedItem;
 }
 
-export function useOpinionsFeed() {
-  return useQuery({ queryKey: qk.opinionsFeed(), queryFn: listOpinionsFeed });
+export function useOpinionsFeed(sort: OpinionSort = "latest") {
+  return useQuery({
+    queryKey: qk.opinionsFeed(sort === "latest" ? undefined : sort),
+    queryFn: () => listOpinionsFeed(sort),
+  });
 }
 
 export function useOpinion(opinionId: string) {

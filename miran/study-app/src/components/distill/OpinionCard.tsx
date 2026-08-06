@@ -1,6 +1,7 @@
 // distill 의견 카드 — 핵심 인사이트 + 작성자 + 출처 글 (DESIGN_GUIDE §6.9, 일반 카드/강조바 없음).
 import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Heart } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { dtype } from "@/theme";
@@ -38,7 +39,13 @@ export function OpinionCard({
             <Text style={[styles.role, { color: c.textMuted }]}>{opinion.author.role_title}</Text>
           ) : null}
         </View>
-        <Text style={[styles.date, { color: c.textMuted }]}>{relativeDate(opinion.created_at)}</Text>
+        <View style={styles.headRight}>
+          <Text style={[styles.date, { color: c.textMuted }]}>{relativeDate(opinion.created_at)}</Text>
+          <View style={styles.likeMeta}>
+            <Heart size={12} color={c.textMuted} />
+            <Text style={[styles.likeNum, { color: c.textMuted }]}>{opinion.like_count ?? 0}</Text>
+          </View>
+        </View>
       </View>
 
       {/* 핵심 인사이트 */}
@@ -77,7 +84,10 @@ const styles = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", gap: 10 },
   who: { ...dtype.cardTitle },
   role: { ...dtype.meta },
+  headRight: { alignItems: "flex-end", gap: 3 },
   date: { ...dtype.meta },
+  likeMeta: { flexDirection: "row", alignItems: "center", gap: 3 },
+  likeNum: { ...dtype.meta, fontWeight: "700" },
   core: { ...dtype.body, fontWeight: "600", lineHeight: 23 },
   apply: { ...dtype.bodyS },
   source: { flexDirection: "row", gap: 10, padding: 10, borderRadius: 12, alignItems: "center" },

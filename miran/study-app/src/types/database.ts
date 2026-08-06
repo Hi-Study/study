@@ -128,6 +128,7 @@ export interface Database {
           article_id: string;
           author_id: string | null;
           insight: Insight;
+          like_count: number;
           created_at: string;
         };
         Insert: {
@@ -135,6 +136,7 @@ export interface Database {
           article_id: string;
           author_id?: string | null;
           insight: Insight;
+          like_count?: number;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["opinions"]["Insert"]>;
