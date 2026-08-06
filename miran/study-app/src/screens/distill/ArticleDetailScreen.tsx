@@ -35,6 +35,8 @@ export function ArticleDetailScreen({ route }: Props) {
   const c = theme.colors;
   const nav = useRootNav();
   const q = useArticle(articleId);
+  // ⚠️ 훅은 early return 앞에서 무조건 호출 (React 훅 규칙 — 렌더마다 개수 동일).
+  const [tab, setTab] = useState<"original" | "ai">("original");
 
   if (q.isLoading) {
     return (
@@ -54,7 +56,6 @@ export function ArticleDetailScreen({ route }: Props) {
   const a = q.data;
   const body = cleanBody(a.body);
   const mins = readingMinutes(a.body);
-  const [tab, setTab] = useState<"original" | "ai">("original");
 
   return (
     <View style={[styles.screen, { backgroundColor: c.surfacePage }]}>
