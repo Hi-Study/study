@@ -256,3 +256,44 @@ on conflict (key) do update
 
 -- listscrape 로 rss 없는 곳은 rss_url null 정리
 update public.blogs set rss_url = null where rss_url = 'null';
+
+-- ============================================================
+-- 9) 글(아티클) 좋아요 — reactions 에 'article' 추가 + 인기순 정렬용 like_count
+-- ============================================================
+-- reactions.target_type 에 'article' 허용 (기존 제약 교체)
+alter table public.reactions drop constraint if exists reactions_target_type_check;
+alter table public.reactions
+  add constraint reactions_target_type_check
+  check (target_type in ('opinion', 'comment', 'article'));
+
+-- 인기순 정렬용 비정규화 카운트(트리거로 유지 — RLS 로 앱은 articles 쓰기 불가하므로).
+alter table public.articles add column if not exists like_count int not null default 0;
+create index if not exists idx_articles_like on public.articles(like_count desc);
+
+create or replace function public.sync_article_like_count()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if (tg_op = 'INSERT' and new.target_type = 'article') then
+    update public.articles set like_count = like_count + 1 where id = new.target_id;
+  elsif (tg_op = 'DELETE' and old.target_type = 'article') then
+    update public.articles set like_count = greatest(0, like_count - 1) where id = old.target_id;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists trg_article_like on public.reactions;
+create trigger trg_article_like
+  after insert or delete on public.reactions
+  for each row execute function public.sync_article_like_count();
+
+-- 기존 데이터 정합성 재계산(재실행 안전).
+update public.articles a
+  set like_count = (
+    select count(*) from public.reactions r
+    where r.target_type = 'article' and r.target_id = a.id
+  );

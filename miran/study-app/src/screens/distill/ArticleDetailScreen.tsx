@@ -14,14 +14,20 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ChevronLeft, ExternalLink } from "lucide-react-native";
+import { ChevronLeft, ExternalLink, Heart } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav, type RootStackParamList } from "@/navigation/types";
 import { dtype } from "@/theme";
 import { cleanBody, readingMinutes } from "@/lib/text";
 import type { SummaryMode } from "@/lib/summary";
-import { useArticle, useOpinions, useRequestArticleSummary } from "@/data";
+import {
+  useArticle,
+  useOpinions,
+  useRequestArticleSummary,
+  useLiked,
+  useToggleReaction,
+} from "@/data";
 import { ServiceLogo, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
 import { ArticleHighlightSection } from "@/components/distill/ArticleHighlightSection";
 import { Avatar } from "@/components/Avatar";
@@ -36,7 +42,9 @@ export function ArticleDetailScreen({ route }: Props) {
   const nav = useRootNav();
   const q = useArticle(articleId);
   // ⚠️ 훅은 early return 앞에서 무조건 호출 (React 훅 규칙 — 렌더마다 개수 동일).
-  const [tab, setTab] = useState<"original" | "ai">("original");
+  const [tab, setTab] = useState<"original" | "ai" | "opinions">("original");
+  const liked = useLiked("article", articleId);
+  const toggleLike = useToggleReaction("article", articleId);
 
   if (q.isLoading) {
     return (
@@ -68,10 +76,26 @@ export function ArticleDetailScreen({ route }: Props) {
         </View>
 
         <View style={styles.body}>
-          {/* 주제칩 + 읽기시간 */}
+          {/* 주제칩 · 읽기시간 · 좋아요 */}
           <View style={styles.metaTop}>
             {a.topic ? <TopicChip topic={a.topic} /> : null}
             {mins ? <Text style={[styles.readTime, { color: c.textMuted }]}>{mins}분 읽기</Text> : null}
+            <View style={{ flex: 1 }} />
+            <Pressable
+              onPress={() => toggleLike.mutate(liked.data ?? false)}
+              disabled={toggleLike.isPending}
+              hitSlop={8}
+              style={styles.likeBtn}
+            >
+              <Heart
+                size={18}
+                color={liked.data ? c.danger : c.textMuted}
+                fill={liked.data ? c.danger : "transparent"}
+              />
+              <Text style={[styles.likeCount, { color: liked.data ? c.danger : c.textMuted }]}>
+                {a.like_count}
+              </Text>
+            </Pressable>
           </View>
 
           {/* 제목 */}
@@ -98,24 +122,21 @@ export function ArticleDetailScreen({ route }: Props) {
             <ExternalLink size={16} color={c.textLink} />
           </Pressable>
 
-          {/* 원문 / AI 요약 탭 */}
+          {/* 원문 / AI 요약 / 의견 탭 */}
           <View style={[styles.tabs, { borderColor: c.hairline }]}>
-            <Pressable
-              style={[styles.tab, tab === "original" && { backgroundColor: c.primaryTint }]}
-              onPress={() => setTab("original")}
-            >
-              <Text style={[styles.tabText, { color: tab === "original" ? c.primary : c.textMuted }]}>
-                원문
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.tab, tab === "ai" && { backgroundColor: c.primaryTint }]}
-              onPress={() => setTab("ai")}
-            >
-              <Text style={[styles.tabText, { color: tab === "ai" ? c.primary : c.textMuted }]}>
-                AI 요약
-              </Text>
-            </Pressable>
+            {(["original", "ai", "opinions"] as const).map((t) => {
+              const label = t === "original" ? "원문" : t === "ai" ? "AI 요약" : "의견";
+              const on = tab === t;
+              return (
+                <Pressable
+                  key={t}
+                  style={[styles.tab, on && { backgroundColor: c.primaryTint }]}
+                  onPress={() => setTab(t)}
+                >
+                  <Text style={[styles.tabText, { color: on ? c.primary : c.textMuted }]}>{label}</Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           {tab === "original" ? (
@@ -126,15 +147,14 @@ export function ArticleDetailScreen({ route }: Props) {
                 본문이 없어요. 원문에서 읽어보세요.
               </Text>
             )
-          ) : (
+          ) : tab === "ai" ? (
             <AiSummaryPanel
               articleId={a.id}
               cached={a.ai_summaries as Record<string, string> | null | undefined}
             />
+          ) : (
+            <OpinionsSection articleId={a.id} />
           )}
-
-          {/* 의견 모아보기 */}
-          <OpinionsSection articleId={a.id} />
         </View>
       </ScrollView>
 
@@ -231,20 +251,28 @@ function AiSummaryPanel({
   );
 }
 
-// 이 글에 달린 의견 — 미리보기(최대 3개), 탭하면 의견 상세로. (전체 토론은 토론 탭)
+// 이 글의 의견 탭 — 전체 목록, 탭하면 의견 상세(댓글·좋아요·수정삭제). 아래 CTA로 작성.
 function OpinionsSection({ articleId }: { articleId: string }) {
   const { theme } = useTheme();
   const c = theme.colors;
   const nav = useRootNav();
   const q = useOpinions(articleId);
   const list = q.data ?? [];
-  if (list.length === 0) return null;
-  const preview = list.slice(0, 3);
+
+  if (list.length === 0) {
+    return (
+      <View style={styles.opinionsEmpty}>
+        <Text style={[styles.opinionsEmptyText, { color: c.textMuted }]}>
+          아직 의견이 없어요.{"\n"}아래 "내 의견 남기기"로 첫 인사이트를 남겨보세요.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.opinions}>
       <Text style={[styles.opinionsTitle, { color: c.textPrimary }]}>의견 {list.length}</Text>
-      {preview.map((o) => (
+      {list.map((o) => (
         <Pressable
           key={o.id}
           onPress={() => nav.navigate("OpinionDetail", { opinionId: o.id })}
@@ -259,16 +287,16 @@ function OpinionsSection({ articleId }: { articleId: string }) {
               {o.author?.name ?? "게스트"}
             </Text>
           </View>
-          <Text style={[styles.opinionCore, { color: c.textPrimary }]} numberOfLines={3}>
+          <Text style={[styles.opinionCore, { color: c.textPrimary }]} numberOfLines={4}>
             {o.insight.core}
           </Text>
+          {o.insight.apply ? (
+            <Text style={[styles.opinionField, { color: c.textSecondary }]} numberOfLines={2}>
+              바로 적용 · {o.insight.apply}
+            </Text>
+          ) : null}
         </Pressable>
       ))}
-      {list.length > preview.length ? (
-        <Text style={[styles.opinionMore, { color: c.primary }]}>
-          의견 {list.length}개 모두 보기
-        </Text>
-      ) : null}
     </View>
   );
 }
@@ -283,6 +311,8 @@ const styles = StyleSheet.create({
   body: { paddingHorizontal: 16, paddingTop: 16 },
   metaTop: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
   readTime: { ...dtype.meta },
+  likeBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
+  likeCount: { ...dtype.meta, fontWeight: "700" },
 
   title: { ...dtype.titleL, marginBottom: 12 },
 
@@ -326,6 +356,8 @@ const styles = StyleSheet.create({
   opinionCore: { ...dtype.body, fontWeight: "600" },
   opinionField: { ...dtype.bodyS },
   opinionMore: { ...dtype.cardTitle, paddingVertical: 6 },
+  opinionsEmpty: { paddingVertical: 40, alignItems: "center" },
+  opinionsEmptyText: { ...dtype.body, textAlign: "center", lineHeight: 23 },
 
   backWrap: { position: "absolute", top: 0, left: 0, paddingHorizontal: 12, paddingTop: 4 },
   backBtn: {

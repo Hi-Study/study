@@ -33,4 +33,8 @@ export const qk = {
   opinion: (opinionId: string) => ["opinion", opinionId] as const,
   opinionComments: (opinionId: string) => ["opinion-comments", opinionId] as const,
   articleHighlights: (articleId: string) => ["article-highlights", articleId] as const,
+  liked: (targetType: string, targetId: string, uid: string) =>
+    ["liked", targetType, targetId, uid] as const,
+  myHighlights: (uid: string) => ["my-highlights", uid] as const,
+  words: (uid: string) => ["words", uid] as const,
 };

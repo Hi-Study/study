@@ -16,7 +16,8 @@ export function FeedScreen() {
   const c = theme.colors;
   const nav = useRootNav();
   const [topic, setTopic] = useState<Topic | null>(null);
-  const q = useArticlesFeed(topic ? { topic } : {});
+  const [sort, setSort] = useState<"latest" | "popular">("latest");
+  const q = useArticlesFeed({ ...(topic ? { topic } : {}), sort });
   const rows = q.data?.pages.flatMap((p) => p.rows) ?? [];
 
   return (
@@ -26,6 +27,20 @@ export function FeedScreen() {
     >
       <View style={styles.header}>
         <Text style={[styles.title, { color: c.textPrimary }]}>피드</Text>
+        <View style={styles.sortSeg}>
+          {(["latest", "popular"] as const).map((s) => (
+            <Pressable key={s} onPress={() => setSort(s)} hitSlop={6}>
+              <Text
+                style={[
+                  styles.sortText,
+                  { color: sort === s ? c.primary : c.textMuted, fontWeight: sort === s ? "700" : "500" },
+                ]}
+              >
+                {s === "latest" ? "최신" : "인기"}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
 
       {/* 주제 칩 */}
@@ -94,8 +109,17 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
   title: { ...dtype.display },
+  sortSeg: { flexDirection: "row", gap: 14, paddingBottom: 4 },
+  sortText: { ...dtype.cardTitle, fontSize: 14 },
   chips: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
   chipText: { ...dtype.label, fontSize: 13 },

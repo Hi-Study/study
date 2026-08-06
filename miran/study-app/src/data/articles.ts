@@ -92,28 +92,29 @@ export function useArticlesByTopic(topic: Topic, limit = 10) {
   });
 }
 
-// ---- 최신 글 무한 스크롤(홈 최신·피드) ----
-// keyset 커서: (published_at, id). published_at 없는 글은 뒤로(nullsFirst:false).
+// ---- 글 무한 스크롤(홈 최신·피드·검색) ----
+// keyset 커서: 최신=(published_at,id) / 인기=(like_count,id).
 export interface ArticleCursor {
-  published_at: string;
+  published_at: string | null;
+  like_count: number;
   id: string;
 }
 export interface ArticleFeedFilter {
   topic?: Topic;
   blogId?: string;
   search?: string;
+  sort?: "latest" | "popular"; // 기본 latest
 }
 
 export async function listArticlesFeed(
   cursor: ArticleCursor | null,
   filter: ArticleFeedFilter = {},
 ): Promise<{ rows: ArticleWithBlog[]; nextCursor: ArticleCursor | null }> {
-  let q = supabase
-    .from("articles")
-    .select(SELECT_WITH_BLOG)
-    .order("published_at", { ascending: false, nullsFirst: false })
-    .order("id", { ascending: false })
-    .limit(PAGE_SIZE);
+  const popular = filter.sort === "popular";
+  let q = supabase.from("articles").select(SELECT_WITH_BLOG).limit(PAGE_SIZE);
+  q = popular
+    ? q.order("like_count", { ascending: false }).order("id", { ascending: false })
+    : q.order("published_at", { ascending: false, nullsFirst: false }).order("id", { ascending: false });
 
   if (filter.topic) q = q.eq("topic", filter.topic);
   if (filter.blogId) q = q.eq("blog_id", filter.blogId);
@@ -122,19 +123,25 @@ export async function listArticlesFeed(
     q = q.or(`title.ilike.%${search}%,summary.ilike.%${search}%,tags.cs.{${search}}`);
   }
   if (cursor) {
-    q = q.or(
-      `published_at.lt.${cursor.published_at},and(published_at.eq.${cursor.published_at},id.lt.${cursor.id})`,
-    );
+    if (popular) {
+      q = q.or(
+        `like_count.lt.${cursor.like_count},and(like_count.eq.${cursor.like_count},id.lt.${cursor.id})`,
+      );
+    } else if (cursor.published_at) {
+      q = q.or(
+        `published_at.lt.${cursor.published_at},and(published_at.eq.${cursor.published_at},id.lt.${cursor.id})`,
+      );
+    }
   }
 
   const { data, error } = await q;
   if (error) throw error;
   const rows = (data ?? []) as unknown as ArticleWithBlog[];
   const last = rows[rows.length - 1];
-  const nextCursor =
-    rows.length === PAGE_SIZE && last?.published_at
-      ? { published_at: last.published_at, id: last.id }
-      : null;
+  const hasMore = rows.length === PAGE_SIZE && !!last && (popular || !!last.published_at);
+  const nextCursor = hasMore
+    ? { published_at: last.published_at, like_count: last.like_count, id: last.id }
+    : null;
   return { rows, nextCursor };
 }
 

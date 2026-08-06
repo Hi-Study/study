@@ -55,6 +55,11 @@ export async function createOpinionComment(
   if (error) throw error;
 }
 
+export async function updateOpinionComment(id: string, text: string): Promise<void> {
+  const { error } = await supabase.from("opinion_comments").update({ text }).eq("id", id);
+  if (error) throw error;
+}
+
 export async function deleteOpinionComment(id: string): Promise<void> {
   const { error } = await supabase.from("opinion_comments").delete().eq("id", id);
   if (error) throw error;
@@ -75,6 +80,14 @@ export function useCreateOpinionComment(opinionId: string) {
   return useMutation({
     mutationFn: (input: CreateOpinionCommentInput) =>
       createOpinionComment(uid, opinionId, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.opinionComments(opinionId) }),
+  });
+}
+
+export function useUpdateOpinionComment(opinionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, text }: { id: string; text: string }) => updateOpinionComment(id, text),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.opinionComments(opinionId) }),
   });
 }

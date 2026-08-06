@@ -13,11 +13,21 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ChevronLeft, Send } from "lucide-react-native";
+import { ChevronLeft, Heart, Pencil, Send, Trash2 } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
+import { useUid } from "@/auth/AuthProvider";
 import { useRootNav, type RootStackParamList } from "@/navigation/types";
-import { useOpinion, useOpinionComments, useCreateOpinionComment } from "@/data";
+import {
+  useOpinion,
+  useOpinionComments,
+  useCreateOpinionComment,
+  useUpdateOpinionComment,
+  useDeleteOpinionComment,
+  useLiked,
+  useToggleReaction,
+  type OpinionCommentRow,
+} from "@/data";
 import { dtype } from "@/theme";
 import { Avatar } from "@/components/Avatar";
 import { ServiceLogo, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
@@ -42,9 +52,14 @@ export function OpinionDetailScreen({ route }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
   const nav = useRootNav();
+  const uid = useUid();
   const q = useOpinion(opinionId);
   const commentsQ = useOpinionComments(opinionId);
   const createComment = useCreateOpinionComment(opinionId);
+  const updateComment = useUpdateOpinionComment(opinionId);
+  const deleteComment = useDeleteOpinionComment(opinionId);
+  const liked = useLiked("opinion", opinionId);
+  const toggleLike = useToggleReaction("opinion", opinionId);
   const [text, setText] = useState("");
 
   if (q.isLoading) {
@@ -102,6 +117,26 @@ export function OpinionDetailScreen({ route }: Props) {
           {/* 핵심 인사이트(크게) */}
           <Text style={[styles.core, { color: c.textPrimary }]}>{o.insight.core}</Text>
 
+          {/* 좋아요 */}
+          <Pressable
+            onPress={() => toggleLike.mutate(liked.data ?? false)}
+            disabled={toggleLike.isPending}
+            hitSlop={6}
+            style={[
+              styles.likeRow,
+              { borderColor: liked.data ? c.danger : c.hairline, backgroundColor: liked.data ? c.hotTint : "transparent" },
+            ]}
+          >
+            <Heart
+              size={16}
+              color={liked.data ? c.danger : c.textMuted}
+              fill={liked.data ? c.danger : "transparent"}
+            />
+            <Text style={[styles.likeText, { color: liked.data ? c.danger : c.textSecondary }]}>
+              좋아요
+            </Text>
+          </Pressable>
+
           {/* 구조화 인사이트 */}
           <InsightField label="인상적인 문장" value={o.insight.quote} />
           <InsightField label="내 해석" value={o.insight.interpretation} />
@@ -146,20 +181,13 @@ export function OpinionDetailScreen({ route }: Props) {
           <View style={[styles.discuss, { borderTopColor: c.hairline }]}>
             <Text style={[styles.discussTitle, { color: c.textPrimary }]}>토론 {comments.length}</Text>
             {comments.map((cm) => (
-              <View key={cm.id} style={[styles.comment, cm.parent_id ? styles.reply : null]}>
-                <Avatar name={cm.author?.name ?? "게스트"} size={30} />
-                <View style={{ flex: 1 }}>
-                  <View style={styles.cmHead}>
-                    <Text style={[styles.cmWho, { color: c.textPrimary }]}>
-                      {cm.author?.name ?? "게스트"}
-                    </Text>
-                    <Text style={[styles.cmDate, { color: c.textMuted }]}>
-                      {relativeDate(cm.created_at)}
-                    </Text>
-                  </View>
-                  <Text style={[styles.cmText, { color: c.textSecondary }]}>{cm.text}</Text>
-                </View>
-              </View>
+              <CommentItem
+                key={cm.id}
+                comment={cm}
+                isMine={cm.author_id === uid}
+                onUpdate={(t) => updateComment.mutate({ id: cm.id, text: t })}
+                onDelete={() => deleteComment.mutate(cm.id)}
+              />
             ))}
             {comments.length === 0 ? (
               <Text style={[styles.empty, { color: c.textMuted }]}>첫 토론을 시작해보세요</Text>
@@ -190,6 +218,91 @@ export function OpinionDetailScreen({ route }: Props) {
   );
 }
 
+// 댓글 항목 — 본인 것은 수정/삭제. 대댓글(parent_id)은 들여쓰기.
+function CommentItem({
+  comment,
+  isMine,
+  onUpdate,
+  onDelete,
+}: {
+  comment: OpinionCommentRow;
+  isMine: boolean;
+  onUpdate: (text: string) => void;
+  onDelete: () => void;
+}) {
+  const { theme } = useTheme();
+  const c = theme.colors;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(comment.text);
+
+  return (
+    <View style={[styles.comment, comment.parent_id ? styles.reply : null]}>
+      <Avatar name={comment.author?.name ?? "게스트"} size={30} />
+      <View style={{ flex: 1 }}>
+        <View style={styles.cmHead}>
+          <Text style={[styles.cmWho, { color: c.textPrimary }]}>
+            {comment.author?.name ?? "게스트"}
+          </Text>
+          <Text style={[styles.cmDate, { color: c.textMuted }]}>
+            {relativeDate(comment.created_at)}
+          </Text>
+        </View>
+
+        {editing ? (
+          <View style={styles.editWrap}>
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              multiline
+              autoFocus
+              style={[
+                styles.editInput,
+                { color: c.textPrimary, borderColor: c.hairline, backgroundColor: c.surfaceSunken },
+              ]}
+            />
+            <View style={styles.editActions}>
+              <Pressable
+                onPress={() => {
+                  setEditing(false);
+                  setDraft(comment.text);
+                }}
+              >
+                <Text style={[styles.editBtn, { color: c.textMuted }]}>취소</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  const t = draft.trim();
+                  if (t) {
+                    onUpdate(t);
+                    setEditing(false);
+                  }
+                }}
+              >
+                <Text style={[styles.editBtn, { color: c.primary }]}>저장</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <Text style={[styles.cmText, { color: c.textSecondary }]}>{comment.text}</Text>
+        )}
+
+        {isMine && !editing ? (
+          <View style={styles.cmActions}>
+            <Pressable onPress={() => setEditing(true)} hitSlop={6} style={styles.cmAction}>
+              <Pencil size={13} color={c.textMuted} />
+              <Text style={[styles.cmActionText, { color: c.textMuted }]}>수정</Text>
+            </Pressable>
+            <Pressable onPress={onDelete} hitSlop={6} style={styles.cmAction}>
+              <Trash2 size={13} color={c.textMuted} />
+              <Text style={[styles.cmActionText, { color: c.textMuted }]}>삭제</Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   flex: { flex: 1 },
@@ -208,6 +321,24 @@ const styles = StyleSheet.create({
   who: { ...dtype.cardTitle },
   date: { ...dtype.meta, marginTop: 2 },
   core: { ...dtype.titleL, fontWeight: "700" },
+  likeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  likeText: { ...dtype.label, fontSize: 13 },
+  editWrap: { marginTop: 4, gap: 8 },
+  editInput: { borderWidth: 1, borderRadius: 10, padding: 10, ...dtype.body, minHeight: 44 },
+  editActions: { flexDirection: "row", justifyContent: "flex-end", gap: 16 },
+  editBtn: { ...dtype.cardTitle, fontSize: 14 },
+  cmActions: { flexDirection: "row", gap: 14, marginTop: 6 },
+  cmAction: { flexDirection: "row", alignItems: "center", gap: 4 },
+  cmActionText: { ...dtype.meta },
 
   iField: { gap: 4 },
   iLabel: { ...dtype.label, fontSize: 12 },

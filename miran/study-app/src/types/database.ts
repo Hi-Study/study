@@ -32,7 +32,7 @@ export type Topic =
   | "infra"
   | "career";
 export type CollectMethod = "rss_full" | "rss_scrape" | "nuxt" | "listscrape";
-export type ReactionTarget = "opinion" | "comment";
+export type ReactionTarget = "opinion" | "comment" | "article";
 
 export interface Database {
   public: {
@@ -99,6 +99,7 @@ export interface Database {
           topic: Topic | null;
           tags: string[];
           ai_summaries: Record<string, string>;
+          like_count: number;
           created_at: string;
         };
         Insert: {
@@ -114,6 +115,7 @@ export interface Database {
           topic?: Topic | null;
           tags?: string[];
           ai_summaries?: Record<string, string>;
+          like_count?: number;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["articles"]["Insert"]>;
