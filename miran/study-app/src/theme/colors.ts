@@ -1,82 +1,94 @@
 /**
- * 색상 토큰 — design_system 정본의 "앱 실제 적용값"(index.html `.app-scope` /
- * `.app-dark` = Slack 어버진 아이덴티티)을 그대로 옮긴 값입니다.
- * design_system/tokens/colors.css 의 Notion 파생 원본이 아니라, dev/README §2
- * 지시대로 어버진 오버라이드를 사용합니다.
+ * 색상 토큰 — distill 디자인 가이드(DESIGN_GUIDE.md §2) 정본값.
+ * 강조색은 인디고(#4F46E5). 기존 토큰 이름은 유지하고 distill 값으로 매핑 + distill 신규 토큰 추가.
  */
 
 export const lightColors = {
-  // Brand / Action
-  primary: "#4a154b",
-  primaryFocus: "#611f69",
-  primaryPress: "#611f69",
-  primaryOnDark: "#d9bdde",
-  action: "#4a154b",
+  // Brand / Action (인디고)
+  primary: "#4F46E5",
+  primaryFocus: "#6366F1",
+  primaryPress: "#4338CA",
+  primaryOnDark: "#C7C9F9",
+  primaryTint: "#EEF0FE", // 선택 칩 배경·강조 옅은 배경
+  action: "#4F46E5",
   actionOn: "#ffffff",
-  focusRing: "#611f69",
+  focusRing: "#6366F1",
 
   // Ink / Text
-  textPrimary: "#1d1d1d",
-  textSecondary: "#454545",
-  textMuted: "#696969",
-  textLink: "#1264a3",
+  textPrimary: "#111827",
+  textSecondary: "#4B5563",
+  textMuted: "#9CA3AF",
+  textLink: "#4F46E5",
 
   // Surfaces
-  surfacePage: "#ffffff",
-  surfacePageAlt: "#f9f0ff",
-  surfaceCard: "#ffffff",
-  surfaceNav: "#ffffff",
-  canvasParchment: "#f4ede4",
-  pearl: "#f4ede4",
-  tintLavender: "#f9f0ff",
-  accentTint: "#f4ede4",
+  surfacePage: "#F9FAFB",
+  surfacePageAlt: "#EEF0FE",
+  surfaceCard: "#FFFFFF",
+  surfaceNav: "#FFFFFF",
+  surfaceSunken: "#F3F4F6", // 검색바·입력·옅은 블록
+  canvasParchment: "#F3F4F6",
+  pearl: "#F3F4F6",
+  tintLavender: "#EEF0FE",
+  accentTint: "#EEF0FE",
 
   // Hairlines / Borders
-  hairline: "#e6e6e6",
-  dividerSoft: "#f0f0f0",
-  borderCard: "#e6e6e6",
-  accentTintBorder: "rgba(74,21,75,0.22)",
+  hairline: "#EAECEF",
+  dividerSoft: "#F3F4F6",
+  borderCard: "#EAECEF",
+  accentTintBorder: "rgba(79,70,229,0.20)",
 
-  // Semantic
-  error: "#cc4117",
-  success: "#007a5a",
+  // Semantic (인디고와 어울리게 채도 낮춤)
+  error: "#D65C5C",
+  danger: "#D65C5C",
+  success: "#3C9E79",
+  warning: "#C4913C",
+  info: "#5468D6",
+  hot: "#DE6A4E",
+  hotTint: "#FBEDE8",
 
   // Tabbar
-  tabbarBg: "rgba(255,255,255,0.94)",
+  tabbarBg: "rgba(255,255,255,0.96)",
 } as const;
 
 export const darkColors = {
-  primary: "#c99fce",
-  primaryFocus: "#d8b6dc",
-  primaryPress: "#b98fbf",
-  primaryOnDark: "#c99fce",
-  action: "#c99fce",
-  actionOn: "#2a0e2c",
-  focusRing: "#d8b6dc",
+  primary: "#7C83FF",
+  primaryFocus: "#9096FF",
+  primaryPress: "#6970E6",
+  primaryOnDark: "#0F1115",
+  primaryTint: "#232445",
+  action: "#7C83FF",
+  actionOn: "#0F1115",
+  focusRing: "#9096FF",
 
-  textPrimary: "#f0e9f1",
-  textSecondary: "#c8bccb",
-  textMuted: "#9a8a9d",
-  textLink: "#9fc0f0",
+  textPrimary: "#F3F4F6",
+  textSecondary: "#C2C7D0",
+  textMuted: "#7C8494",
+  textLink: "#9096FF",
 
-  surfacePage: "#1a121b",
-  surfacePageAlt: "#241a26",
-  surfaceCard: "#241a26",
-  surfaceNav: "#241a26",
-  canvasParchment: "#2c1f2f",
-  pearl: "#2c1f2f",
-  tintLavender: "#2c1f2f",
-  accentTint: "#2c1f2f",
+  surfacePage: "#0F1115",
+  surfacePageAlt: "#171A21",
+  surfaceCard: "#171A21",
+  surfaceNav: "#171A21",
+  surfaceSunken: "#1F232C",
+  canvasParchment: "#1F232C",
+  pearl: "#1F232C",
+  tintLavender: "#232445",
+  accentTint: "#232445",
 
-  hairline: "#3a2c3d",
-  dividerSoft: "#2c1f2f",
-  borderCard: "#3a2c3d",
-  accentTintBorder: "rgba(201,159,206,0.4)",
+  hairline: "#2A2F3A",
+  dividerSoft: "#1F232C",
+  borderCard: "#2A2F3A",
+  accentTintBorder: "rgba(124,131,255,0.35)",
 
-  error: "#cc4117",
-  success: "#007a5a",
+  error: "#E06B6B",
+  danger: "#E06B6B",
+  success: "#4FB08C",
+  warning: "#D2A34F",
+  info: "#6E80E0",
+  hot: "#E67E64",
+  hotTint: "#3A241E",
 
-  tabbarBg: "rgba(30,16,32,0.92)",
+  tabbarBg: "rgba(23,26,33,0.94)",
 } as const;
 
 export type ColorTokens = typeof lightColors;

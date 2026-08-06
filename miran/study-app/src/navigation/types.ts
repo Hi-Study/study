@@ -8,6 +8,14 @@ export type StudyTabParamList = {
   MyPage: undefined;
 };
 
+export type DistillTabParamList = {
+  Home: undefined;
+  Feed: undefined;
+  Discuss: undefined;
+  Search: undefined;
+  MyPage: undefined;
+};
+
 export type RootStackParamList = {
   MyStudies: undefined;
   CreateStudy: undefined;
@@ -26,6 +34,13 @@ export type RootStackParamList = {
   ActivityList: { kind: "study" | "share" | "comment" | "pending" };
   ProfileEdit: undefined;
   DisplaySettings: undefined;
+
+  // ===== distill =====
+  DistillTabs: NavigatorScreenParams<DistillTabParamList> | undefined;
+  ArticleDetail: { articleId: string };
+  BlogArticles: { blogId: string; blogName: string };
+  CreateOpinion: { articleId: string };
+  OpinionDetail: { opinionId: string };
 };
 
 export type RootNav = NativeStackNavigationProp<RootStackParamList>;

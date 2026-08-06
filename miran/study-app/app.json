@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "기획 스터디",
+    "name": "distill",
     "slug": "study-app",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -20,18 +20,18 @@
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#6d4bd6"
+        "backgroundColor": "#4F46E5"
       }
     },
     "web": {
       "bundler": "metro",
       "output": "single",
       "favicon": "./assets/favicon.png",
-      "name": "기획 스터디",
-      "shortName": "기획 스터디",
+      "name": "distill",
+      "shortName": "distill",
       "lang": "ko",
-      "themeColor": "#4a154b",
-      "backgroundColor": "#f7f6f8",
+      "themeColor": "#4F46E5",
+      "backgroundColor": "#F9FAFB",
       "display": "standalone"
     },
     "plugins": [

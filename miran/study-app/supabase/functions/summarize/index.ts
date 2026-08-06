@@ -14,6 +14,7 @@ type Mode = "plain" | "planner" | "explain";
 
 interface Payload {
   share_id?: string;
+  article_id?: string;
   discussion_id?: string;
   target?: "content" | "result";
   mode?: Mode;
@@ -106,6 +107,32 @@ async function summarizeShare(shareId: string, mode: Mode): Promise<string> {
   return summary;
 }
 
+// distill 아티클 요약(모드별) → articles.ai_summaries[mode] 캐시.
+async function summarizeArticle(articleId: string, mode: Mode): Promise<string> {
+  const supabase = serviceClient();
+  const { data: art, error } = await supabase
+    .from("articles")
+    .select("id, title, body, url, summary, ai_summaries")
+    .eq("id", articleId)
+    .single();
+  if (error || !art) throw new Error("아티클을 찾을 수 없음");
+
+  let text: string = stripFooter(art.body ?? "");
+  if (!text && art.url) {
+    try {
+      text = extractArticle(await fetchHtml(art.url)).text ?? "";
+    } catch {
+      text = "";
+    }
+  }
+  const fallback = [art.title, art.summary].filter(Boolean).join(" — ") || art.title;
+  const summary = (text ? await llmSummarize(text, CONTENT_SYS[mode]) : null) ?? fallback;
+
+  const merged = { ...(art.ai_summaries ?? {}), [mode]: summary };
+  await supabase.from("articles").update({ ai_summaries: merged }).eq("id", articleId);
+  return summary;
+}
+
 // 토론 주제 + 여는 글(+원문) 요약 — 모드별.
 async function summarizeDiscussionContent(discussionId: string, mode: Mode): Promise<string> {
   const supabase = serviceClient();
@@ -178,11 +205,15 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { share_id, discussion_id, target, mode } = (await req.json()) as Payload;
+    const { share_id, article_id, discussion_id, target, mode } = (await req.json()) as Payload;
     const m: Mode = mode === "planner" || mode === "explain" ? mode : "plain";
 
     if (share_id) {
       const summary = await summarizeShare(share_id, m);
+      return json({ ok: true, mode: m, summary });
+    }
+    if (article_id) {
+      const summary = await summarizeArticle(article_id, m);
       return json({ ok: true, mode: m, summary });
     }
     if (discussion_id) {

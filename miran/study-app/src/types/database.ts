@@ -22,6 +22,18 @@ export type NotificationType =
   | "reply"
   | "member_joined";
 
+// ===== distill (테크블로그 수집 + 인사이트 + 토론) =====
+export type Topic =
+  | "dev"
+  | "product"
+  | "design"
+  | "planning"
+  | "data_ai"
+  | "infra"
+  | "career";
+export type CollectMethod = "rss_full" | "rss_scrape" | "nuxt" | "listscrape";
+export type ReactionTarget = "opinion" | "comment";
+
 export interface Database {
   public: {
     Tables: {
@@ -41,6 +53,168 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["users"]["Insert"]>;
+        Relationships: [];
+      };
+      // ---- distill: 블로그(수집 소스) ----
+      blogs: {
+        Row: {
+          id: string;
+          key: string;
+          name: string;
+          homepage: string | null;
+          rss_url: string | null;
+          collect: CollectMethod;
+          brand_color: string | null;
+          active: boolean;
+          last_collected_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          key: string;
+          name: string;
+          homepage?: string | null;
+          rss_url?: string | null;
+          collect?: CollectMethod;
+          brand_color?: string | null;
+          active?: boolean;
+          last_collected_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["blogs"]["Insert"]>;
+        Relationships: [];
+      };
+      // ---- distill: 아티클(자동 수집 글) ----
+      articles: {
+        Row: {
+          id: string;
+          blog_id: string;
+          url: string;
+          title: string;
+          author: string | null;
+          published_at: string | null;
+          summary: string | null;
+          body: string | null;
+          og_image: string | null;
+          topic: Topic | null;
+          tags: string[];
+          ai_summaries: Record<string, string>;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          blog_id: string;
+          url: string;
+          title: string;
+          author?: string | null;
+          published_at?: string | null;
+          summary?: string | null;
+          body?: string | null;
+          og_image?: string | null;
+          topic?: Topic | null;
+          tags?: string[];
+          ai_summaries?: Record<string, string>;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["articles"]["Insert"]>;
+        Relationships: [];
+      };
+      // ---- distill: 의견(내 인사이트) ----
+      opinions: {
+        Row: {
+          id: string;
+          article_id: string;
+          author_id: string | null;
+          insight: Insight;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          article_id: string;
+          author_id?: string | null;
+          insight: Insight;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["opinions"]["Insert"]>;
+        Relationships: [];
+      };
+      // ---- distill: 토론(의견 대댓글) ----
+      opinion_comments: {
+        Row: {
+          id: string;
+          opinion_id: string;
+          parent_id: string | null;
+          author_id: string | null;
+          text: string;
+          quote: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          opinion_id: string;
+          parent_id?: string | null;
+          author_id?: string | null;
+          text: string;
+          quote?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["opinion_comments"]["Insert"]>;
+        Relationships: [];
+      };
+      // ---- distill: 문장 하이라이트 ----
+      article_highlights: {
+        Row: {
+          id: string;
+          article_id: string;
+          author_id: string | null;
+          sentence_index: number;
+          quote: string | null;
+          color: string;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          article_id: string;
+          author_id?: string | null;
+          sentence_index: number;
+          quote?: string | null;
+          color?: string;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["article_highlights"]["Insert"]>;
+        Relationships: [];
+      };
+      // ---- distill: 북마크 ----
+      article_bookmarks: {
+        Row: { user_id: string; article_id: string; created_at: string };
+        Insert: { user_id: string; article_id: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["article_bookmarks"]["Insert"]>;
+        Relationships: [];
+      };
+      // ---- distill: 좋아요(의견/토론) ----
+      reactions: {
+        Row: {
+          user_id: string;
+          target_type: ReactionTarget;
+          target_id: string;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          target_type: ReactionTarget;
+          target_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["reactions"]["Insert"]>;
+        Relationships: [];
+      };
+      // ---- distill: 관심 주제 ----
+      user_topics: {
+        Row: { user_id: string; topic: Topic };
+        Insert: { user_id: string; topic: Topic };
+        Update: Partial<Database["public"]["Tables"]["user_topics"]["Insert"]>;
         Relationships: [];
       };
       studies: {

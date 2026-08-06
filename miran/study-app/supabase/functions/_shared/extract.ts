@@ -14,7 +14,7 @@ export interface Extracted {
   image: string | null; // og:image
 }
 
-function metaContent(html: string, key: string): string | null {
+export function metaContent(html: string, key: string): string | null {
   const re = new RegExp(
     `<meta[^>]+(?:property|name)=["']${key}["'][^>]+content=["']([^"']+)["']`,
     "i",
@@ -22,7 +22,7 @@ function metaContent(html: string, key: string): string | null {
   return html.match(re)?.[1] ?? null;
 }
 
-function decodeEntities(s: string): string {
+export function decodeEntities(s: string): string {
   return s
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
@@ -34,7 +34,7 @@ function decodeEntities(s: string): string {
     .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)));
 }
 
-function htmlToText(html: string): string {
+export function htmlToText(html: string): string {
   let s = html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
@@ -171,18 +171,22 @@ export function extractArticle(html: string): Extracted {
   };
 }
 
-// 봇 차단 완화 — SNS 링크 크롤러(facebook/kakao)인 척 요청한다.
-// Cloudflare 등은 SNS 미리보기 크롤러 UA 를 화이트리스트로 통과시키는 경우가 많아,
-// 일반 Chrome UA 로는 403 이던 사이트(우아한형제들 등)도 본문을 내준다. (실측 검증)
-export async function fetchHtml(url: string): Promise<string> {
+// SNS 링크 크롤러(facebook/kakao) UA — Cloudflare 등이 미리보기 크롤러를 화이트리스트로
+// 통과시켜, 일반 Chrome UA 로는 403 이던 본문 페이지(우아한형제들 등)도 내준다. (실측)
+export const CRAWLER_UA =
+  "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php); kakaotalk-scrap/1.0";
+// 일반 브라우저 UA — 일부 사이트는 반대로 크롤러 UA 에 SPA 셸만 주고 브라우저에만
+// 진짜 피드/본문을 준다(네이버 D2 의 atom 피드 등). 피드 요청 기본값. (실측)
+export const BROWSER_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
+
+// 봇 차단 완화용 요청. 본문 페이지는 CRAWLER_UA(기본), 피드는 BROWSER_UA 를 넘겨 쓴다.
+export async function fetchHtml(url: string, ua: string = CRAWLER_UA): Promise<string> {
   const res = await fetch(url, {
     redirect: "follow",
     headers: {
-      "User-Agent":
-        "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php); " +
-        "kakaotalk-scrap/1.0",
-      Accept:
-        "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "User-Agent": ua,
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
     },
   });

@@ -39,3 +39,4 @@ export const getTheme = (mode: ThemeMode): Theme =>
 
 export * from "./colors";
 export * from "./tokens";
+export * from "./distill";

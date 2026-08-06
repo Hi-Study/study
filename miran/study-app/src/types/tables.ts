@@ -14,3 +14,15 @@ export type NotificationRow = T["notifications"]["Row"];
 export type ShareInsert = T["shares"]["Insert"];
 export type DiscussionInsert = T["discussions"]["Insert"];
 export type CommentInsert = T["comments"]["Insert"];
+
+// ===== distill =====
+export type BlogRow = T["blogs"]["Row"];
+export type ArticleRow = T["articles"]["Row"];
+export type OpinionRow = T["opinions"]["Row"];
+export type OpinionCommentRow = T["opinion_comments"]["Row"];
+export type ArticleHighlightRow = T["article_highlights"]["Row"];
+export type UserTopicRow = T["user_topics"]["Row"];
+
+export type OpinionInsert = T["opinions"]["Insert"];
+export type OpinionCommentInsert = T["opinion_comments"]["Insert"];
+export type ArticleHighlightInsert = T["article_highlights"]["Insert"];

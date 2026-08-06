@@ -26,6 +26,11 @@ import { ActivityListScreen } from "@/screens/ActivityListScreen";
 import { ProfileEditScreen } from "@/screens/ProfileEditScreen";
 import { DisplaySettingsScreen } from "@/screens/DisplaySettingsScreen";
 import { NotificationsScreen } from "@/screens/NotificationsScreen";
+import { DistillTabs } from "./DistillTabs";
+import { ArticleDetailScreen } from "@/screens/distill/ArticleDetailScreen";
+import { BlogArticlesScreen } from "@/screens/distill/BlogArticlesScreen";
+import { CreateOpinionScreen } from "@/screens/distill/CreateOpinionScreen";
+import { OpinionDetailScreen } from "@/screens/distill/OpinionDetailScreen";
 import type { RootStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -68,7 +73,14 @@ function Gate() {
     <NavigationContainer
       theme={navTheme(theme.mode === "dark" ? DarkTheme : DefaultTheme, theme.colors)}
     >
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator initialRouteName="DistillTabs" screenOptions={{ headerShown: false }}>
+        {/* distill (테크블로그 발견) */}
+        <Stack.Screen name="DistillTabs" component={DistillTabs} />
+        <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
+        <Stack.Screen name="BlogArticles" component={BlogArticlesScreen} />
+        <Stack.Screen name="CreateOpinion" component={CreateOpinionScreen} />
+        <Stack.Screen name="OpinionDetail" component={OpinionDetailScreen} />
+
         <Stack.Screen name="MyStudies" component={MyStudiesScreen} />
         <Stack.Screen name="CreateStudy" component={CreateStudyScreen} />
         <Stack.Screen name="JoinStudy" component={JoinStudyScreen} />

@@ -42,6 +42,27 @@ export function splitSentences(text: string): string[] {
   return parts.filter((p) => p.length > 0);
 }
 
+/**
+ * 표시 직전 본문 정제 — 수집 때 걸러지지 못하고 남은 HTML 태그(<p>·<div> 등)와 과잉 빈 줄 제거.
+ * ⚠️ 문장 인덱스(하이라이트) 안정성을 위해 표시·하이라이트가 반드시 "같은 정제본"을 써야 한다.
+ *    수학식의 'a < b' 는 남기도록 <태그>(글자로 시작) 패턴만 제거.
+ */
+export function cleanBody(text: string | null | undefined): string {
+  if (!text) return "";
+  return text
+    .replace(/<\/?[a-zA-Z][^>]*>/g, "") // 남은 열림/닫힘 태그
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+/** 예상 읽기 시간(분) — 한국어 기술글 기준 약 600자/분. 정제본 길이로 계산. */
+export function readingMinutes(text: string | null | undefined): number | null {
+  const clean = cleanBody(text);
+  if (!clean) return null;
+  return Math.max(1, Math.round(clean.length / 600));
+}
+
 /** URL 에서 표시용 도메인만 뽑는다(www. 제거). 실패 시 원본 반환. */
 export function domainOf(url: string): string {
   try {

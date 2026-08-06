@@ -21,4 +21,16 @@ export const qk = {
 
   notifications: () => ["notifications"] as const,
   dashboard: () => ["dashboard"] as const,
+
+  // ===== distill =====
+  blogs: () => ["blogs"] as const,
+  articles: () => ["articles"] as const,
+  article: (articleId: string) => ["article", articleId] as const,
+  articlesByBlog: (blogKey: string) => ["articles", "blog", blogKey] as const,
+  articlesByTopic: (topic: string) => ["articles", "topic", topic] as const,
+  opinions: (articleId: string) => ["opinions", articleId] as const,
+  opinionsFeed: () => ["opinions", "feed"] as const,
+  opinion: (opinionId: string) => ["opinion", opinionId] as const,
+  opinionComments: (opinionId: string) => ["opinion-comments", opinionId] as const,
+  articleHighlights: (articleId: string) => ["article-highlights", articleId] as const,
 };
