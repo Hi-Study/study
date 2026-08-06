@@ -22,7 +22,7 @@ import {
   useDeleteArticleHighlight,
   type ArticleHighlightRow,
 } from "@/data";
-import { splitSentences } from "@/lib/text";
+import { splitSentences, groupSentencesIntoBlocks } from "@/lib/text";
 import { HIGHLIGHT_COLORS, HIGHLIGHT_TEXT, highlightBg } from "@/lib/highlight";
 import { Avatar } from "@/components/Avatar";
 import { WordPickerSheet } from "@/components/distill/WordPickerSheet";
@@ -149,6 +149,7 @@ function HighlightableText({
   const { theme } = useTheme();
   const c = theme.colors;
   const sentences = useMemo(() => splitSentences(text), [text]);
+  const blocks = useMemo(() => groupSentencesIntoBlocks(sentences), [sentences]);
   const byIndex = useMemo(() => {
     const m = new Map<number, ArticleHighlightRow[]>();
     for (const h of highlights) {
@@ -159,39 +160,53 @@ function HighlightableText({
     return m;
   }, [highlights]);
 
-  return (
-    <Text style={[styles.body, { color: c.textPrimary }]}>
-      {sentences.map((s, i) => {
-        if (s.trim() === "") return <Text key={i}>{s}</Text>;
-        const isActive = i === activeIndex;
-        const hs = byIndex.get(i);
-        const marked = hs && hs.length > 0;
-        const style = isActive
-          ? { backgroundColor: c.primary, color: "#ffffff" }
-          : marked
-            ? { backgroundColor: highlightBg(hs![0].color), color: HIGHLIGHT_TEXT }
-            : undefined;
-        const names = marked
-          ? hs!.map((h) => (h.author_id === myUid ? "나" : h.author?.name ?? "게스트")).join("·")
-          : "";
-        return (
-          <Text
-            key={i}
-            onPress={() => onTap(i, s.trim())}
-            onLongPress={() => onLongPress(s.trim())}
-            style={style}
-          >
-            {s}
-            {marked ? (
-              <Text style={[styles.inlineAuthor, { color: isActive ? "#ffffff" : c.primary }]}>
-                {" ✎"}
-                {names}
-              </Text>
-            ) : null}
+  // 문장 한 조각 렌더 — 전역 index 로 탭/롱프레스·밑줄 표시(블록으로 묶여도 동일).
+  const renderSentence = ({ index: i, seg }: { index: number; seg: string }) => {
+    const display = seg.replace(/\n+$/, ""); // 줄 끝 개행은 블록 간격이 대신
+    const isActive = i === activeIndex;
+    const hs = byIndex.get(i);
+    const marked = hs && hs.length > 0;
+    const style = isActive
+      ? { backgroundColor: c.primary, color: "#ffffff" }
+      : marked
+        ? { backgroundColor: highlightBg(hs![0].color), color: HIGHLIGHT_TEXT }
+        : undefined;
+    const names = marked
+      ? hs!.map((h) => (h.author_id === myUid ? "나" : h.author?.name ?? "게스트")).join("·")
+      : "";
+    return (
+      <Text
+        key={i}
+        onPress={() => onTap(i, seg.trim())}
+        onLongPress={() => onLongPress(seg.trim())}
+        style={style}
+      >
+        {display}
+        {marked ? (
+          <Text style={[styles.inlineAuthor, { color: isActive ? "#ffffff" : c.primary }]}>
+            {" ✎"}
+            {names}
           </Text>
-        );
-      })}
-    </Text>
+        ) : null}
+      </Text>
+    );
+  };
+
+  return (
+    <View style={styles.blocks}>
+      {blocks.map((b, bi) => (
+        <Text
+          key={bi}
+          style={[
+            b.kind === "heading" ? styles.blockHeading : styles.blockPara,
+            b.kind === "list" && styles.blockList,
+            { color: c.textPrimary },
+          ]}
+        >
+          {b.items.map(renderSentence)}
+        </Text>
+      ))}
+    </View>
   );
 }
 
@@ -305,6 +320,10 @@ const styles = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", gap: 6 },
   headText: { fontSize: 12.5, fontWeight: "700" },
   body: { fontSize: 15, lineHeight: 26 },
+  blocks: { gap: 14 },
+  blockPara: { fontSize: 15.5, lineHeight: 27 },
+  blockHeading: { fontSize: 17, lineHeight: 25, fontWeight: "800", marginTop: 4 },
+  blockList: { paddingLeft: 10 },
   inlineAuthor: { fontSize: 11, fontWeight: "800" },
 
   rollup: { marginTop: 14, paddingTop: 16, borderTopWidth: 1, gap: 12 },

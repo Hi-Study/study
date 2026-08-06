@@ -43,6 +43,51 @@ export function splitSentences(text: string): string[] {
 }
 
 /**
+ * 리치 리딩 블록 — 평문 본문을 "읽기 좋은 덩어리"로 묶는다(문단·소제목·목록).
+ * ⚠️ 하이라이트는 splitSentences 의 전역 순번(index)에 앵커된다. 블록으로 묶어 렌더해도
+ *    각 문장의 index 는 splitSentences 배열 그대로 보존해야 다른 클라와 밑줄 위치가 일치한다.
+ */
+export type BlockKind = "para" | "heading" | "list";
+export interface ReadingBlock {
+  kind: BlockKind;
+  items: { index: number; seg: string }[]; // seg = splitSentences 조각(원문 그대로), index = 전역 순번
+}
+
+/** 소제목/목록/문단 분류 — 평문 한 줄 텍스트 기준(보수적: 오검출해도 살짝 굵을 뿐). */
+export function classifyReadingBlock(text: string): BlockKind {
+  const t = text.trim();
+  if (/^\s*([-–—•·*]|\d+[.)])\s+/.test(t)) return "list";
+  if (t.length >= 2 && t.length <= 28 && !/[.!?…,]$/.test(t)) return "heading";
+  return "para";
+}
+
+/**
+ * splitSentences 결과를 줄(=블록) 단위로 묶는다. 추출기가 블록태그를 '\n' 한 개로 바꿔
+ * 저장하므로, '\n' 을 포함한 조각에서 줄이 끝난다. 순수 개행 조각은 구분자로 버린다(간격은 렌더가 담당).
+ */
+export function groupSentencesIntoBlocks(sentences: string[]): ReadingBlock[] {
+  const blocks: ReadingBlock[] = [];
+  let cur: { index: number; seg: string }[] = [];
+  const flush = () => {
+    if (cur.length === 0) return;
+    const text = cur.map((x) => x.seg).join("");
+    blocks.push({ kind: classifyReadingBlock(text), items: cur });
+    cur = [];
+  };
+  for (let i = 0; i < sentences.length; i++) {
+    const seg = sentences[i];
+    if (seg.trim() === "") {
+      flush(); // 순수 개행/공백 → 줄 경계
+      continue;
+    }
+    cur.push({ index: i, seg });
+    if (seg.includes("\n")) flush(); // 조각 끝에 개행 → 줄 끝
+  }
+  flush();
+  return blocks;
+}
+
+/**
  * 표시 직전 본문 정제 — 수집 때 걸러지지 못하고 남은 HTML 태그(<p>·<div> 등)와 과잉 빈 줄 제거.
  * ⚠️ 문장 인덱스(하이라이트) 안정성을 위해 표시·하이라이트가 반드시 "같은 정제본"을 써야 한다.
  *    수학식의 'a < b' 는 남기도록 <태그>(글자로 시작) 패턴만 제거.

@@ -1,5 +1,7 @@
 import {
+  classifyReadingBlock,
   domainOf,
+  groupSentencesIntoBlocks,
   looksLikeStaleArticle,
   splitSentences,
   stripArticleNoise,
@@ -94,6 +96,45 @@ describe("tokenizeWords (단어장 저장 후보)", () => {
 
   it("빈 값은 빈 배열", () => {
     expect(tokenizeWords("")).toEqual([]);
+  });
+});
+
+describe("groupSentencesIntoBlocks (리치 리딩 · 하이라이트 순번 보존)", () => {
+  const text = "들어가며\n첫 문장. 둘째 문장.\n- 목록 하나\n마무리";
+  const sentences = splitSentences(text);
+  const blocks = groupSentencesIntoBlocks(sentences);
+
+  it("줄 단위로 4블록(소제목·문단·목록·소제목)으로 묶는다", () => {
+    expect(blocks.map((b) => b.kind)).toEqual(["heading", "para", "list", "heading"]);
+  });
+
+  it("★ 각 문장의 전역 index 를 splitSentences 순번 그대로 보존한다(순수 개행 조각만 버림)", () => {
+    const flatIdx = blocks.flatMap((b) => b.items.map((it) => it.index));
+    // 원래 문장 중 '공백/개행만'인 조각의 index 는 빠지고, 나머지는 순서·값 그대로
+    const visibleIdx = sentences.map((_, i) => i).filter((i) => sentences[i].trim() !== "");
+    expect(flatIdx).toEqual(visibleIdx);
+  });
+
+  it("빈 본문은 빈 블록 배열", () => {
+    expect(groupSentencesIntoBlocks(splitSentences(""))).toEqual([]);
+  });
+});
+
+describe("classifyReadingBlock", () => {
+  it("목록 마커(- • 1.)로 시작하면 list", () => {
+    expect(classifyReadingBlock("- 항목")).toBe("list");
+    expect(classifyReadingBlock("1. 배경")).toBe("list");
+    expect(classifyReadingBlock("• 포인트")).toBe("list");
+  });
+  it("짧고 종결부호로 끝나지 않으면 heading", () => {
+    expect(classifyReadingBlock("들어가며")).toBe("heading");
+    expect(classifyReadingBlock("배경:")).toBe("heading");
+  });
+  it("종결부호로 끝나거나 길면 para", () => {
+    expect(classifyReadingBlock("이것은 하나의 문장입니다.")).toBe("para");
+    expect(
+      classifyReadingBlock("이 문단은 소제목이라기엔 충분히 길어서 문단으로 분류되어야 합니다"),
+    ).toBe("para");
   });
 });
 
