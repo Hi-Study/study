@@ -63,6 +63,24 @@ export function readingMinutes(text: string | null | undefined): number | null {
   return Math.max(1, Math.round(clean.length / 600));
 }
 
+/**
+ * 문장을 "저장 후보 단어"들로 쪼갠다(단어장 롱프레스 UX용).
+ * - 공백 기준 어절 분리 후 앞뒤 문장부호/따옴표만 벗겨낸다(조사는 보존 — 문맥으로 AI가 뜻풀이).
+ * - 2글자 미만(조사·기호)·중복은 버려 칩 개수를 줄인다. 원래 순서 유지.
+ */
+export function tokenizeWords(sentence: string): string[] {
+  if (!sentence) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of sentence.split(/\s+/)) {
+    const w = raw.replace(/^[^\w가-힣]+|[^\w가-힣]+$/g, "");
+    if (w.length < 2 || seen.has(w)) continue;
+    seen.add(w);
+    out.push(w);
+  }
+  return out;
+}
+
 /** URL 에서 표시용 도메인만 뽑는다(www. 제거). 실패 시 원본 반환. */
 export function domainOf(url: string): string {
   try {

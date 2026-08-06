@@ -16,9 +16,16 @@ interface Payload {
   share_id?: string;
   article_id?: string;
   discussion_id?: string;
+  word_id?: string;
   target?: "content" | "result";
   mode?: Mode;
 }
+
+// 단어장 뜻풀이 프롬프트 — 문맥(문장)을 참고해 비전공자도 이해할 정의를 만든다.
+const WORD_SYS =
+  "너는 IT·기획·개발 용어를 아주 쉽게 풀어주는 한국어 사전이다. 주어진 단어를, 함께 준 문맥 문장이 있으면 그 " +
+  "쓰임에 맞춰, 전문 지식이 없는 사람도 이해하도록 2~3문장으로 설명해라. 첫 문장은 한 줄 정의, 이어서 왜 쓰는지나 " +
+  "쉬운 예시를 붙여라. 단어 자체를 그대로 반복하지 말고 뜻만 풀어 써라. 존댓말, 불릿 없이 문단으로.";
 
 // 모드별 시스템 프롬프트(본문/글 요약 공통).
 const CONTENT_SYS: Record<Mode, string> = {
@@ -133,6 +140,23 @@ async function summarizeArticle(articleId: string, mode: Mode): Promise<string> 
   return summary;
 }
 
+// distill 단어장 뜻풀이 → user_words.definition 저장. 실패 시 저장하지 않음(재시도 가능).
+async function defineWord(wordId: string): Promise<string | null> {
+  const supabase = serviceClient();
+  const { data: w, error } = await supabase
+    .from("user_words")
+    .select("id, term, context")
+    .eq("id", wordId)
+    .single();
+  if (error || !w) throw new Error("단어를 찾을 수 없음");
+
+  const prompt = w.context ? `단어: ${w.term}\n문맥 문장: ${w.context}` : `단어: ${w.term}`;
+  const definition = await llmSummarize(prompt, WORD_SYS);
+  if (!definition) return null; // LLM 실패 → definition 그대로 null 유지(앱에서 재시도)
+  await supabase.from("user_words").update({ definition }).eq("id", wordId);
+  return definition;
+}
+
 // 토론 주제 + 여는 글(+원문) 요약 — 모드별.
 async function summarizeDiscussionContent(discussionId: string, mode: Mode): Promise<string> {
   const supabase = serviceClient();
@@ -205,9 +229,13 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { share_id, article_id, discussion_id, target, mode } = (await req.json()) as Payload;
+    const { share_id, article_id, discussion_id, word_id, target, mode } = (await req.json()) as Payload;
     const m: Mode = mode === "planner" || mode === "explain" ? mode : "plain";
 
+    if (word_id) {
+      const definition = await defineWord(word_id);
+      return json({ ok: true, definition });
+    }
     if (share_id) {
       const summary = await summarizeShare(share_id, m);
       return json({ ok: true, mode: m, summary });

@@ -188,6 +188,31 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["article_highlights"]["Insert"]>;
         Relationships: [];
       };
+      // ---- distill: 내 단어장(어려운 단어 + AI 뜻) ----
+      user_words: {
+        Row: {
+          id: string;
+          user_id: string;
+          article_id: string | null;
+          term: string;
+          reading: string | null;
+          definition: string | null;
+          context: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          article_id?: string | null;
+          term: string;
+          reading?: string | null;
+          definition?: string | null;
+          context?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_words"]["Insert"]>;
+        Relationships: [];
+      };
       // ---- distill: 북마크 ----
       article_bookmarks: {
         Row: { user_id: string; article_id: string; created_at: string };

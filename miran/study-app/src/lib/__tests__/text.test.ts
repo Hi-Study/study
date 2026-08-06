@@ -1,4 +1,10 @@
-import { domainOf, looksLikeStaleArticle, splitSentences, stripArticleNoise } from "@/lib/text";
+import {
+  domainOf,
+  looksLikeStaleArticle,
+  splitSentences,
+  stripArticleNoise,
+  tokenizeWords,
+} from "@/lib/text";
 
 describe("stripArticleNoise (꼬리에서만 안전 제거)", () => {
   const body =
@@ -65,6 +71,29 @@ describe("splitSentences (하이라이트 앵커)", () => {
 
   it("빈 값은 빈 배열", () => {
     expect(splitSentences("")).toEqual([]);
+  });
+});
+
+describe("tokenizeWords (단어장 저장 후보)", () => {
+  it("공백으로 나누고 앞뒤 문장부호를 벗긴다(조사는 보존)", () => {
+    expect(tokenizeWords("클라우드 네이티브 아키텍처를 도입했다.")).toEqual([
+      "클라우드",
+      "네이티브",
+      "아키텍처를",
+      "도입했다",
+    ]);
+  });
+
+  it("2글자 미만(조사·한 글자)은 버린다", () => {
+    expect(tokenizeWords("이 A OS 를 봐")).toEqual(["OS"]);
+  });
+
+  it("중복 단어는 한 번만 남긴다", () => {
+    expect(tokenizeWords("API API 설계 설계")).toEqual(["API", "설계"]);
+  });
+
+  it("빈 값은 빈 배열", () => {
+    expect(tokenizeWords("")).toEqual([]);
   });
 });
 

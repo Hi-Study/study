@@ -25,6 +25,7 @@ import {
 import { splitSentences } from "@/lib/text";
 import { HIGHLIGHT_COLORS, HIGHLIGHT_TEXT, highlightBg } from "@/lib/highlight";
 import { Avatar } from "@/components/Avatar";
+import { WordPickerSheet } from "@/components/distill/WordPickerSheet";
 
 export function ArticleHighlightSection({
   articleId,
@@ -40,6 +41,7 @@ export function ArticleHighlightSection({
   const upsert = useUpsertArticleHighlight(articleId);
   const del = useDeleteArticleHighlight(articleId);
   const [active, setActive] = useState<{ index: number; quote: string } | null>(null);
+  const [wordSentence, setWordSentence] = useState<string | null>(null);
 
   const list = highlights.data ?? [];
   const sentenceHls = active ? list.filter((h) => h.sentence_index === active.index) : [];
@@ -49,7 +51,7 @@ export function ArticleHighlightSection({
       <View style={styles.head}>
         <Highlighter size={14} color={c.primary} />
         <Text style={[styles.headText, { color: c.primary }]}>
-          문장을 눌러 밑줄 긋고 감상 남기기
+          눌러서 밑줄·감상 · 길게 눌러 단어 저장
         </Text>
       </View>
 
@@ -59,6 +61,7 @@ export function ArticleHighlightSection({
         myUid={uid}
         activeIndex={active?.index ?? null}
         onTap={(index, quote) => setActive({ index, quote })}
+        onLongPress={(quote) => setWordSentence(quote)}
       />
 
       {list.length > 0 ? (
@@ -118,6 +121,12 @@ export function ArticleHighlightSection({
           </Pressable>
         </KeyboardAvoidingView>
       </Modal>
+
+      <WordPickerSheet
+        sentence={wordSentence}
+        articleId={articleId}
+        onClose={() => setWordSentence(null)}
+      />
     </View>
   );
 }
@@ -128,12 +137,14 @@ function HighlightableText({
   myUid,
   activeIndex,
   onTap,
+  onLongPress,
 }: {
   text: string;
   highlights: ArticleHighlightRow[];
   myUid: string;
   activeIndex: number | null;
   onTap: (index: number, quote: string) => void;
+  onLongPress: (quote: string) => void;
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
@@ -164,7 +175,12 @@ function HighlightableText({
           ? hs!.map((h) => (h.author_id === myUid ? "나" : h.author?.name ?? "게스트")).join("·")
           : "";
         return (
-          <Text key={i} onPress={() => onTap(i, s.trim())} style={style}>
+          <Text
+            key={i}
+            onPress={() => onTap(i, s.trim())}
+            onLongPress={() => onLongPress(s.trim())}
+            style={style}
+          >
             {s}
             {marked ? (
               <Text style={[styles.inlineAuthor, { color: isActive ? "#ffffff" : c.primary }]}>

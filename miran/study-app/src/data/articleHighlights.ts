@@ -4,10 +4,29 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { qk } from "@/lib/queryKeys";
 import { useUid } from "@/auth/AuthProvider";
+import type { Topic } from "@/types/database";
 
 export interface ArticleHighlightAuthor {
   name: string;
   role_title: string | null;
+}
+
+// 내 하이라이트 모아보기용 — 문장 + 감상 + 출처 글(제목/주제).
+export interface MyHighlightArticleLite {
+  id: string;
+  title: string;
+  topic: Topic | null;
+}
+
+export interface MyHighlightRow {
+  id: string;
+  article_id: string;
+  sentence_index: number;
+  quote: string | null;
+  color: string;
+  note: string | null;
+  created_at: string;
+  article: MyHighlightArticleLite | null;
 }
 
 export interface ArticleHighlightRow {
@@ -66,6 +85,17 @@ export async function deleteArticleHighlight(id: string): Promise<void> {
   if (error) throw error;
 }
 
+/** 내가 남긴 하이라이트 전체(글 제목·주제 포함) — 마이 탭 "내 하이라이트" 모아보기. */
+export async function listMyHighlights(uid: string): Promise<MyHighlightRow[]> {
+  const { data, error } = await supabase
+    .from("article_highlights")
+    .select("id, article_id, sentence_index, quote, color, note, created_at, article:articles(id, title, topic)")
+    .eq("author_id", uid)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as MyHighlightRow[];
+}
+
 // ---- hooks ----
 export function useArticleHighlights(articleId: string) {
   return useQuery({
@@ -92,5 +122,14 @@ export function useDeleteArticleHighlight(articleId: string) {
     mutationFn: (id: string) => deleteArticleHighlight(id),
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: qk.articleHighlights(articleId) }),
+  });
+}
+
+export function useMyHighlights() {
+  const uid = useUid();
+  return useQuery({
+    queryKey: qk.myHighlights(uid),
+    queryFn: () => listMyHighlights(uid),
+    enabled: Boolean(uid),
   });
 }

@@ -297,3 +297,27 @@ update public.articles a
     select count(*) from public.reactions r
     where r.target_type = 'article' and r.target_id = a.id
   );
+
+-- ============================================================
+-- 10) 내 단어장(user_words) — 본문에서 담은 어려운 단어 + AI 뜻풀이
+--     · 본인만 읽기/쓰기/수정/삭제 (개인 소장 자료)
+--     · definition 은 summarize 엣지함수(word_id)가 뒤이어 채운다
+-- ============================================================
+create table if not exists public.user_words (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references public.users(id) on delete cascade,
+  article_id  uuid references public.articles(id) on delete set null,
+  term        text not null,
+  reading     text,
+  definition  text,
+  context     text,
+  created_at  timestamptz not null default now(),
+  unique (user_id, term)
+);
+create index if not exists idx_user_words_user on public.user_words(user_id, created_at desc);
+
+alter table public.user_words enable row level security;
+
+drop policy if exists uwords_all_own on public.user_words;
+create policy uwords_all_own on public.user_words for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
