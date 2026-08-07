@@ -1,0 +1,319 @@
+// 테크 블로그 아카이빙 서비스 데이터 모델
+// 정본 문서: ../테크블로그_아카이빙_서비스_PRD_1.md (3장 핵심 기능 명세 기준)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Category {
+  BACKEND
+  FRONTEND
+  DATA_AI
+  INFRA_DEVOPS
+  CULTURE_PROCESS
+  ETC
+}
+
+enum SourceType {
+  AUTO_COLLECTED
+  MEMBER_REGISTERED
+}
+
+enum SummaryStatus {
+  PENDING
+  READY
+  FAILED
+}
+
+enum ReadStatus {
+  BEFORE
+  READING
+  DONE
+}
+
+enum NoteType {
+  OPINION // 내 의견
+  NEED_REVIEW // 용어·개념 정리 필요
+}
+
+enum DiscussionStatus {
+  OPEN // 모집 중
+  IN_PROGRESS // 진행 중
+  CLOSED // 종료
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  image        String?
+  createdAt    DateTime @default(now())
+
+  posts             Post[]             @relation("PostRegisteredBy")
+  registrantNotes   RegistrantNote[]
+  comments          Comment[]
+  bookmarks         Bookmark[]
+  readingStates     ReadingState[]
+  memos             Memo[]
+  keywordSelections UserKeywordSelection[]
+  discussionsOpened Discussion[]       @relation("DiscussionRequester")
+  discussionParticipations DiscussionParticipant[]
+  discussionMessages DiscussionMessage[]
+  postViews         PostView[]
+  notifications     Notification[]
+  deletedPosts      Post[]             @relation("PostDeletedBy")
+}
+
+model Company {
+  id       String  @id @default(cuid())
+  name     String  @unique
+  slug     String  @unique
+  logoUrl  String?
+  blogUrl  String
+  rssUrl   String?
+  posts    Post[]
+}
+
+model Tag {
+  id    String    @id @default(cuid())
+  name  String    @unique
+  posts PostTag[]
+}
+
+model Post {
+  id           String     @id @default(cuid())
+  title        String
+  originalUrl  String     @unique
+  companyId    String?
+  company      Company?   @relation(fields: [companyId], references: [id])
+  authorName   String?
+  publishedAt  DateTime?
+  thumbnailUrl String?
+
+  // 3.2 원문 보존 정책 — 본문 전체를 자체 스토리지에 저장(아카이빙 시점 스냅샷)
+  contentHtml String  @db.Text
+  contentText String  @db.Text
+  contentHash String // 요약 캐싱/중복 호출 방지 기준
+
+  category   Category
+  sourceType SourceType
+
+  registeredById String?
+  registeredBy   User?   @relation("PostRegisteredBy", fields: [registeredById], references: [id])
+  registeredAt   DateTime @default(now())
+
+  viewCount Int @default(0)
+
+  // 소프트 삭제 (3.4 확정: 삭제 후 유예기간 뒤 영구 삭제 — 유예기간 값은 9.2 오픈 이슈, 배치는 MVP 이후)
+  deletedAt   DateTime?
+  deletedById String?
+  deletedBy   User?     @relation("PostDeletedBy", fields: [deletedById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tags            PostTag[]
+  registrantNotes RegistrantNote[]
+  summary         Summary?
+  comments        Comment[]
+  bookmarks       Bookmark[]
+  readingStates   ReadingState[]
+  memos           Memo[]
+  discussions     Discussion[]
+  views           PostView[]
+
+  @@index([sourceType, deletedAt, createdAt])
+  @@index([category])
+}
+
+model PostTag {
+  postId String
+  tagId  String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+}
+
+// 3.4 등록자 작성 노트 — 자동수집/건너뛴 글도 팀원 누구나 나중에 추가 가능(여러 개 누적)
+model RegistrantNote {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  insight   String   @db.Text // 핵심 인사이트
+  technical String?  @db.Text // 정리해야 할 기술 지식
+  applied   String?  @db.Text // 내가 바로 적용할 수 있는 점
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([postId])
+}
+
+// 3.7 AI 요약
+model Summary {
+  id          String        @id @default(cuid())
+  postId      String        @unique
+  post        Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  status      SummaryStatus @default(PENDING)
+  lines       Json? // string[] 3~5줄 요약
+  keywords    Json? // string[]
+  recommendFor String?
+  model       String?
+  errorMessage String?
+  regenerateCount Int @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+// 3.3 팀원 간 댓글 (MVP: 대댓글 1단계)
+model Comment {
+  id        String    @id @default(cuid())
+  postId    String
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User      @relation(fields: [authorId], references: [id])
+  parentId  String?
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  content   String    @db.Text
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([postId])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+}
+
+// 3.9 읽기 상태
+model ReadingState {
+  id           String     @id @default(cuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId       String
+  post         Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  status       ReadStatus @default(BEFORE)
+  lastViewedAt DateTime   @default(now())
+
+  @@unique([userId, postId])
+}
+
+// 3.10 개인 메모 (기본 비공개, 메모별 팀 공개 토글)
+model Memo {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  content   String   @db.Text
+  noteType  NoteType?
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([postId])
+  @@index([userId])
+}
+
+// 3.6 큐레이션 — 질문형 키워드 칩, 카테고리 매칭
+model KeywordChip {
+  id       String    @id @default(cuid())
+  label    String    @unique
+  category Category
+  selections UserKeywordSelection[]
+}
+
+model UserKeywordSelection {
+  userId String
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chipId String
+  chip   KeywordChip @relation(fields: [chipId], references: [id], onDelete: Cascade)
+
+  @@id([userId, chipId])
+}
+
+// 이번 주 인기 글 계산용 조회 로그
+model PostView {
+  id       String   @id @default(cuid())
+  postId   String
+  post     Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId   String?
+  user     User?    @relation(fields: [userId], references: [id])
+  viewedAt DateTime @default(now())
+
+  @@index([postId, viewedAt])
+}
+
+// 3.11 토론 신청
+model Discussion {
+  id          String            @id @default(cuid())
+  postId      String
+  post        Post              @relation(fields: [postId], references: [id], onDelete: Cascade)
+  requesterId String
+  requester   User              @relation("DiscussionRequester", fields: [requesterId], references: [id])
+  topic       String
+  reason      String            @db.Text
+  status      DiscussionStatus  @default(OPEN)
+  createdAt   DateTime          @default(now())
+  closedAt    DateTime?
+
+  participants DiscussionParticipant[]
+  messages     DiscussionMessage[]
+
+  @@index([postId])
+}
+
+model DiscussionParticipant {
+  id           String     @id @default(cuid())
+  discussionId String
+  discussion   Discussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isActive     Boolean    @default(true)
+  joinedAt     DateTime   @default(now())
+  leftAt       DateTime?
+
+  @@unique([discussionId, userId])
+}
+
+model DiscussionMessage {
+  id           String     @id @default(cuid())
+  discussionId String
+  discussion   Discussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  authorId     String
+  author       User       @relation(fields: [authorId], references: [id])
+  content      String     @db.Text
+  createdAt    DateTime   @default(now())
+
+  @@index([discussionId])
+}
+
+// 토론 브로드캐스트 등 인앱 알림 (7장 비기능요구사항 / 3.11)
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, readAt])
+}
