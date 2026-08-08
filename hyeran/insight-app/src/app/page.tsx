@@ -1,30 +1,29 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import OnboardingForm from "./onboarding-form";
+import LoginButton from "./login-button";
 
-export default async function OnboardingPage() {
+export default async function LoginPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (user) {
-    redirect("/home");
-  }
+  if (user) redirect("/home");
 
   return (
-    <div className="onb-page">
-      <div className="onb-top">
-        <div className="onb-logo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 20.5V6a2 2 0 0 1 2-2h11l3 3v13.5" />
-            <path d="M8 9h8M8 13h8M8 17h5" />
-          </svg>
-        </div>
-        <div className="onb-name">어노테이션</div>
-        <div className="onb-headline">이 글의 첫 번째 리더가 되어보세요</div>
+    <div className="login">
+      <div className="wordmark">
+        insight<span className="dot">.</span>
       </div>
-      <OnboardingForm />
+      <p className="tagline">
+        좋은 글을 읽고
+        <br />
+        나의 인사이트를 나누는 공간
+      </p>
+      <div className="form">
+        <LoginButton />
+        <p className="hint">구글 로그인만 지원해요</p>
+      </div>
     </div>
   );
 }
