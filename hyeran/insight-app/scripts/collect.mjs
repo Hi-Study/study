@@ -1,0 +1,112 @@
+// 수집 파이프라인: 6개 기업 RSS → 원문 추출 → Gemini 요약 → posts 저장 (URL 중복 제거)
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import Parser from "rss-parser";
+import { JSDOM } from "jsdom";
+import { Readability } from "@mozilla/readability";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { createClient } from "@supabase/supabase-js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const env = fs.readFileSync(path.join(__dirname, "..", ".env.local"), "utf8");
+const get = (k) => { const m = env.match(new RegExp("^" + k + "=(.*)$", "m")); return m ? m[1].trim() : null; };
+
+const PER_COMPANY = Number(process.env.PER_COMPANY || 3); // 기업당 최신 글 수
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36";
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const sb = createClient(get("NEXT_PUBLIC_SUPABASE_URL"), get("SUPABASE_SERVICE_ROLE_KEY"));
+const genAI = new GoogleGenerativeAI(get("GEMINI_API_KEY"));
+const model = genAI.getGenerativeModel({
+  model: get("GEMINI_MODEL") || "gemini-flash-lite-latest",
+  generationConfig: { responseMimeType: "application/json" },
+});
+const parser = new Parser();
+
+// 원문 텍스트 → 문장 배열 (리더 뷰용)
+function toSentences(text) {
+  return text.replace(/\r/g, "").split(/\n+|(?<=[.!?。？！])\s+/)
+    .map((s) => s.replace(/\s+/g, " ").trim()).filter((s) => s.length > 12).slice(0, 40);
+}
+const stripHtml = (h) => (h || "").replace(/<[^>]+>/g, " ").replace(/&[a-z#0-9]+;/gi, " ").replace(/\s+/g, " ").trim();
+// 봇 차단/challenge 페이지인지 (원문 아님)
+function looksBlocked(t) {
+  return !t || t.length < 400 ||
+    /cloudflare|ray id|just a moment|attention required|본문[^가-힣]*접근[^가-힣]*차단|잠시만 기다|enable javascript and cookies|verify you are/i.test(t);
+}
+
+async function summarize(title, text) {
+  const prompt = `다음 기술 블로그 글을 분석해서 JSON으로만 답해.
+규칙:
+- problem/solution/learning: 각각 한 문장, 한국어, 마침표 없이 (problem=무슨 문제를 다뤘나, solution=어떻게 해결했나, learning=기획 관점에서 무엇을 배울 수 있나)
+- category: "프로덕트" | "디자인" | "기술" | "AI" 중 하나
+- tags: 핵심 키워드 2~4개 (한국어 문자열 배열)
+출력: {"problem":"...","solution":"...","learning":"...","category":"...","tags":["...","..."]}
+
+제목: ${title}
+본문:
+${text.slice(0, 8000)}`;
+  const result = await model.generateContent(prompt);
+  return JSON.parse(result.response.text());
+}
+
+const CATS = ["프로덕트", "디자인", "기술", "AI"];
+
+(async () => {
+  // 기존 URL (중복 제거용)
+  const { data: existing } = await sb.from("posts").select("url");
+  const seen = new Set((existing || []).map((p) => p.url).filter(Boolean));
+  console.log(`기존 글 ${seen.size}건\n`);
+
+  const { data: companies } = await sb.from("companies").select("id,slug,name,rss_url").order("slug");
+  let inserted = 0, skipped = 0, failed = 0;
+
+  for (const c of companies) {
+    let items = [];
+    try {
+      const res = await fetch(c.rss_url, { headers: { "User-Agent": UA }, redirect: "follow" });
+      const feed = await parser.parseString(await res.text());
+      items = (feed.items || []).slice(0, PER_COMPANY);
+    } catch (e) { console.log(`✗ ${c.name} 피드 실패: ${e.message}`); continue; }
+
+    for (const it of items) {
+      const url = it.link;
+      if (!url || seen.has(url)) { skipped++; continue; }
+      try {
+        // 원문 추출 (차단 페이지면 RSS 본문으로 폴백)
+        let text = "", parsed = false, body = [];
+        try {
+          const r = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow" });
+          const dom = new JSDOM(await r.text(), { url });
+          const art = new Readability(dom.window.document).parse();
+          const rtext = (art?.textContent || "").trim();
+          if (!looksBlocked(rtext)) { text = rtext; parsed = true; body = toSentences(rtext); }
+        } catch {}
+        if (!parsed) {
+          const alt = stripHtml(it["content:encoded"] || it.content || it.contentSnippet || "");
+          if (alt.length >= 300) { text = alt; parsed = true; body = toSentences(alt); }
+          else { text = (it.contentSnippet || it.title || "").trim(); parsed = false; body = []; }
+        }
+
+        // AI 요약
+        const s = await summarize(it.title, text);
+        const category = CATS.includes(s.category) ? s.category : "기술";
+        const tags = Array.isArray(s.tags) ? s.tags.slice(0, 4).map(String) : [];
+        const publishedAt = it.isoDate || it.pubDate || new Date().toISOString();
+
+        const { error } = await sb.from("posts").insert({
+          company_id: c.id, title: it.title, url, category, tags,
+          source: "crawl", author_id: null,
+          ai_summary: { problem: s.problem || "", solution: s.solution || "", learning: s.learning || "" },
+          body, parsed, published_at: new Date(publishedAt).toISOString(),
+        });
+        if (error) { console.log(`  ✗ 저장 실패: ${it.title} — ${error.message}`); failed++; }
+        else { console.log(`  ✓ ${c.name} · [${category}] ${it.title}${parsed ? "" : " (원문 없음)"}`); inserted++; seen.add(url); }
+
+        await sleep(4500); // Gemini 무료 한도(분당 15회) 대비 간격
+      } catch (e) { console.log(`  ✗ 처리 실패: ${it.title} — ${e.message}`); failed++; }
+    }
+  }
+  console.log(`\n완료 — 신규 ${inserted} · 건너뜀 ${skipped} · 실패 ${failed}`);
+})().catch((e) => console.log("오류:", e.message));

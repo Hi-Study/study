@@ -86,7 +86,7 @@ insert into public.companies (slug, name, color, domain, rss_url) values
   ('kakao',  '카카오',         '#111111', 'tech.kakao.com',           'https://tech.kakao.com/feed/'),
   ('daangn', '당근',           '#FF7E36', 'medium.com/daangn',        'https://medium.com/feed/daangn'),
   ('naver',  '네이버 D2',      '#03C75A', 'd2.naver.com',             'https://d2.naver.com/d2.atom'),
-  ('line',   '라인',           '#06C755', 'engineering.linecorp.com', 'https://engineering.linecorp.com/ko/feed/index.xml')
+  ('line',   '라인',           '#06C755', 'techblog.lycorp.co.jp',    'https://techblog.lycorp.co.jp/ko/feed/index.xml')
 on conflict (slug) do nothing;
 
 -- ============================================================
