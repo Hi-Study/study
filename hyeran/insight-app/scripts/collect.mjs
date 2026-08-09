@@ -29,22 +29,36 @@ function toSentences(text) {
   return text.replace(/\r/g, "").split(/\n+|(?<=[.!?。？！])\s+/)
     .map((s) => s.replace(/\s+/g, " ").trim()).filter((s) => s.length > 12).slice(0, 40);
 }
-// Readability 본문(HTML)에서 문장 + 이미지(::img::URL)를 문서 순서대로 (리더 뷰용)
-function bodyFromArticle(art, baseUrl) {
-  if (!art?.content) return toSentences(art?.textContent || "");
-  const doc = new JSDOM(`<body>${art.content}</body>`, { url: baseUrl }).window.document;
+// img/source 요소에서 실제 이미지 URL (lazy-load·srcset 대응)
+function imgSrc(n) {
+  let src = n.getAttribute("src") || n.getAttribute("data-src") || n.getAttribute("data-lazy-src") || n.getAttribute("data-original") || "";
+  if (!src || src.startsWith("data:")) {
+    const ss = n.getAttribute("srcset") || n.getAttribute("data-srcset") || "";
+    if (ss) src = ss.split(",")[0].trim().split(/\s+/)[0] || "";
+  }
+  return src && !src.startsWith("data:") ? src : "";
+}
+// 본문 HTML 문자열 → 문장 + 이미지(::img::URL) 문서 순서대로 (리더 뷰용)
+function bodyFromHtmlContent(contentHtml, baseUrl) {
+  if (!contentHtml) return [];
+  const doc = new JSDOM(`<body>${contentHtml}</body>`, { url: baseUrl }).window.document;
   const out = [];
-  doc.querySelectorAll("p, h1, h2, h3, h4, li, figcaption, img").forEach((n) => {
+  doc.querySelectorAll("p, h1, h2, h3, h4, li, figcaption, img, source").forEach((n) => {
     if (out.length >= 90) return;
-    if (n.tagName.toLowerCase() === "img") {
-      const src = n.getAttribute("src") || n.getAttribute("data-src") || n.getAttribute("data-lazy-src") || "";
-      if (src && !src.startsWith("data:")) { try { out.push("::img::" + new URL(src, baseUrl).href); } catch {} }
+    const tag = n.tagName.toLowerCase();
+    if (tag === "img" || tag === "source") {
+      const src = imgSrc(n);
+      if (src) { try { const u = "::img::" + new URL(src, baseUrl).href; if (out[out.length - 1] !== u) out.push(u); } catch {} }
     } else {
       const txt = (n.textContent || "").replace(/\s+/g, " ").trim();
       if (txt) toSentences(txt).forEach((s) => out.push(s));
     }
   });
-  return out.length ? out : toSentences(art.textContent || "");
+  return out;
+}
+function bodyFromArticle(art, baseUrl) {
+  const o = bodyFromHtmlContent(art?.content, baseUrl);
+  return o.length ? o : toSentences(art?.textContent || "");
 }
 const stripHtml = (h) => (h || "").replace(/<[^>]+>/g, " ").replace(/&[a-z#0-9]+;/gi, " ").replace(/\s+/g, " ").trim();
 // 봇 차단/challenge 페이지인지 (원문 아님)
@@ -101,9 +115,13 @@ const CATS = ["프로덕트", "디자인", "기술", "AI"];
           if (!looksBlocked(rtext)) { text = rtext; parsed = true; body = bodyFromArticle(art, url); }
         } catch {}
         if (!parsed) {
-          const alt = stripHtml(it["content:encoded"] || it.content || it.contentSnippet || "");
-          if (alt.length >= 300) { text = alt; parsed = true; body = toSentences(alt); }
-          else { text = (it.contentSnippet || it.title || "").trim(); parsed = false; body = []; }
+          const rawHtml = it["content:encoded"] || it.content || "";
+          const alt = stripHtml(rawHtml || it.contentSnippet || "");
+          if (alt.length >= 300) {
+            text = alt; parsed = true;
+            body = bodyFromHtmlContent(rawHtml, url);
+            if (!body.length) body = toSentences(alt);
+          } else { text = (it.contentSnippet || it.title || "").trim(); parsed = false; body = []; }
         }
 
         // AI 요약
