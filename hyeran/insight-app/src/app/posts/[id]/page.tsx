@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getPost, getReviewsForPost } from "@/lib/queries";
-import { CAT_COLOR } from "@/lib/types";
+import { getReviewsForPost } from "@/lib/queries";
+import { CAT_COLOR, type Post } from "@/lib/types";
 import { CompanyLogo } from "@/components/PostCard";
 import Icon from "@/components/Icon";
 import BackButton from "@/components/BackButton";
@@ -14,12 +14,18 @@ const RQ = ["인상 깊은 부분", "업무 적용", "인사이터에게 질문"
 
 export default async function PostDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [post, reviews] = await Promise.all([getPost(id), getReviewsForPost(id)]);
-  if (!post) notFound();
-
   const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
-  const { data: bm } = await sb.from("bookmarks").select("post_id").eq("user_id", user!.id).eq("post_id", id).maybeSingle();
+
+  // 병렬 조회 (상세 열람 속도)
+  const [postRes, reviews, bmRes] = await Promise.all([
+    sb.from("posts").select("*, company:companies(*)").eq("id", id).single(),
+    getReviewsForPost(id),
+    sb.from("bookmarks").select("post_id").eq("user_id", user!.id).eq("post_id", id).maybeSingle(),
+  ]);
+  const post = postRes.data as Post | null;
+  if (!post) notFound();
+  const bm = bmRes.data;
 
   return (
     <div style={{ paddingBottom: 40 }}>
