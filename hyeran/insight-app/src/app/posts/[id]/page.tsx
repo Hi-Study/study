@@ -7,6 +7,7 @@ import Icon from "@/components/Icon";
 import BackButton from "@/components/BackButton";
 import BookmarkButton from "@/components/BookmarkButton";
 import ReviewSheet from "./review-sheet";
+import CommentSheet from "@/components/CommentSheet";
 
 export const dynamic = "force-dynamic";
 
@@ -90,6 +91,12 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
                     : <div className="a" style={{ color: "var(--text-sub)", opacity: 0.6 }}>미작성</div>}
                 </div>
               ))}
+              <CommentSheet
+                reviewId={r.id}
+                reviewAuthorId={r.author_id}
+                count={r.comment_count ?? 0}
+                preview={{ name: r.author?.name ?? "인사이터", initial: r.author?.initial ?? "?", text: [r.q1, r.q2, r.q3].find((x) => x?.trim()) ?? "" }}
+              />
             </div>
           ))
         ) : (

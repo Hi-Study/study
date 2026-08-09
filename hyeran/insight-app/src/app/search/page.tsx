@@ -1,10 +1,15 @@
+import { getFeedPosts, getCompanies } from "@/lib/queries";
 import BackButton from "@/components/BackButton";
+import SearchClient from "@/components/SearchClient";
 
-export default function SearchPage() {
+export const dynamic = "force-dynamic";
+
+export default async function SearchPage() {
+  const [posts, companies] = await Promise.all([getFeedPosts(), getCompanies()]);
   return (
     <div className="screen">
       <div className="appbar"><BackButton /><span className="title">검색</span></div>
-      <div className="empty"><div className="art" /><div className="msg">검색은 곧 지원해요</div></div>
+      <SearchClient posts={posts} companies={companies} />
     </div>
   );
 }

@@ -14,6 +14,7 @@ const PATHS: Record<string, string> = {
   star: '<path d="M12 2l3 6.5 7 .8-5 4.6 1.4 6.9L12 17l-6.4 3.8L7 13.9 2 9.3l7-.8z"/>',
   sparkle: '<path d="M12 3l1.8 4.9L18.7 9l-4.9 1.8L12 15l-1.8-4.9L5.3 9l4.9-1.8z"/>',
   x: '<path d="M18 6L6 18M6 6l12 12"/>',
+  send: '<path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/>',
 };
 
 export default function Icon({ name, size = "" }: { name: string; size?: "sm" | "lg" | "" }) {

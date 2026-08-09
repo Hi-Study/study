@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getInsightFeed } from "@/lib/queries";
-import Icon from "@/components/Icon";
+import CommentSheet from "@/components/CommentSheet";
 
 export const dynamic = "force-dynamic";
 
@@ -15,18 +15,25 @@ export default async function InsightPage() {
         <div className="subhead">인사이터들이 남긴 독후감을 최신순으로 만나보세요</div>
         {reviews.length ? (
           reviews.map((r) => (
-            <Link key={r.id} href={`/posts/${r.post_id}`} className="review">
-              <div className="who">
-                <span className="avatar md">{r.author?.initial ?? "?"}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 500 }}>{r.author?.name ?? "인사이터"}</div>
-                  <div className="meta mono">{new Date(r.created_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}</div>
+            <div key={r.id} className="review">
+              <Link href={`/posts/${r.post_id}`} style={{ display: "block" }}>
+                <div className="who">
+                  <span className="avatar md">{r.author?.initial ?? "?"}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 500 }}>{r.author?.name ?? "인사이터"}</div>
+                    <div className="meta mono">{new Date(r.created_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}</div>
+                  </div>
                 </div>
-              </div>
-              <div style={{ fontSize: 12, color: "var(--text-sub)", margin: "2px 0 8px" }}>{r.post?.title}</div>
-              <div className="rq"><div className="a">{firstAnswer(r)}</div></div>
-              <div className="foot"><span style={{ display: "flex", alignItems: "center", gap: 5 }}><Icon name="comment" size="sm" /> 댓글 {r.comment_count ?? 0}</span></div>
-            </Link>
+                <div style={{ fontSize: 12, color: "var(--text-sub)", margin: "2px 0 8px" }}>{r.post?.title}</div>
+                <div className="rq"><div className="a">{firstAnswer(r)}</div></div>
+              </Link>
+              <CommentSheet
+                reviewId={r.id}
+                reviewAuthorId={r.author_id}
+                count={r.comment_count ?? 0}
+                preview={{ name: r.author?.name ?? "인사이터", initial: r.author?.initial ?? "?", text: firstAnswer(r) }}
+              />
+            </div>
           ))
         ) : (
           <div className="empty"><div className="art" /><div className="msg">첫 독후감을 남겨보세요</div></div>

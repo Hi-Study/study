@@ -48,6 +48,15 @@ export async function getPost(id: string): Promise<Post | null> {
   return withCount;
 }
 
+async function attachCommentCounts(sb: Awaited<ReturnType<typeof createClient>>, reviews: Review[]): Promise<Review[]> {
+  if (!reviews.length) return reviews;
+  const ids = reviews.map((r) => r.id);
+  const { data } = await sb.from("comments").select("review_id").in("review_id", ids);
+  const counts = new Map<string, number>();
+  (data ?? []).forEach((x: { review_id: string }) => counts.set(x.review_id, (counts.get(x.review_id) ?? 0) + 1));
+  return reviews.map((r) => ({ ...r, comment_count: counts.get(r.id) ?? 0 }));
+}
+
 // 글에 달린 독후감 (게시본)
 export async function getReviewsForPost(postId: string): Promise<Review[]> {
   const sb = await createClient();
@@ -57,7 +66,7 @@ export async function getReviewsForPost(postId: string): Promise<Review[]> {
     .eq("post_id", postId)
     .eq("is_draft", false)
     .order("created_at", { ascending: false });
-  return (data as Review[]) ?? [];
+  return attachCommentCounts(sb, (data as Review[]) ?? []);
 }
 
 // 인사이트 탭: 독후감 최신순 (글 정보 포함)

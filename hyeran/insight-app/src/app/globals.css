@@ -133,6 +133,7 @@ svg.i.lg{ width:26px; height:26px; }
 .rq .q{ font-size:11px; color:var(--text-sub); margin-bottom:3px; }
 .rq .a{ font-size:14px; line-height:1.6; }
 .review .foot{ display:flex; align-items:center; gap:12px; margin-top:6px; font-family:var(--mono); font-size:11px; color:var(--text-sub); }
+.foot-btn{ display:inline-flex; align-items:center; gap:5px; margin-top:6px; background:none; border:none; padding:0; font-family:var(--mono); font-size:11px; color:var(--text-sub); cursor:pointer; }
 
 /* ===== forms / my ===== */
 .field{ margin-bottom:16px; }
@@ -163,6 +164,13 @@ svg.i.lg{ width:26px; height:26px; }
 @keyframes shimmer{ to{ background-position:-200% 0; } }
 .skel-card{ height:82px; border-radius:var(--r-card); margin-bottom:8px; }
 .skel-line{ height:13px; margin-bottom:8px; }
+
+/* ===== search ===== */
+.recent-row{ display:flex; align-items:center; padding:2px 0; }
+.recent-term{ flex:1; display:flex; align-items:center; gap:8px; background:none; border:none; padding:9px 2px; font-size:14px; color:var(--text); text-align:left; cursor:pointer; font-family:var(--font); }
+.recent-x{ background:none; border:none; color:var(--text-sub); cursor:pointer; display:flex; padding:6px; }
+.rank-row{ display:flex; align-items:center; gap:12px; width:100%; padding:9px 2px; background:none; border:none; font-size:14px; color:var(--text); text-align:left; cursor:pointer; font-family:var(--font); }
+.rank-n{ width:16px; font-family:var(--mono); font-size:13px; color:var(--blue); }
 
 .empty{ text-align:center; padding:44px 24px; }
 .empty .art{ width:72px; height:72px; margin:0 auto 16px; border-radius:20px; background:var(--sky); position:relative; }

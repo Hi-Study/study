@@ -1,0 +1,111 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import { CATEGORIES, type Category } from "@/lib/types";
+
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36";
+
+function toSentences(text: string): string[] {
+  return text.replace(/\r/g, "").split(/\n+|(?<=[.!?。？！])\s+/)
+    .map((s) => s.replace(/\s+/g, " ").trim()).filter((s) => s.length > 12).slice(0, 40);
+}
+function looksBlocked(t: string) {
+  return !t || t.length < 400 || /cloudflare|just a moment|attention required|잠시만 기다|enable javascript and cookies|verify you are/i.test(t);
+}
+
+async function extract(url: string): Promise<{ title: string; text: string; body: string[]; parsed: boolean }> {
+  try {
+    const { JSDOM } = await import("jsdom");
+    const { Readability } = await import("@mozilla/readability");
+    const res = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow" });
+    const html = await res.text();
+    const dom = new JSDOM(html, { url });
+    const art = new Readability(dom.window.document).parse();
+    const text = (art?.textContent || "").trim();
+    if (!looksBlocked(text)) return { title: art?.title || "", text, body: toSentences(text), parsed: true };
+    return { title: art?.title || "", text, body: [], parsed: false };
+  } catch {
+    return { title: "", text: "", body: [], parsed: false };
+  }
+}
+
+async function summarize(title: string, text: string) {
+  const { GoogleGenerativeAI } = await import("@google/generative-ai");
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+  const model = genAI.getGenerativeModel({
+    model: process.env.GEMINI_MODEL || "gemini-flash-lite-latest",
+    generationConfig: { responseMimeType: "application/json" },
+  });
+  const prompt = `다음 기술 블로그 글을 분석해서 JSON으로만 답해.
+규칙:
+- problem/solution/learning: 각각 한 문장, 한국어, 마침표 없이
+- category: "프로덕트" | "디자인" | "기술" | "AI" 중 하나
+- tags: 핵심 키워드 2~4개 (한국어 문자열 배열)
+출력: {"problem":"...","solution":"...","learning":"...","category":"...","tags":["...","..."]}
+제목: ${title}
+본문:
+${text.slice(0, 8000)}`;
+  const result = await model.generateContent(prompt);
+  return JSON.parse(result.response.text());
+}
+
+export async function checkDuplicate(url: string): Promise<{ exists: boolean; postId?: string }> {
+  const u = url.trim();
+  if (!u) return { exists: false };
+  const sb = await createClient();
+  const { data } = await sb.from("posts").select("id").eq("url", u).maybeSingle();
+  return data ? { exists: true, postId: data.id } : { exists: false };
+}
+
+export async function registerPost(url: string, q1: string, q2: string, q3: string) {
+  const u = url.trim();
+  if (!u) return { error: "URL을 입력해주세요" };
+  if (![q1, q2, q3].some((x) => x.trim())) return { error: "독후감을 최소 1개 작성해주세요" };
+
+  const sb = await createClient();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return { error: "로그인이 필요해요" };
+
+  const dup = await sb.from("posts").select("id").eq("url", u).maybeSingle();
+  if (dup.data) return { duplicate: true, postId: dup.data.id };
+
+  // 원문 추출 + AI 요약
+  const ex = await extract(u);
+  const text = ex.text || u;
+  let s: { problem: string; solution: string; learning: string; category: string; tags: string[] };
+  try {
+    s = await summarize(ex.title || u, text);
+  } catch {
+    return { error: "AI 요약 생성에 실패했어요. 잠시 후 다시 시도해주세요" };
+  }
+  const category: Category = CATEGORIES.includes(s.category as Category) ? (s.category as Category) : "기술";
+  const tags = Array.isArray(s.tags) ? s.tags.slice(0, 4).map(String) : [];
+
+  // 기업 매칭 (도메인)
+  let companyId: string | null = null;
+  try {
+    const host = new URL(u).hostname.replace(/^www\./, "");
+    const { data: comps } = await sb.from("companies").select("id, domain");
+    companyId = (comps ?? []).find((c: { id: string; domain: string | null }) => c.domain && (host.includes(c.domain) || c.domain.includes(host)))?.id ?? null;
+  } catch {}
+
+  const title = ex.title?.trim() || u;
+  const { data: post, error } = await sb.from("posts").insert({
+    company_id: companyId, title, url: u, category, tags,
+    source: "direct", author_id: user.id,
+    ai_summary: { problem: s.problem || "", solution: s.solution || "", learning: s.learning || "" },
+    body: ex.body, parsed: ex.parsed, published_at: new Date().toISOString(),
+  }).select("id").single();
+  if (error || !post) return { error: error?.message || "글 저장에 실패했어요" };
+
+  // 등록자의 독후감
+  await sb.from("reviews").insert({
+    post_id: post.id, author_id: user.id, q1: q1.trim(), q2: q2.trim(), q3: q3.trim(), is_draft: false,
+  });
+
+  revalidatePath("/home");
+  revalidatePath("/feed");
+  revalidatePath("/insight");
+  return { ok: true, postId: post.id };
+}
