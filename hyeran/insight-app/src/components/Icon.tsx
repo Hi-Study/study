@@ -15,6 +15,9 @@ const PATHS: Record<string, string> = {
   sparkle: '<path d="M12 3l1.8 4.9L18.7 9l-4.9 1.8L12 15l-1.8-4.9L5.3 9l4.9-1.8z"/>',
   x: '<path d="M18 6L6 18M6 6l12 12"/>',
   send: '<path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/>',
+  edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/>',
+  trash: '<path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a1 1 0 01-1 1H7a1 1 0 01-1-1L5 6"/>',
+  memo: '<path d="M4 4h16v12H8l-4 4z"/><path d="M8 9h8M8 12.5h5"/>',
 };
 
 export default function Icon({ name, size = "" }: { name: string; size?: "sm" | "lg" | "" }) {

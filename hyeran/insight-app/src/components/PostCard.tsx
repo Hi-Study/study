@@ -18,11 +18,11 @@ export default function PostCard({ post }: { post: Post }) {
     <Link className="card" href={`/posts/${post.id}`} style={{ ["--catc" as string]: CAT_COLOR[post.category] }}>
       <div className="hd">
         <h3>{post.title}</h3>
+        {post.read && <span className="badge-read">읽음</span>}
       </div>
       <div className="meta mono">
-        {domain}
-        <span className="sep" />
-        {post.category}
+        {domain || post.category}
+        {domain && <><span className="sep" />{post.category}</>}
       </div>
       {post.tags.length > 0 && (
         <div className="tagrow">
@@ -32,7 +32,11 @@ export default function PostCard({ post }: { post: Post }) {
         </div>
       )}
       <div className="cardacts">
-        <span className="byline">{post.source === "direct" ? "직접 등록" : "자동 수집"}</span>
+        <span className="byline">
+          {post.source === "direct"
+            ? `직접 등록${post.author?.name ? ` · ${post.author.name}` : ""}`
+            : "자동 수집"}
+        </span>
         <span style={{ flex: 1 }} />
         <span className="cnt"><Icon name="review" size="sm" />독후감 {post.review_count ?? 0}</span>
       </div>
@@ -44,8 +48,8 @@ export default function PostCard({ post }: { post: Post }) {
 export function SwipeCard({ post }: { post: Post }) {
   return (
     <Link className="scard" href={`/posts/${post.id}`} style={{ ["--catc" as string]: CAT_COLOR[post.category] }}>
-      <div className="hd"><h3>{post.title}</h3></div>
-      <div className="meta mono">{post.company?.domain ?? ""}</div>
+      <div className="hd"><h3>{post.title}</h3>{post.read && <span className="badge-read">읽음</span>}</div>
+      <div className="meta mono">{post.company?.domain ?? (post.source === "direct" ? "직접 등록" : "")}</div>
       <div className="cardacts"><span className="cnt"><Icon name="review" size="sm" />독후감 {post.review_count ?? 0}</span></div>
     </Link>
   );

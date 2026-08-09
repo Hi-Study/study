@@ -23,9 +23,9 @@ export async function getFeedPosts(): Promise<Post[]> {
   const sb = await createClient();
   const { data } = await sb
     .from("posts")
-    .select("*, company:companies(*)")
+    .select("*, company:companies(*), author:profiles(name, initial)")
     .order("published_at", { ascending: false });
-  return attachReviewCounts(sb, (data as Post[]) ?? []);
+  return attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
 }
 
 // 홈: 기업별 그룹 (기업 → 최신 글들)
@@ -54,6 +54,26 @@ export async function getBookmarkedPostIds(userId: string): Promise<Set<string>>
   const sb = await createClient();
   const { data } = await sb.from("bookmarks").select("post_id").eq("user_id", userId);
   return new Set((data ?? []).map((b: { post_id: string }) => b.post_id));
+}
+
+// 유저가 다 읽은(스크롤 90%) 글 id 집합
+export async function getReadPostIds(userId: string): Promise<Set<string>> {
+  const sb = await createClient();
+  const { data } = await sb.from("reads").select("post_id").eq("user_id", userId);
+  return new Set((data ?? []).map((r: { post_id: string }) => r.post_id));
+}
+
+// 유저가 댓글 단 글 (댓글 → 독후감 → 글)
+export async function getCommentedPosts(userId: string): Promise<Post[]> {
+  const sb = await createClient();
+  const { data: cs } = await sb.from("comments").select("review_id").eq("author_id", userId);
+  const reviewIds = [...new Set((cs ?? []).map((c: { review_id: string }) => c.review_id))];
+  if (!reviewIds.length) return [];
+  const { data: rs } = await sb.from("reviews").select("post_id").in("id", reviewIds);
+  const postIds = [...new Set((rs ?? []).map((r: { post_id: string }) => r.post_id))];
+  if (!postIds.length) return [];
+  const { data } = await sb.from("posts").select("*, company:companies(*), author:profiles(name, initial)").in("id", postIds);
+  return attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
 }
 
 // 글 상세

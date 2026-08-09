@@ -5,14 +5,15 @@ import PostCard from "@/components/PostCard";
 import { CATEGORIES, type Category, type Company, type Post } from "@/lib/types";
 
 export default function FeedClient({
-  posts, companies, bookmarked,
+  posts, companies, bookmarked, readIds,
 }: {
-  posts: Post[]; companies: Company[]; bookmarked: string[];
+  posts: Post[]; companies: Company[]; bookmarked: string[]; readIds: string[];
 }) {
   const [tab, setTab] = useState<"all" | "bookmark">("all");
   const [comps, setComps] = useState<Set<string>>(new Set());
   const [cats, setCats] = useState<Set<Category>>(new Set());
   const bmSet = useMemo(() => new Set(bookmarked), [bookmarked]);
+  const readSet = useMemo(() => new Set(readIds), [readIds]);
 
   const toggle = <T,>(set: Set<T>, v: T, setter: (s: Set<T>) => void) => {
     const n = new Set(set);
@@ -48,7 +49,7 @@ export default function FeedClient({
       </div>
       <div style={{ height: 14 }} />
       {list.length ? (
-        list.map((p) => <PostCard key={p.id} post={p} />)
+        list.map((p) => <PostCard key={p.id} post={{ ...p, read: readSet.has(p.id) }} />)
       ) : (
         <div className="empty"><div className="art" /><div className="msg">{empty}</div></div>
       )}

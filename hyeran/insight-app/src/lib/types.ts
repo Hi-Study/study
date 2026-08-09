@@ -28,7 +28,9 @@ export interface Post {
   parsed: boolean;
   published_at: string;
   company?: Company | null;
+  author?: { name: string; initial: string } | null; // 직접 등록 글 작성자
   review_count?: number;
+  read?: boolean; // 내가 다 읽은 글 (카드 배지용)
 }
 
 export interface Review {

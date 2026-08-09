@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getPostsByCompany, getFavoriteCompanyIds, getRecommendedPosts } from "@/lib/queries";
+import { getPostsByCompany, getFavoriteCompanyIds, getRecommendedPosts, getReadPostIds } from "@/lib/queries";
 import { SwipeCard, CompanyLogo } from "@/components/PostCard";
 import FavoriteToggle from "@/components/FavoriteToggle";
 import Icon from "@/components/Icon";
@@ -10,13 +10,15 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const [groups, favs, recommended] = await Promise.all([
+  const [groups, favs, recommended, readIds] = await Promise.all([
     getPostsByCompany(),
     user ? getFavoriteCompanyIds(user.id) : Promise.resolve(new Set<string>()),
     getRecommendedPosts(),
+    user ? getReadPostIds(user.id) : Promise.resolve(new Set<string>()),
   ]);
   // 즐겨찾기 기업을 앞으로 정렬
   groups.sort((a, b) => Number(favs.has(b.company.id)) - Number(favs.has(a.company.id)));
+  const mark = <T extends { id: string }>(p: T) => ({ ...p, read: readIds.has(p.id) });
 
   return (
     <>
@@ -34,7 +36,7 @@ export default async function HomePage() {
           <>
             <div className="sec-title">추천 글</div>
             <div className="swipe">
-              {recommended.map((p) => <SwipeCard key={p.id} post={p} />)}
+              {recommended.map((p) => <SwipeCard key={p.id} post={mark(p)} />)}
             </div>
           </>
         )}
@@ -48,7 +50,7 @@ export default async function HomePage() {
               <FavoriteToggle companyId={company.id} initial={favs.has(company.id)} />
             </div>
             <div className="swipe">
-              {posts.map((p) => <SwipeCard key={p.id} post={p} />)}
+              {posts.map((p) => <SwipeCard key={p.id} post={mark(p)} />)}
             </div>
           </div>
         ))}

@@ -8,6 +8,9 @@ import BackButton from "@/components/BackButton";
 import BookmarkButton from "@/components/BookmarkButton";
 import ReviewSheet from "./review-sheet";
 import CommentSheet from "@/components/CommentSheet";
+import PostOwnerMenu from "@/components/PostOwnerMenu";
+import ReadTracker from "@/components/ReadTracker";
+import ArticleReader from "@/components/ArticleReader";
 
 export const dynamic = "force-dynamic";
 
@@ -19,25 +22,31 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
   const { data: { user } } = await sb.auth.getUser();
 
   // 병렬 조회 (상세 열람 속도)
-  const [postRes, reviews, bmRes, mineRes] = await Promise.all([
-    sb.from("posts").select("*, company:companies(*)").eq("id", id).single(),
+  const [postRes, reviews, bmRes, mineRes, readRes, hlRes] = await Promise.all([
+    sb.from("posts").select("*, company:companies(*), author:profiles(name, initial)").eq("id", id).single(),
     getReviewsForPost(id),
     sb.from("bookmarks").select("post_id").eq("user_id", user!.id).eq("post_id", id).maybeSingle(),
     sb.from("reviews").select("q1, q2, q3").eq("post_id", id).eq("author_id", user!.id).maybeSingle(),
+    sb.from("reads").select("post_id").eq("user_id", user!.id).eq("post_id", id).maybeSingle(),
+    sb.from("highlights").select("sentence_idx, memo").eq("user_id", user!.id).eq("post_id", id),
   ]);
-  const post = postRes.data as Post | null;
+  const post = postRes.data as unknown as Post | null;
   if (!post) notFound();
   const bm = bmRes.data;
   const mine = mineRes.data;
   const initial: [string, string, string] = [mine?.q1 ?? "", mine?.q2 ?? "", mine?.q3 ?? ""];
+  const isOwner = post.source === "direct" && post.author_id === user!.id;
+  const highlights = (hlRes.data ?? []) as { sentence_idx: number; memo: string | null }[];
 
   return (
     <div style={{ paddingBottom: 40 }}>
       <div className="appbar">
         <BackButton />
         <span className="spacer" />
+        {isOwner && <PostOwnerMenu postId={post.id} />}
         <BookmarkButton postId={post.id} initial={!!bm} />
       </div>
+      <ReadTracker postId={post.id} alreadyRead={!!readRes.data} />
       <div className="pad">
         <div style={{ height: 3, width: 28, background: CAT_COLOR[post.category], borderRadius: 2, marginBottom: 12 }} />
         <h1 className="d-title">{post.title}</h1>
@@ -52,6 +61,17 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
           <div className="tagrow">{post.tags.map((t) => <span className="tag" key={t}>{t}</span>)}</div>
         )}
 
+        {post.source === "direct" && (
+          <div className="author-card">
+            <span className="avatar">{post.author?.initial ?? "?"}</span>
+            <div>
+              <div className="nm">{post.author?.name ?? "인사이터"}</div>
+              <div className="rl">직접 등록한 글</div>
+            </div>
+            <span className="tag-direct">직접 등록</span>
+          </div>
+        )}
+
         <div className="ai-card">
           <div className="lab"><Icon name="sparkle" size="sm" /> AI 요약</div>
           <div className="ai-q"><div className="q">무슨 문제를 다뤘나</div><div className="a">{post.ai_summary.problem}</div></div>
@@ -62,7 +82,7 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
         {post.parsed && post.body.length > 0 ? (
           <>
             <div className="sec-title">원문</div>
-            <div className="article">{post.body.map((s, i) => <p key={i}>{s}</p>)}</div>
+            <ArticleReader postId={post.id} body={post.body} initial={highlights} />
           </>
         ) : (
           <a className="linkcard" href={post.url ?? "#"} target="_blank" rel="noreferrer">

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import PostCard from "@/components/PostCard";
+import { getCommentedPosts, getReadPostIds } from "@/lib/queries";
+import MyPostsClient from "@/components/MyPostsClient";
 import LogoutButton from "@/components/LogoutButton";
 import type { Post } from "@/lib/types";
 
@@ -13,11 +14,18 @@ export default async function MyPage() {
   // 내가 독후감 남긴 글
   const { data: myReviews } = await sb.from("reviews").select("post_id").eq("author_id", user!.id).eq("is_draft", false);
   const postIds = [...new Set((myReviews ?? []).map((r: { post_id: string }) => r.post_id))];
-  let posts: Post[] = [];
+  let insights: Post[] = [];
   if (postIds.length) {
-    const { data } = await sb.from("posts").select("*, company:companies(*)").in("id", postIds);
-    posts = (data as Post[]) ?? [];
+    const { data } = await sb.from("posts").select("*, company:companies(*), author:profiles(name, initial)").in("id", postIds);
+    insights = (data as unknown as Post[]) ?? [];
   }
+
+  const [comments, readIds] = await Promise.all([
+    getCommentedPosts(user!.id),
+    getReadPostIds(user!.id),
+  ]);
+
+  const mark = (p: Post) => ({ ...p, read: readIds.has(p.id) });
 
   return (
     <>
@@ -30,14 +38,7 @@ export default async function MyPage() {
             <div className="sub">인사이터</div>
           </div>
         </div>
-        <div className="seg">
-          <a className="on">인사이트 남긴 글</a>
-        </div>
-        {posts.length ? (
-          posts.map((p) => <PostCard key={p.id} post={p} />)
-        ) : (
-          <div className="empty"><div className="art" /><div className="msg">아직 독후감을 남긴 글이 없어요</div></div>
-        )}
+        <MyPostsClient insights={insights.map(mark)} comments={comments.map(mark)} />
         <div style={{ marginTop: 20 }}><LogoutButton /></div>
       </div>
     </>

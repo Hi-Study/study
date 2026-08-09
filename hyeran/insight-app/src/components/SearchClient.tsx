@@ -16,9 +16,10 @@ const SUGGEST: { label: string; q: string }[] = [
 ];
 const KEY = "recent-searches";
 
-export default function SearchClient({ posts, companies }: { posts: Post[]; companies: Company[] }) {
+export default function SearchClient({ posts, companies, readIds }: { posts: Post[]; companies: Company[]; readIds: string[] }) {
   const [q, setQ] = useState("");
   const [recent, setRecent] = useState<string[]>([]);
+  const readSet = new Set(readIds);
 
   useEffect(() => {
     try { setRecent(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch {}
@@ -59,7 +60,7 @@ export default function SearchClient({ posts, companies }: { posts: Post[]; comp
       {query ? (
         <>
           <div className="sec-title">검색 결과 {results.length}</div>
-          {results.length ? results.map((p) => <PostCard key={p.id} post={p} />)
+          {results.length ? results.map((p) => <PostCard key={p.id} post={{ ...p, read: readSet.has(p.id) }} />)
             : <div className="empty"><div className="art" /><div className="msg">결과가 없어요</div></div>}
         </>
       ) : (
