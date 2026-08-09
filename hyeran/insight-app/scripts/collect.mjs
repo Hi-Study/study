@@ -29,6 +29,23 @@ function toSentences(text) {
   return text.replace(/\r/g, "").split(/\n+|(?<=[.!?。？！])\s+/)
     .map((s) => s.replace(/\s+/g, " ").trim()).filter((s) => s.length > 12).slice(0, 40);
 }
+// Readability 본문(HTML)에서 문장 + 이미지(::img::URL)를 문서 순서대로 (리더 뷰용)
+function bodyFromArticle(art, baseUrl) {
+  if (!art?.content) return toSentences(art?.textContent || "");
+  const doc = new JSDOM(`<body>${art.content}</body>`, { url: baseUrl }).window.document;
+  const out = [];
+  doc.querySelectorAll("p, h1, h2, h3, h4, li, figcaption, img").forEach((n) => {
+    if (out.length >= 90) return;
+    if (n.tagName.toLowerCase() === "img") {
+      const src = n.getAttribute("src") || n.getAttribute("data-src") || n.getAttribute("data-lazy-src") || "";
+      if (src && !src.startsWith("data:")) { try { out.push("::img::" + new URL(src, baseUrl).href); } catch {} }
+    } else {
+      const txt = (n.textContent || "").replace(/\s+/g, " ").trim();
+      if (txt) toSentences(txt).forEach((s) => out.push(s));
+    }
+  });
+  return out.length ? out : toSentences(art.textContent || "");
+}
 const stripHtml = (h) => (h || "").replace(/<[^>]+>/g, " ").replace(/&[a-z#0-9]+;/gi, " ").replace(/\s+/g, " ").trim();
 // 봇 차단/challenge 페이지인지 (원문 아님)
 function looksBlocked(t) {
@@ -81,7 +98,7 @@ const CATS = ["프로덕트", "디자인", "기술", "AI"];
           const dom = new JSDOM(await r.text(), { url });
           const art = new Readability(dom.window.document).parse();
           const rtext = (art?.textContent || "").trim();
-          if (!looksBlocked(rtext)) { text = rtext; parsed = true; body = toSentences(rtext); }
+          if (!looksBlocked(rtext)) { text = rtext; parsed = true; body = bodyFromArticle(art, url); }
         } catch {}
         if (!parsed) {
           const alt = stripHtml(it["content:encoded"] || it.content || it.contentSnippet || "");

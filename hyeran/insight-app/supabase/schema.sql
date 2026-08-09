@@ -86,7 +86,13 @@ insert into public.companies (slug, name, color, domain, rss_url) values
   ('kakao',  '카카오',         '#111111', 'tech.kakao.com',           'https://tech.kakao.com/feed/'),
   ('daangn', '당근',           '#FF7E36', 'medium.com/daangn',        'https://medium.com/feed/daangn'),
   ('naver',  '네이버 D2',      '#03C75A', 'd2.naver.com',             'https://d2.naver.com/d2.atom'),
-  ('line',   '라인',           '#06C755', 'techblog.lycorp.co.jp',    'https://techblog.lycorp.co.jp/ko/feed/index.xml')
+  ('line',   '라인',           '#06C755', 'techblog.lycorp.co.jp',    'https://techblog.lycorp.co.jp/ko/feed/index.xml'),
+  ('kurly',      '컬리',        '#5F0080', 'helloworld.kurly.com',        'https://helloworld.kurly.com/rss.xml'),
+  ('goodchoice', '여기어때',    '#F63D68', 'techblog.gccompany.co.kr',    'https://techblog.gccompany.co.kr/feed'),
+  ('myrealtrip', '마이리얼트립','#00A9E0', 'medium.com/myrealtrip-product','https://medium.com/feed/myrealtrip-product'),
+  ('banksalad',  '뱅크샐러드',  '#3D5AFE', 'blog.banksalad.com',          'https://blog.banksalad.com/rss.xml'),
+  ('watcha',     '왓챠',        '#FF0558', 'medium.com/watcha',           'https://medium.com/feed/watcha'),
+  ('musinsa',    '무신사',      '#1D1D1F', 'medium.com/musinsa-tech',     'https://medium.com/feed/musinsa-tech')
 on conflict (slug) do nothing;
 
 -- ============================================================

@@ -10,6 +10,23 @@ function toSentences(text: string): string[] {
   return text.replace(/\r/g, "").split(/\n+|(?<=[.!?。？！])\s+/)
     .map((s) => s.replace(/\s+/g, " ").trim()).filter((s) => s.length > 12).slice(0, 40);
 }
+// Readability 본문(HTML)에서 문장 + 이미지(::img::URL)를 문서 순서대로 (리더 뷰용)
+function bodyFromArticle(content: string | null | undefined, textContent: string, baseUrl: string, JSDOMCtor: typeof import("jsdom").JSDOM): string[] {
+  if (!content) return toSentences(textContent);
+  const doc = new JSDOMCtor(`<body>${content}</body>`, { url: baseUrl }).window.document;
+  const out: string[] = [];
+  doc.querySelectorAll("p, h1, h2, h3, h4, li, figcaption, img").forEach((n) => {
+    if (out.length >= 90) return;
+    if (n.tagName.toLowerCase() === "img") {
+      const src = n.getAttribute("src") || n.getAttribute("data-src") || n.getAttribute("data-lazy-src") || "";
+      if (src && !src.startsWith("data:")) { try { out.push("::img::" + new URL(src, baseUrl).href); } catch {} }
+    } else {
+      const txt = (n.textContent || "").replace(/\s+/g, " ").trim();
+      if (txt) toSentences(txt).forEach((s) => out.push(s));
+    }
+  });
+  return out.length ? out : toSentences(textContent);
+}
 function looksBlocked(t: string) {
   return !t || t.length < 400 || /cloudflare|just a moment|attention required|잠시만 기다|enable javascript and cookies|verify you are/i.test(t);
 }
@@ -51,8 +68,8 @@ async function extract(url: string): Promise<Extracted> {
     const readText = (art?.textContent || "").trim();
     const title = (art?.title || ogTitle || ldTitle || doc.title || "").trim();
 
-    // 본문(readability)이 충분하면 원문 리더로 사용
-    if (!looksBlocked(readText)) return { title, text: readText, body: toSentences(readText), parsed: true };
+    // 본문(readability)이 충분하면 원문 리더로 사용 (이미지 포함)
+    if (!looksBlocked(readText)) return { title, text: readText, body: bodyFromArticle(art?.content, readText, url, JSDOM), parsed: true };
 
     // JS 렌더 사이트 등: 메타/LD로 요약용 텍스트 보강 (원문 리더는 미제공)
     const fb = [ldBody, ogDesc].filter(Boolean).join("\n\n").trim();

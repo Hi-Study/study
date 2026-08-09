@@ -39,6 +39,16 @@ export async function getPostsByCompany(): Promise<{ company: Company; posts: Po
     .filter((g) => g.posts.length > 0);
 }
 
+// 유저가 하이라이트한 글 (highlights → 글)
+export async function getHighlightedPosts(userId: string): Promise<Post[]> {
+  const sb = await createClient();
+  const { data: hs } = await sb.from("highlights").select("post_id").eq("user_id", userId);
+  const postIds = [...new Set((hs ?? []).map((h: { post_id: string }) => h.post_id))];
+  if (!postIds.length) return [];
+  const { data } = await sb.from("posts").select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)").in("id", postIds);
+  return attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
+}
+
 // 홈 추천 글: 독후감 많은 순 → 동률이면 최신순 (상위 N)
 export async function getRecommendedPosts(limit = 8): Promise<Post[]> {
   const posts = await getFeedPosts(); // review_count 포함

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getCommentedPosts, getReadPostIds } from "@/lib/queries";
+import { getCommentedPosts, getReadPostIds, getHighlightedPosts } from "@/lib/queries";
 import MyPostsClient from "@/components/MyPostsClient";
 import LogoutButton from "@/components/LogoutButton";
 import type { Post } from "@/lib/types";
@@ -20,8 +20,9 @@ export default async function MyPage() {
     insights = (data as unknown as Post[]) ?? [];
   }
 
-  const [comments, readIds] = await Promise.all([
+  const [comments, highlights, readIds] = await Promise.all([
     getCommentedPosts(user!.id),
+    getHighlightedPosts(user!.id),
     getReadPostIds(user!.id),
   ]);
 
@@ -38,7 +39,7 @@ export default async function MyPage() {
             <div className="sub">인사이터</div>
           </div>
         </div>
-        <MyPostsClient insights={insights.map(mark)} comments={comments.map(mark)} />
+        <MyPostsClient insights={insights.map(mark)} comments={comments.map(mark)} highlights={highlights.map(mark)} />
         <div style={{ marginTop: 20 }}><LogoutButton /></div>
       </div>
     </>
