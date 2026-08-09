@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getReviewsForPost } from "@/lib/queries";
@@ -7,6 +6,7 @@ import { CompanyLogo } from "@/components/PostCard";
 import Icon from "@/components/Icon";
 import BackButton from "@/components/BackButton";
 import BookmarkButton from "@/components/BookmarkButton";
+import ReviewSheet from "./review-sheet";
 
 export const dynamic = "force-dynamic";
 
@@ -18,14 +18,17 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
   const { data: { user } } = await sb.auth.getUser();
 
   // 병렬 조회 (상세 열람 속도)
-  const [postRes, reviews, bmRes] = await Promise.all([
+  const [postRes, reviews, bmRes, mineRes] = await Promise.all([
     sb.from("posts").select("*, company:companies(*)").eq("id", id).single(),
     getReviewsForPost(id),
     sb.from("bookmarks").select("post_id").eq("user_id", user!.id).eq("post_id", id).maybeSingle(),
+    sb.from("reviews").select("q1, q2, q3").eq("post_id", id).eq("author_id", user!.id).maybeSingle(),
   ]);
   const post = postRes.data as Post | null;
   if (!post) notFound();
   const bm = bmRes.data;
+  const mine = mineRes.data;
+  const initial: [string, string, string] = [mine?.q1 ?? "", mine?.q2 ?? "", mine?.q3 ?? ""];
 
   return (
     <div style={{ paddingBottom: 40 }}>
@@ -68,9 +71,7 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
         )}
 
         <div className="sec-title">독후감 {reviews.length}</div>
-        <Link href={`/posts/${post.id}/write`} className="btn btn-outline" style={{ display: "block", textAlign: "center", marginBottom: 10, boxSizing: "border-box" }}>
-          독후감 쓰기
-        </Link>
+        <ReviewSheet postId={post.id} initial={initial} />
         {reviews.length ? (
           reviews.map((r) => (
             <div key={r.id} className="review">
@@ -81,9 +82,14 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
                   {new Date(r.created_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}
                 </span>
               </div>
-              {[r.q1, r.q2, r.q3].map((a, i) => a?.trim() ? (
-                <div className="rq" key={i}><div className="q">{RQ[i]}</div><div className="a">{a}</div></div>
-              ) : null)}
+              {[r.q1, r.q2, r.q3].map((a, i) => (
+                <div className="rq" key={i}>
+                  <div className="q">{RQ[i]}</div>
+                  {a?.trim()
+                    ? <div className="a">{a}</div>
+                    : <div className="a" style={{ color: "var(--text-sub)", opacity: 0.6 }}>미작성</div>}
+                </div>
+              ))}
             </div>
           ))
         ) : (
