@@ -15,11 +15,20 @@ function bodyFromArticle(content: string | null | undefined, textContent: string
   if (!content) return toSentences(textContent);
   const doc = new JSDOMCtor(`<body>${content}</body>`, { url: baseUrl }).window.document;
   const out: string[] = [];
-  doc.querySelectorAll("p, h1, h2, h3, h4, li, figcaption, img").forEach((n) => {
+  const imgSrc = (n: Element) => {
+    let src = n.getAttribute("src") || n.getAttribute("data-src") || n.getAttribute("data-lazy-src") || n.getAttribute("data-original") || "";
+    if (!src || src.startsWith("data:")) {
+      const ss = n.getAttribute("srcset") || n.getAttribute("data-srcset") || "";
+      if (ss) src = ss.split(",")[0].trim().split(/\s+/)[0] || "";
+    }
+    return src && !src.startsWith("data:") ? src : "";
+  };
+  doc.querySelectorAll("p, h1, h2, h3, h4, li, figcaption, img, source").forEach((n) => {
     if (out.length >= 90) return;
-    if (n.tagName.toLowerCase() === "img") {
-      const src = n.getAttribute("src") || n.getAttribute("data-src") || n.getAttribute("data-lazy-src") || "";
-      if (src && !src.startsWith("data:")) { try { out.push("::img::" + new URL(src, baseUrl).href); } catch {} }
+    const tag = n.tagName.toLowerCase();
+    if (tag === "img" || tag === "source") {
+      const src = imgSrc(n);
+      if (src) { try { const u = "::img::" + new URL(src, baseUrl).href; if (out[out.length - 1] !== u) out.push(u); } catch {} }
     } else {
       const txt = (n.textContent || "").replace(/\s+/g, " ").trim();
       if (txt) toSentences(txt).forEach((s) => out.push(s));

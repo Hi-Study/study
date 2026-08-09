@@ -37,12 +37,12 @@ export default function FeedClient({
         <button className={tab === "bookmark" ? "on" : ""} onClick={() => setTab("bookmark")}>북마크</button>
       </div>
 
-      <div className="chips">
+      <div className="chips wrap">
         {companies.map((c) => (
           <button key={c.id} className={`chip ${comps.has(c.id) ? "on" : ""}`} onClick={() => toggle(comps, c.id, setComps)}>{c.name}</button>
         ))}
       </div>
-      <div className="chips" style={{ marginTop: 8 }}>
+      <div className="chips wrap" style={{ marginTop: 8 }}>
         {CATEGORIES.map((c) => (
           <button key={c} className={`chip ${cats.has(c) ? "on" : ""}`} onClick={() => toggle(cats, c, setCats)}>{c}</button>
         ))}

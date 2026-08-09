@@ -66,6 +66,7 @@ svg.i.lg{ width:26px; height:26px; }
 
 /* ===== chips ===== */
 .chips{ display:flex; gap:8px; overflow-x:auto; padding:2px 0; }
+.chips.wrap{ flex-wrap:wrap; overflow-x:visible; }
 .chips::-webkit-scrollbar{height:0;}
 .chip{ flex:0 0 auto; height:32px; display:flex; align-items:center; padding:0 14px; border-radius:var(--r-chip); background:var(--card); color:var(--text-sub); font-size:12px; font-weight:500; border:none; cursor:pointer; white-space:nowrap; }
 .chip.on{ background:var(--blue); color:#fff; }
