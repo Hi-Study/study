@@ -23,7 +23,7 @@ export async function getFeedPosts(): Promise<Post[]> {
   const sb = await createClient();
   const { data } = await sb
     .from("posts")
-    .select("*, company:companies(*), author:profiles(name, initial)")
+    .select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)")
     .order("published_at", { ascending: false });
   return attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
 }
@@ -72,7 +72,7 @@ export async function getCommentedPosts(userId: string): Promise<Post[]> {
   const { data: rs } = await sb.from("reviews").select("post_id").in("id", reviewIds);
   const postIds = [...new Set((rs ?? []).map((r: { post_id: string }) => r.post_id))];
   if (!postIds.length) return [];
-  const { data } = await sb.from("posts").select("*, company:companies(*), author:profiles(name, initial)").in("id", postIds);
+  const { data } = await sb.from("posts").select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)").in("id", postIds);
   return attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
 }
 

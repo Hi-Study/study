@@ -16,7 +16,7 @@ export default async function MyPage() {
   const postIds = [...new Set((myReviews ?? []).map((r: { post_id: string }) => r.post_id))];
   let insights: Post[] = [];
   if (postIds.length) {
-    const { data } = await sb.from("posts").select("*, company:companies(*), author:profiles(name, initial)").in("id", postIds);
+    const { data } = await sb.from("posts").select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)").in("id", postIds);
     insights = (data as unknown as Post[]) ?? [];
   }
 

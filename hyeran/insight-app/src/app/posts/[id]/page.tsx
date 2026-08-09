@@ -23,7 +23,7 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
 
   // 병렬 조회 (상세 열람 속도)
   const [postRes, reviews, bmRes, mineRes, readRes, hlRes] = await Promise.all([
-    sb.from("posts").select("*, company:companies(*), author:profiles(name, initial)").eq("id", id).single(),
+    sb.from("posts").select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)").eq("id", id).single(),
     getReviewsForPost(id),
     sb.from("bookmarks").select("post_id").eq("user_id", user!.id).eq("post_id", id).maybeSingle(),
     sb.from("reviews").select("q1, q2, q3").eq("post_id", id).eq("author_id", user!.id).maybeSingle(),
