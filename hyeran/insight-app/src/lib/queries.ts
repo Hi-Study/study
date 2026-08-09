@@ -39,6 +39,23 @@ export async function getPostsByCompany(): Promise<{ company: Company; posts: Po
     .filter((g) => g.posts.length > 0);
 }
 
+// 홈 추천 글: 독후감 많은 순 → 동률이면 최신순 (상위 N)
+export async function getRecommendedPosts(limit = 8): Promise<Post[]> {
+  const posts = await getFeedPosts(); // review_count 포함
+  return [...posts]
+    .sort((a, b) =>
+      (b.review_count ?? 0) - (a.review_count ?? 0) ||
+      new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
+    .slice(0, limit);
+}
+
+// 유저가 북마크한 글 id 집합
+export async function getBookmarkedPostIds(userId: string): Promise<Set<string>> {
+  const sb = await createClient();
+  const { data } = await sb.from("bookmarks").select("post_id").eq("user_id", userId);
+  return new Set((data ?? []).map((b: { post_id: string }) => b.post_id));
+}
+
 // 글 상세
 export async function getPost(id: string): Promise<Post | null> {
   const sb = await createClient();

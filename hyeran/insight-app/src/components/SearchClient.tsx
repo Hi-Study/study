@@ -6,6 +6,14 @@ import Icon from "@/components/Icon";
 import type { Company, Post } from "@/lib/types";
 
 const RISING = ["OKR", "리텐션", "온보딩", "디자인시스템", "RAG", "LLM", "실험", "생산성", "아키텍처", "AI"];
+// 추천 검색어(문장·질문형) — 보여줄 문구(label)와 실제 검색어(q)
+const SUGGEST: { label: string; q: string }[] = [
+  { label: "요즘 뜨는 디자인 시스템 이야기", q: "디자인시스템" },
+  { label: "LLM을 실제 서비스에 어떻게 붙였을까", q: "LLM" },
+  { label: "리텐션을 끌어올린 방법이 궁금해", q: "리텐션" },
+  { label: "온보딩을 개선한 사례가 보고 싶어", q: "온보딩" },
+  { label: "실험으로 배운 것들", q: "실험" },
+];
 const KEY = "recent-searches";
 
 export default function SearchClient({ posts, companies }: { posts: Post[]; companies: Company[] }) {
@@ -67,6 +75,13 @@ export default function SearchClient({ posts, companies }: { posts: Post[]; comp
               ))}
             </>
           )}
+          <div className="sec-title">추천 검색어</div>
+          <div className="chips" style={{ flexWrap: "wrap", overflowX: "visible", marginBottom: 6 }}>
+            {SUGGEST.map((s) => (
+              <button key={s.q} className="chip" onClick={() => run(s.q)}>{s.label}</button>
+            ))}
+          </div>
+
           <div className="sec-title">급상승 검색어</div>
           {RISING.map((t, i) => (
             <button key={t} className="rank-row" onClick={() => run(t)}>

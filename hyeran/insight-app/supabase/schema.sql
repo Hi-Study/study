@@ -146,10 +146,12 @@ create table if not exists public.comments (
   id uuid primary key default gen_random_uuid(),
   review_id uuid not null references public.reviews(id) on delete cascade,
   author_id uuid not null references public.profiles(id) on delete cascade,
+  parent_id uuid references public.comments(id) on delete cascade,  -- 대댓글(답글): 상위 댓글
   body text not null,
   created_at timestamptz not null default now()
 );
 create index if not exists comments_review_idx on public.comments (review_id);
+create index if not exists comments_parent_idx on public.comments (parent_id);
 
 -- ============================================================
 -- 6) 유저별 상태: 북마크 / 기업 즐겨찾기 / 하이라이트 / 다읽음

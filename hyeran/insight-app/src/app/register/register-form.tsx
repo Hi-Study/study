@@ -35,7 +35,7 @@ export default function RegisterForm() {
       const res = await registerPost(url, ans[0], ans[1], ans[2]);
       if (res?.duplicate && res.postId) { setDup({ postId: res.postId }); return; }
       if (res?.error) { setErr(res.error); return; }
-      if (res?.ok && res.postId) { router.push(`/posts/${res.postId}`); router.refresh(); }
+      if (res?.ok && res.postId) { router.replace(`/posts/${res.postId}`); router.refresh(); }
     });
   };
 
@@ -47,7 +47,7 @@ export default function RegisterForm() {
           onChange={(e) => setUrl(e.target.value)} onBlur={onUrlBlur} />
         {dup ? (
           <div className="hint">이미 등록된 글이에요{" "}
-            <a onClick={() => router.push(`/posts/${dup.postId}`)} style={{ color: "var(--blue)", cursor: "pointer" }}>등록 글 보기</a>
+            <a onClick={() => router.replace(`/posts/${dup.postId}`)} style={{ color: "var(--blue)", cursor: "pointer" }}>등록 글 보기</a>
           </div>
         ) : (
           <div className="hint">등록하면 제목·기업·태그·AI 요약은 자동으로 채워져요</div>

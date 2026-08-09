@@ -14,17 +14,49 @@ function looksBlocked(t: string) {
   return !t || t.length < 400 || /cloudflare|just a moment|attention required|잠시만 기다|enable javascript and cookies|verify you are/i.test(t);
 }
 
-async function extract(url: string): Promise<{ title: string; text: string; body: string[]; parsed: boolean }> {
+type Extracted = { title: string; text: string; body: string[]; parsed: boolean };
+
+async function extract(url: string): Promise<Extracted> {
   try {
     const { JSDOM } = await import("jsdom");
     const { Readability } = await import("@mozilla/readability");
-    const res = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow" });
+    const res = await fetch(url, {
+      headers: { "User-Agent": UA, "Accept-Language": "ko,en;q=0.8" },
+      redirect: "follow",
+    });
     const html = await res.text();
     const dom = new JSDOM(html, { url });
-    const art = new Readability(dom.window.document).parse();
-    const text = (art?.textContent || "").trim();
-    if (!looksBlocked(text)) return { title: art?.title || "", text, body: toSentences(text), parsed: true };
-    return { title: art?.title || "", text, body: [], parsed: false };
+    const doc = dom.window.document;
+
+    // 메타 폴백 (og / twitter / description)
+    const meta = (sel: string) => doc.querySelector(sel)?.getAttribute("content")?.trim() || "";
+    const ogTitle = meta('meta[property="og:title"]') || meta('meta[name="twitter:title"]');
+    const ogDesc = meta('meta[property="og:description"]') || meta('meta[name="description"]') || meta('meta[name="twitter:description"]');
+
+    // JSON-LD (articleBody / headline / description)
+    let ldTitle = "", ldBody = "";
+    doc.querySelectorAll('script[type="application/ld+json"]').forEach((s) => {
+      try {
+        const j = JSON.parse(s.textContent || "{}");
+        const arr = Array.isArray(j) ? j : [j, ...(Array.isArray(j["@graph"]) ? j["@graph"] : [])];
+        for (const o of arr) {
+          if (typeof o?.articleBody === "string" && o.articleBody.length > ldBody.length) ldBody = o.articleBody;
+          if (typeof o?.description === "string" && o.description.length > ldBody.length) ldBody = o.description;
+          if (typeof o?.headline === "string" && !ldTitle) ldTitle = o.headline;
+        }
+      } catch {}
+    });
+
+    const art = new Readability(doc).parse();
+    const readText = (art?.textContent || "").trim();
+    const title = (art?.title || ogTitle || ldTitle || doc.title || "").trim();
+
+    // 본문(readability)이 충분하면 원문 리더로 사용
+    if (!looksBlocked(readText)) return { title, text: readText, body: toSentences(readText), parsed: true };
+
+    // JS 렌더 사이트 등: 메타/LD로 요약용 텍스트 보강 (원문 리더는 미제공)
+    const fb = [ldBody, ogDesc].filter(Boolean).join("\n\n").trim();
+    return { title, text: fb || readText, body: [], parsed: false };
   } catch {
     return { title: "", text: "", body: [], parsed: false };
   }
@@ -72,10 +104,14 @@ export async function registerPost(url: string, q1: string, q2: string, q3: stri
 
   // 원문 추출 + AI 요약
   const ex = await extract(u);
-  const text = ex.text || u;
+  const content = ex.text.trim();
+  // 제목·본문 어느 것도 못 가져오면 요약 불가 (링크만 저장하는 건 의미가 없음)
+  if (ex.title.trim().length < 4 && content.length < 40) {
+    return { error: "원문을 불러올 수 없어 요약을 만들지 못했어요. 링크를 확인하거나 다른 글로 시도해주세요" };
+  }
   let s: { problem: string; solution: string; learning: string; category: string; tags: string[] };
   try {
-    s = await summarize(ex.title || u, text);
+    s = await summarize(ex.title || u, content || ex.title);
   } catch {
     return { error: "AI 요약 생성에 실패했어요. 잠시 후 다시 시도해주세요" };
   }
