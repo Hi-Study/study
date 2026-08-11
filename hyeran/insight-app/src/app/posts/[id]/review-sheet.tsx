@@ -35,14 +35,14 @@ export default function ReviewSheet({ postId, initial }: { postId: string; initi
   return (
     <>
       <button className="btn btn-outline" style={{ marginBottom: 10 }} onClick={() => setOpen(true)}>
-        {hasReview ? "독후감 수정" : "독후감 쓰기"}
+        {hasReview ? "인사이트 수정" : "인사이트 쓰기"}
       </button>
 
       {open && <div className={`scrim show`} onClick={close} />}
       <div className={`drawer ${open ? "show" : ""}`}>
         <div className="handle" />
         <div className="dhead">
-          독후감 쓰기
+          인사이트 쓰기
           <button className="submit" disabled={!canSubmit || pending} onClick={submit}>
             {pending ? "게시 중…" : "게시"}
           </button>
@@ -55,7 +55,7 @@ export default function ReviewSheet({ postId, initial }: { postId: string; initi
               <textarea className="input" rows={3} value={ans[i]} onChange={(e) => set(i, e.target.value)} />
             </div>
           ))}
-          {err && <div className="hint" style={{ color: "var(--orange)" }}>{err}</div>}
+          {err && <div className="hint" style={{ color: "var(--danger)" }}>{err}</div>}
         </div>
       </div>
     </>

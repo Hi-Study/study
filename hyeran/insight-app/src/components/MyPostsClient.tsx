@@ -13,7 +13,7 @@ export default function MyPostsClient({
 }) {
   const [tab, setTab] = useState<Tab>("insight");
   const map: Record<Tab, { list: Post[]; label: string; empty: string }> = {
-    insight: { list: insights, label: "인사이트", empty: "아직 독후감을 남긴 글이 없어요" },
+    insight: { list: insights, label: "인사이트", empty: "아직 인사이트를 남긴 글이 없어요" },
     comment: { list: comments, label: "댓글", empty: "아직 댓글을 단 글이 없어요" },
     highlight: { list: highlights, label: "하이라이트", empty: "아직 하이라이트한 글이 없어요" },
   };

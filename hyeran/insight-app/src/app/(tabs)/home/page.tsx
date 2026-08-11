@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getPostsByCompany, getFavoriteCompanyIds, getRecommendedPosts, getReadPostIds } from "@/lib/queries";
 import { SwipeCard, CompanyLogo } from "@/components/PostCard";
+import RankCarousel from "@/components/RankCarousel";
 import FavoriteToggle from "@/components/FavoriteToggle";
 import Icon from "@/components/Icon";
 
@@ -35,12 +36,11 @@ export default async function HomePage() {
         {recommended.length > 0 && (
           <>
             <div className="sec-title">추천 글</div>
-            <div className="swipe">
-              {recommended.map((p) => <SwipeCard key={p.id} post={mark(p)} />)}
-            </div>
+            <RankCarousel posts={recommended.map(mark)} />
           </>
         )}
 
+        {recommended.length > 0 && <hr className="section-divider" />}
         <div className="sec-title">기술 블로그 모아보기</div>
         {groups.map(({ company, posts }) => (
           <div key={company.id}>

@@ -55,14 +55,14 @@ export default function RegisterForm() {
       </div>
 
       <div className="field">
-        <label>독후감 · 최소 1개 필수</label>
+        <label>인사이트 · 최소 1개 필수</label>
         {QS.map((q, i) => (
           <textarea key={i} className="input" rows={3} placeholder={q} value={ans[i]}
             onChange={(e) => set(i, e.target.value)} style={{ marginBottom: 8 }} />
         ))}
       </div>
 
-      {err && <div className="hint" style={{ color: "var(--orange)" }}>{err}</div>}
+      {err && <div className="hint" style={{ color: "var(--danger)" }}>{err}</div>}
       <button className="btn btn-primary" disabled={!canSubmit || pending} onClick={submit}>
         {pending ? "등록 중… (원문 분석·AI 요약)" : "등록하기"}
       </button>

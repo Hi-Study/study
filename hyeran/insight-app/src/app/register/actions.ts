@@ -119,7 +119,7 @@ export async function checkDuplicate(url: string): Promise<{ exists: boolean; po
 export async function registerPost(url: string, q1: string, q2: string, q3: string) {
   const u = url.trim();
   if (!u) return { error: "URL을 입력해주세요" };
-  if (![q1, q2, q3].some((x) => x.trim())) return { error: "독후감을 최소 1개 작성해주세요" };
+  if (![q1, q2, q3].some((x) => x.trim())) return { error: "인사이트를 최소 1개 작성해주세요" };
 
   const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
@@ -161,7 +161,7 @@ export async function registerPost(url: string, q1: string, q2: string, q3: stri
   }).select("id").single();
   if (error || !post) return { error: error?.message || "글 저장에 실패했어요" };
 
-  // 등록자의 독후감
+  // 등록자의 인사이트
   await sb.from("reviews").insert({
     post_id: post.id, author_id: user.id, q1: q1.trim(), q2: q2.trim(), q3: q3.trim(), is_draft: false,
   });

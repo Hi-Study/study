@@ -6,7 +6,7 @@ type Noti = { id: string; type: string; title: string; body: string; read: boole
 const SEGS = [
   { key: "all", label: "전체" },
   { key: "new_post", label: "새 글" },
-  { key: "comment", label: "독후감 댓글" },
+  { key: "comment", label: "인사이트 댓글" },
 ];
 
 export default function NotificationsClient({ items }: { items: Noti[] }) {

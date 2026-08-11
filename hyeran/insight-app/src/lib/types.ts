@@ -47,12 +47,12 @@ export interface Review {
   post?: { title: string; company?: Company | null } | null;
 }
 
-// 카테고리 → 좌측 바 색 (design.md)
+// 카테고리 → 액센트 색 (DESIGN.md, aisbrow 팔레트와 동일)
 export const CAT_COLOR: Record<Category, string> = {
-  프로덕트: "var(--sky)",
-  디자인: "var(--lime)",
-  기술: "var(--blue)",
-  AI: "var(--orange-hot)",
+  프로덕트: "var(--cat-product)",
+  디자인: "var(--cat-design)",
+  기술: "var(--cat-tech)",
+  AI: "var(--cat-ai)",
 };
 
 export const CATEGORIES: Category[] = ["프로덕트", "디자인", "기술", "AI"];

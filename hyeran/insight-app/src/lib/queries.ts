@@ -8,7 +8,7 @@ export async function getCompanies(): Promise<Company[]> {
   return (data as Company[]) ?? [];
 }
 
-// 독후감 수를 각 글에 붙이기
+// 인사이트 수를 각 글에 붙이기
 async function attachReviewCounts(sb: Awaited<ReturnType<typeof createClient>>, posts: Post[]): Promise<Post[]> {
   if (!posts.length) return posts;
   const ids = posts.map((p) => p.id);
@@ -49,7 +49,7 @@ export async function getHighlightedPosts(userId: string): Promise<Post[]> {
   return attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
 }
 
-// 홈 추천 글: 독후감 많은 순 → 동률이면 최신순 (상위 N)
+// 홈 추천 글: 인사이트 많은 순 → 동률이면 최신순 (상위 N)
 export async function getRecommendedPosts(limit = 8): Promise<Post[]> {
   const posts = await getFeedPosts(); // review_count 포함
   return [...posts]
@@ -73,7 +73,7 @@ export async function getReadPostIds(userId: string): Promise<Set<string>> {
   return new Set((data ?? []).map((r: { post_id: string }) => r.post_id));
 }
 
-// 유저가 댓글 단 글 (댓글 → 독후감 → 글)
+// 유저가 댓글 단 글 (댓글 → 인사이트 → 글)
 export async function getCommentedPosts(userId: string): Promise<Post[]> {
   const sb = await createClient();
   const { data: cs } = await sb.from("comments").select("review_id").eq("author_id", userId);
@@ -104,7 +104,7 @@ async function attachCommentCounts(sb: Awaited<ReturnType<typeof createClient>>,
   return reviews.map((r) => ({ ...r, comment_count: counts.get(r.id) ?? 0 }));
 }
 
-// 글에 달린 독후감 (게시본)
+// 글에 달린 인사이트 (게시본)
 export async function getReviewsForPost(postId: string): Promise<Review[]> {
   const sb = await createClient();
   const { data } = await sb
@@ -116,12 +116,34 @@ export async function getReviewsForPost(postId: string): Promise<Review[]> {
   return attachCommentCounts(sb, (data as Review[]) ?? []);
 }
 
-// 인사이트 탭: 독후감 최신순 (글 정보 포함)
+// 인사이트 탭: 인사이트 최신순 (글 정보 포함)
 export async function getInsightFeed(): Promise<Review[]> {
   const sb = await createClient();
   const { data } = await sb
     .from("reviews")
     .select("*, author:profiles(name, initial), post:posts(title, company:companies(*))")
+    .eq("is_draft", false)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  const reviews = (data as Review[]) ?? [];
+  if (!reviews.length) return reviews;
+  const ids = reviews.map((r) => r.id);
+  const { data: c } = await sb.from("comments").select("review_id").in("review_id", ids);
+  const counts = new Map<string, number>();
+  (c ?? []).forEach((x: { review_id: string }) => counts.set(x.review_id, (counts.get(x.review_id) ?? 0) + 1));
+  return reviews.map((r) => ({ ...r, comment_count: counts.get(r.id) ?? 0 }));
+}
+
+// 인사이트 탭 · 북마크: 내가 북마크한 글에 달린 인사이트 최신순
+export async function getBookmarkedInsightFeed(userId: string): Promise<Review[]> {
+  const sb = await createClient();
+  const { data: bms } = await sb.from("bookmarks").select("post_id").eq("user_id", userId);
+  const postIds = [...new Set((bms ?? []).map((b: { post_id: string }) => b.post_id))];
+  if (!postIds.length) return [];
+  const { data } = await sb
+    .from("reviews")
+    .select("*, author:profiles(name, initial), post:posts(title, company:companies(*))")
+    .in("post_id", postIds)
     .eq("is_draft", false)
     .order("created_at", { ascending: false })
     .limit(50);

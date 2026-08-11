@@ -91,7 +91,7 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
           </a>
         )}
 
-        <div className="sec-title">독후감 {reviews.length}</div>
+        <div className="sec-title">인사이트 {reviews.length}</div>
         <ReviewSheet postId={post.id} initial={initial} />
         {reviews.length ? (
           reviews.map((r) => (
@@ -120,7 +120,7 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
             </div>
           ))
         ) : (
-          <div className="empty"><div className="art" /><div className="msg">첫 번째 독후감을 남겨보세요</div></div>
+          <div className="empty"><div className="art" /><div className="msg">첫 번째 인사이트를 남겨보세요</div></div>
         )}
       </div>
     </div>

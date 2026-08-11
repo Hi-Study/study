@@ -11,7 +11,7 @@ export default async function MyPage() {
   const { data: { user } } = await sb.auth.getUser();
   const { data: profile } = await sb.from("profiles").select("name, initial").eq("id", user!.id).single();
 
-  // 내가 독후감 남긴 글
+  // 내가 인사이트 남긴 글
   const { data: myReviews } = await sb.from("reviews").select("post_id").eq("author_id", user!.id).eq("is_draft", false);
   const postIds = [...new Set((myReviews ?? []).map((r: { post_id: string }) => r.post_id))];
   let insights: Post[] = [];

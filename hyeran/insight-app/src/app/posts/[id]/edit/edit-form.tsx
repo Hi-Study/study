@@ -59,7 +59,7 @@ export default function EditForm({ postId, init }: { postId: string; init: Init 
         <label>기획 관점에서 무엇을 배울 수 있나</label>
         <textarea className="input" rows={2} value={learning} onChange={(e) => setLearning(e.target.value)} />
       </div>
-      {err && <div className="hint" style={{ color: "var(--orange)" }}>{err}</div>}
+      {err && <div className="hint" style={{ color: "var(--danger)" }}>{err}</div>}
       <button className="btn btn-primary" disabled={!title.trim() || pending} onClick={submit}>
         {pending ? "저장 중…" : "저장하기"}
       </button>

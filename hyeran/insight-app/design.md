@@ -1,197 +1,201 @@
-# Design System
+# 인사이트 — Design System
 
-테크블로그 인사이트 공유 앱 (가칭) · 모바일
+> 기업 기술블로그 글을 읽고 나의 인사이트를 나누는 **모바일 우선** 한국어 서비스.
+> MiniMax 시각 언어를 모바일 리더 앱 맥락에 이식한 결과물이다.
+> 구현: `src/app/globals.css`(토큰·컴포넌트 클래스), `src/components/*`(마크업).
 
----
+## Overview
 
-## 1. 원칙
+인사이트는 **스타크 모노크롬(화이트 캔버스 + 검정 잉크)** 위에 **코랄 한 색**만 아껴 쓰는 절제된 언어를 쓴다. 검정(`{colors.primary}` = `#000`/`{colors.ink}`)이 대표 CTA이고, 코랄(`{colors.cat-ai-fg}` = `#FF4A28`)은 "지금 주목" 순간 — 뱃지, FAB, 추천 인덱스, 히어로 글로우, 활성 즐겨찾기 — 에만 등장한다. 파랑(`{colors.blue-info}`)은 링크/정보 보조로 강등된다.
 
-키워드 세 개를 각각 다른 레이어가 담당한다. 한 레이어가 셋을 다 맡으면 전부 흐려진다.
+카드는 **위계로 구분**된다. 상단 **추천 글**은 한 화면에 한 장씩 넘어가는 **캐러셀(점 인디케이터 + 순위 인덱스)**로, 하단 **기술 블로그 모아보기**는 여러 장이 흐르는 **peek 스와이프**로 — 같은 카드 언어를 쓰되 인터랙션과 인덱스로 성격을 구분한다.
 
-| 키워드 | 담당 | 구현 |
-|---|---|---|
-| 전문성 | 지면 · 타이포 | 무채색 면, 고대비 텍스트, 모노스페이스 메타 |
-| 활기 | 색 | 원색 그대로, 면적은 최소 |
-| 역동성 | 모션 · 스케일 | stagger 진입, 큰 타이포 점프 |
+서체는 **Pretendard 단일 서체**를 모든 역할에 쓴다. 디스플레이·본문·라벨·**뱃지·아이콘 옆 메타 문구**까지 전부 Pretendard 하나로 통일한다(별도 라틴/모노 서체 없음).
 
-**핵심 규칙: 색은 장식이 아니라 상태(state)와 분류(category)를 뜻한다.** 색을 지웠을 때 정보가 사라지지 않는다면, 그 색은 뺀다.
+**Key Characteristics**
+- 모노크롬(화이트 `{colors.canvas}` + 검정 `{colors.primary}`)에 코랄 `{colors.cat-ai-fg}` 단일 포인트
+- 검정 알약 = 대표 CTA. 브랜드색은 정체성 순간에만
+- 카드 위계: 추천 캐러셀(점+인덱스) ↔ 기업별 peek 스와이프
+- 실제 기업 로고(인라인 SVG 마크)
+- **Pretendard 단일 서체** — 모든 텍스트(뱃지·메타 포함)
+- 480px 모바일 셸 + 상단 알림 벨 + 하단 탭바(홈/피드/인사이트/마이) + 우하단 FAB
+- 모든 버튼/칩/탭/뱃지 `{rounded.full}`
 
----
+> **이번 디자인 리프레시에서 그대로 유지(변경 안 함):** 상단 앱바의 **알림 벨**, **하단 탭바**(홈·피드·인사이트·마이), 기존 **검색바 위치**. 레퍼런스의 헤더-내 검색 이동이나 Feed/Explore/Saved/Settings 하단 네비게이션은 채택하지 않는다.
 
-## 2. 시그니처
+## Colors
 
-카드 하나가 **왼쪽에서 "무엇"을, 오른쪽에서 "지금 어떤 상태인지"를** 동시에 말한다.
+### Brand & Accent
+- **Coral** (`{colors.cat-ai-fg}` = `#FF4A28`): 유일한 브랜드 포인트. NEW 뱃지, FAB, 추천 인덱스 번호, 히어로 글로우, 활성 즐겨찾기. 과용 금지.
+- **Blue Info** (`{colors.blue-info}` = `#056DFF`): 링크·정보 보조. 주요 CTA 아님.
+
+### Ink & Surface
+- **Primary / Ink** (`{colors.primary}` = `#000000`, `{colors.ink}` = `#161616`): 대표 CTA 배경, 헤드라인.
+- **Canvas** (`{colors.canvas}` = `#FFFFFF`): 페이지·카드 기본 배경.
+- **Surface** (`{colors.surface}` = `#F4F5F7`): 검색 pill, AI카드·작성자카드, 읽음 뱃지, **섹션 구분선(8px)**.
+- **Hairline** (`{colors.hairline}` = `#E9EAEE`): 카드 1px 테두리, 구분선, 앱바 하단선.
+
+### Text
+- **Charcoal** (`{colors.charcoal-text}` = `#2A2A2A`): 본문.
+- **Steel** (`{colors.steel-text}` = `#6B7280`): 보조·메타·비활성 탭·라벨.
+- **Stone** (`{colors.stone-text}` = `#9AA0AB`): 뮤트 캡션.
+
+### Category 아이브로우 (프로덕트/디자인/기술/AI)
+카테고리는 파스텔 배경 + 진한 글자 **알약 라벨**로 표시(Pretendard).
+- **기술** — bg `{colors.cat-tech-bg}` `#EEF4FF` / fg `{colors.cat-tech-fg}` `#2563EB`
+- **디자인** — bg `{colors.cat-design-bg}` `#F3EDFF` / fg `{colors.cat-design-fg}` `#7C3AED`
+- **프로덕트** — bg `{colors.cat-product-bg}` `#E6F6F2` / fg `{colors.cat-product-fg}` `#0D9488`
+- **AI** — bg `{colors.cat-ai-bg}` `#FFF0EC` / fg `{colors.cat-ai-fg}` `#FF4A28`
+
+### Semantic
+- **Success** — bg `{colors.success-bg}` `#E7F6EC` / text `{colors.success-text}` `#127A3E` (읽음 등)
+- **Read (중립)** — bg `{colors.surface}` / text `{colors.steel-text}`
+
+### Dark Mode
+`prefers-color-scheme:dark`에서 배경·카드·잉크 반전. 검정 CTA는 화이트 알약으로 반전. 코랄·검정 대비는 다크에서도 유지. 정식 다크 팔레트는 추후.
+
+## Typography
+
+### Font Family — **Pretendard 단일 서체**
+모든 역할(디스플레이·히어로·앱바 로고·본문·라벨·카드 제목·기업명·**아이브로우/뱃지**·버튼·**메타(아이콘 옆 문구)**)을 **Pretendard** 하나로 처리한다.
 
 ```
-┌─────────────────────────────────────┐
-│▌ 토스는 왜 디자인 시스템을   [읽는중]│   ▌ = 좌측 3px 카테고리 바
-│▌ 다시 만들었나                      │   [ ] = 우측 상태 배지
-│▌ toss.tech · 오늘                   │
-└─────────────────────────────────────┘
+"Pretendard","Pretendard Variable",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif
 ```
 
-이 좌/우 이중 신호가 이 앱을 기억하게 만드는 요소다. 다른 곳에 색을 더 쓰고 싶어질 때 이 구조를 지키기 위해 참는다.
+> DM Sans, JetBrains Mono는 **사용하지 않는다**(사용자 결정). 레퍼런스가 hero/appbar에 DM Sans, eyebrow/meta에 JetBrains Mono를 지정했더라도 전부 Pretendard로 통일한다. 숫자 정렬이 필요한 곳(추천 인덱스·수치 메타)은 `font-variant-numeric: tabular-nums`로 보정한다. 기업 로고 SVG 내부 워드마크는 브랜드 자산이므로 예외.
 
----
+### Hierarchy (전부 Pretendard)
 
-## 3. 컬러
+| Token | Size | Weight | Line H | Letter Sp | Use |
+|---|---|---|---|---|---|
+| `{typography.appbar}` | 21px | 600 | 1.30 | -0.5px | 앱바 로고·타이틀 |
+| `{typography.display-title}` | 20px | 600 | 1.30 | -0.5px | 상세 제목, 기업 헤더명 |
+| `{typography.hero}` | 19px | 600 | 1.20 | -0.4px | 히어로/강조 타이틀 |
+| `{typography.card-title}` | 15px | 600 | 1.40 | -0.3px | 카드 제목 |
+| `{typography.company-name}` | 15px | 600 | 1.30 | 0 | 기업명 |
+| `{typography.body}` | 15px | 400 | 1.72 | 0 | 원문 본문 |
+| `{typography.body-sm}` | 13.5px | 400 | 1.60 | 0 | AI 답변, 입력값 |
+| `{typography.label}` | 12px | 600 | 1.40 | 0 | 폼 라벨, 섹션 타이틀 |
+| `{typography.button}` | 14px | 600 | 1.40 | 0 | 버튼·칩 라벨 |
+| `{typography.eyebrow}` | 10px | 600 | 1.00 | 0.1em | 카테고리 아이브로우·뱃지 (Pretendard, UPPERCASE 느낌은 자간으로) |
+| `{typography.meta}` | 11px | 400 | 1.40 | 0 | 메타·수치·도메인 (아이콘 옆 문구, Pretendard) |
 
-### 3-1. 면 (Surface)
+### Principles
+- **단일 서체**: Pretendard 하나로 전 역할. 위계는 크기·무게(400/500/600/700)·색으로만.
+- 이탤릭 없음. 강조는 weight.
+- 숫자 정렬 구간은 `tabular-nums`.
+- 본문 line-height 1.72로 한글 장문 가독 확보.
 
-일반적인 "회색 배경 + 흰 카드"의 **반대**로 간다. 배경이 흰색이고 카드가 옅은 회색이다. 테두리도 그림자도 없다. 이게 정돈된 인상의 대부분을 만든다.
+## Layout
 
-| 토큰 | Light | Dark |
+- **셸**: `{spacing.max-width}` 480px 중앙 정렬. 상단 앱바 + 하단 탭바 + 우하단 FAB.
+- **Spacing**: base `{spacing.base}` 4px. 페이지 좌우 `{spacing.page-margin}` 15px. 섹션 간 `{spacing.section-gap}` 22px. 카드 패딩 `{spacing.card-p}` 14px.
+- **섹션 구분**: 추천 ↔ 기술 블로그 사이는 **8px 두께 surface 구분선**(full-bleed)로 크게 나눈다.
+- **홈 구조**: 앱바(로고·알림) → 검색 pill → **추천 글 캐러셀** → 8px 구분선 → 기업별 peek 스와이프.
+
+## Shapes
+
+| Token | Value | Use |
 |---|---|---|
-| `--bg` | `#FFFFFF` | `#101215` |
-| `--card` | `#F2F2F2` | `#1A1D21` |
-| `--card-strong` | `#E7E8EA` | `#242830` |
+| `{rounded.lg}` | 8px | 입력, 소형 로고 타일 |
+| `{rounded.xl}` | 12px | 보조 |
+| `{rounded.2xl}` | 16px | 카드(추천·목록), AI/작성자 카드 |
+| `{rounded.hero}` | 22px | 히어로/강조 패널 |
+| `{rounded.full}` | 9999px | 버튼·칩·탭·뱃지·검색 pill·FAB·아바타·점 인디케이터 |
 
-### 3-2. 텍스트
+## Elevation
 
-**회색은 두 단계만 만든다.** 세 번째 단계(더 옅은 회색)는 대비 기준을 통과하지 못하므로 아예 정의하지 않는다.
+flat + 하드라인 기본. 떠 있는 요소에만 그림자.
+- flat: 카드·입력·뱃지 — `{colors.hairline}` 테두리, 그림자 0.
+- FAB: 코랄 + `0 6px 18px rgba(255,74,40,.42)`.
+- 히어로: 그림자 대신 내부 코랄 방사 글로우.
+- 모달·드로어: `0 12px 40px rgba(0,0,0,.28)`.
 
-| 토큰 | Light | Dark | 카드 위 대비 |
-|---|---|---|---|
-| `--text` | `#16181C` | `#F1F2F4` | 15.88 / 15.10 |
-| `--text-sub` | `#6B6F76` | `#8A9099` | 4.51 / 5.26 |
+## Components
 
-### 3-3. 액센트
+### Buttons — 전부 알약
+- **`button-primary`**: 검정 알약. bg `{colors.ink}`, text `{colors.on-primary}`, `{rounded.full}`. 비활성 bg `{colors.surface}`.
+- **`button-outline`**: bg `{colors.canvas}`, `1px solid {colors.ink}`, `{rounded.full}`.
+- **`button-google`**: bg `{colors.canvas}`, `1px solid {colors.hairline}`, `{rounded.full}`.
+- **`fab`**: 56px 원형. bg `{colors.cat-ai-fg}` 코랄. 우하단 고정, 탭바 위.
 
-**모드가 바뀌어도 필 색은 그대로 둔다.** 다크에서 밝히면 흰 글씨 대비가 깨진다.
+### Recommended Carousel (`rankcar`) — 홈 상단
+한 화면에 **한 장씩** 스냅 스크롤 + 하단 **점 인디케이터**. 각 카드에 **순위 인덱스 번호**(`01`·`02`…, 코랄, tabular-nums).
+- 카드(`rankcard`): bg `{colors.canvas}`, `1px {colors.hairline}`, `{rounded.2xl}`, padding 16px. 좌측 큰 인덱스 + 우측 본문(카테고리 아이브로우 / 제목 / 로고·기업·인사이트수 푸터).
+- 점(`rankcar-dot`): 비활성 6px 회색 점, **활성 18px 코랄 알약**. 클릭 시 해당 장으로 스크롤.
+- 순서 = 인사이트(리뷰) 많은 순 → 동률 최신순.
 
-| 토큰 | 값 | 의미 | 흰 글씨 대비 |
-|---|---|---|---|
-| `--blue` | `#056DFF` | 선택됨 · 활성 | 4.52 ✅ |
-| `--orange` | `#C75300` | 내 참여 · 주의 | 4.51 ✅ |
-| `--lime` | `#93C120` | 분류 · 진행 | ❌ 텍스트 금지 |
-| `--sky` | `#6BA3D6` | 분류 | ❌ 텍스트 금지 |
+### Quiet Card (`card` / `scard`) — 목록·기업 스와이프
+bg `{colors.canvas}`, `1px {colors.hairline}`, `{rounded.2xl}`, padding 14px.
+- 상단행: 로고(26px) + 기업/도메인 + 카테고리 아이브로우 pill
+- 제목 `{typography.card-title}`
+- 구분선 푸터: `읽음`(success) · `읽기시간` · `인사이트 N`(우측)
 
-### 3-4. 사용 규칙
+### Company Logo (`clogo`)
+실제 기업 로고(인라인 SVG 마크: 토스·카카오·네이버·배민·당근·라인). 미매칭 시 컬러 이니셜 타일 폴백. 헤더 38px / 카드 26px / 인라인 20px.
 
-1. **화면당 채도 높은 필은 하나.** 활성 탭이 파랑이면 그 화면의 배지는 파랑을 쓰지 않는다.
-2. **라임과 스카이는 글씨를 얹지 않는 자리에만.** 좌측 바, 도트, 진행 바, 언더라인.
-   초록 계열은 휘도가 높아 흰 글씨가 붙는 순간 라임이 아니게 된다. 굳이 초록 배지가 필요하면 `#2C8500`(4.73:1)까지 내려야 하고, 그건 다른 색이다.
-3. **비활성·종료는 무채색.** 색을 쓰지 않는 것도 상태 표현이다.
-4. 그라데이션, 글로우, 컬러 그림자 없음.
+### Company Header (`comprow`)
+로고 + **기업명** + **즐겨찾기 별**(이름 옆). 도메인 표기 없음. 활성 별은 코랄.
 
----
+### AI / Author Card
+- **`ai-card`**: AI 3문답. bg `{colors.surface}`, `{rounded.2xl}`. `✦`(코랄) 아이브로우 + Q/A 쌍.
+- **`author-card`**: 직접 등록 작성자. bg `{colors.surface}`, `{rounded.2xl}`.
 
-## 4. 타이포
+### Chips & Tabs — 알약
+- **`chip`**: 비활성 bg `{colors.canvas}` + `1px {colors.hairline}` + `{colors.steel-text}`. 활성 bg `{colors.ink}` + `{colors.on-primary}`.
+- **`seg`**: 알약 세그먼트(요약/원문, 전체/북마크, 마이 탭). 활성 검정.
+- **`chip-cat`**(아이브로우): 카테고리별 파스텔 bg/fg.
 
-- **본문/UI**: Pretendard — 400, 500만 사용. 600 이상은 화면이 무거워진다.
-- **메타**: JetBrains Mono 400 — 출처 URL, 날짜, 숫자. 여기서 "테크" 감각이 나온다. 제목에는 쓰지 않는다.
+### Badges — 알약 (Pretendard)
+- **`badge-new`**: bg `{colors.cat-ai-fg}` 코랄 / `#fff`.
+- **`badge-read`**: bg `{colors.surface}` / `{colors.steel-text}`.
+- **`badge-ok`**: bg `{colors.success-bg}` / `{colors.success-text}`.
 
-| 역할 | 크기 | 굵기 | 행간 |
-|---|---|---|---|
-| 화면 제목 | 22px | 500 | 1.3 |
-| 카드 제목 | 15px | 500 | 1.45 |
-| 본문 (원문 리더) | 16px | 400 | 1.75 |
-| 메타 (mono) | 11px | 400 | 1.4 |
-| 배지 · 칩 | 11px | 500 | 1 |
+### Section Divider (`section-divider`)
+섹션 대분류용 **8px 두께 surface 구분선**(full-bleed). 추천 ↔ 기술 블로그 사이에 사용.
 
-**스케일 점프를 크게 벌린다.** 22px과 11px이 한 화면에 같이 있는 것이 정적인 리스트에 리듬을 만든다. 중간 크기를 촘촘히 채우지 않는다.
+### Inputs / Search
+- **`input`**: bg `{colors.canvas}`, `1px {colors.hairline}`, `{rounded.lg}`, focus 테두리 `{colors.ink}`.
+- **`searchbar`**: bg `{colors.surface}`, `{rounded.full}`. **위치는 기존 유지**(앱바 아래 독립 행).
 
----
+### Navigation — **기존 유지**
+- **앱바**: 로고(insight**.** — 점 코랄) + 우측 **알림 벨**(유지). 하단 `1px {colors.hairline}`.
+- **탭바**: 하단 고정 **4탭 — 홈 / 피드 / 인사이트 / 마이**(유지, 변경 안 함). 활성 `{colors.ink}`, 비활성 `{colors.steel-text}`.
+- **아이콘**: 앱 자체 SVG 아이콘셋(`Icon.tsx`) 유지. 레퍼런스의 Material Symbols는 참고용.
 
-## 5. 간격 · 형태
+## Do's and Don'ts
 
-- 간격 단위: 4px 배수 (`4 / 8 / 12 / 16 / 24`)
-- 화면 좌우 여백: `16px`
-- 카드 사이 간격: `8px` — 카드가 붙어 리스트로 읽히게 한다
-- 카드 내부 패딩: `13px 14px`
-- 라디우스: 카드 `12px` · 배지 `6px` · 칩/필 `20px` · 아이콘 버튼 `50%`
-- 그림자: 없음. 계층은 면 색으로만 표현한다.
-- 좌측 카테고리 바를 쓰는 카드는 **왼쪽 두 모서리의 라디우스를 0으로** 만든다. 한쪽 보더에 라운드를 주면 어긋나 보인다.
+### Do
+- 대표 CTA는 검정 알약.
+- 코랄은 뱃지·FAB·추천 인덱스·히어로 글로우·활성 별에만.
+- 추천은 캐러셀(점+인덱스), 기업 목록은 peek 스와이프로 성격 구분.
+- 모든 버튼·칩·탭·뱃지 `{rounded.full}`.
+- 모든 텍스트 Pretendard.
+- 기업은 실제 로고 마크로.
 
----
+### Don't
+- 코랄·파랑을 본문/넓은 면에 쓰지 말 것.
+- 버튼 모서리를 알약보다 각지게 하지 말 것.
+- **DM Sans·JetBrains Mono 등 별도 서체 도입 금지** — 전부 Pretendard.
+- 알림 벨·하단 탭바를 디자인 리프레시 명목으로 바꾸지 말 것.
+- 흰 카드에 무거운 그림자 금지.
+- 파랑을 주요 CTA로 되돌리지 말 것.
 
-## 6. 컴포넌트
+## Responsive
+- 기본 모바일(480px 셸). 데스크톱도 480px 중앙 컬럼.
+- 추천 캐러셀: 한 장 100% 폭 스냅 + 점. 기업 스와이프: `flex 0 0 76%` peek.
+- FAB·탭바는 `env(safe-area-inset-bottom)` 고려. 터치 타깃 최소 44px.
 
-### 카드
-`--card` 배경 · 라디우스 12px · 보더 없음 · 그림자 없음.
-구성: [좌측 바] 제목 → 메타(mono) → (하단) 아바타·아이콘 액션. 상태 배지는 제목과 같은 줄 우측 상단에 고정.
+## Known Gaps / Notes
+- **폰트**: Pretendard만 CDN 로드. DM Sans/JetBrains Mono 링크 제거.
+- **로고 자산**: 기업별 SVG 심볼 맵(`PostCard`), 신규 기업은 이니셜 폴백.
+- **다크 모드**: 대비 유지 원칙만. 정식 팔레트 추후.
+- **애니메이션**: 상태 전환 150–200ms ease. 카드 rise 유지.
 
-### 상태 배지
-높이 22px · 패딩 `4px 9px` · 라디우스 6px · 11px/500 · 흰 글씨.
-
-| 상태 | 배경 | 글씨 |
-|---|---|---|
-| 새 글 / 활성 | `--blue` | `#FFFFFF` |
-| 내 사유 있음 | `--orange` | `#FFFFFF` |
-| 읽음 / 종료 | `--card-strong` | `--text-sub` |
-
-한 카드에 배지는 하나만. 두 개를 붙이고 싶어지면 그중 하나는 좌측 바나 아이콘으로 내린다.
-
-### 카테고리 바
-카드 좌측 세로 3px. 태그 그룹당 색 고정 (`--lime` / `--sky` / `--blue` / `--orange`). 5개 이상으로 늘리지 않는다. 색이 늘어나는 순간 분류가 아니라 얼룩이 된다.
-
-### 아이콘 버튼
-28px 원형 · 무채색 배경(`--card-strong`) · 아이콘만 액센트 색. 카드 우하단에 최대 3개까지 가로 배열.
-
-### 필터 칩
-높이 32px · 라디우스 20px. 선택된 것만 `--blue` 필 + 흰 글씨, 나머지는 `--card` 필 + `--text-sub`. **선택 상태가 화면에서 유일한 진한 필이다.**
-
-### FAB
-56px 원형 · `--text` 색 필(파랑 아님) · 흰 아이콘 · 우하단 고정. 액센트 색을 여기 쓰면 화면당 필 하나 규칙이 깨진다.
-
-### 아바타 행
-20px 원형 + 이름 11px `--text-sub`. 이름은 한 줄, 넘치면 말줄임.
-
-### 빈 상태
-**여기서만 원본 팔레트를 크게 쓴다.** 스카이블루 면, 라임 도형을 쓴 일러스트 + 한 줄 안내 + 동사형 버튼 하나.
-읽는 화면은 조용하게, 읽지 않는 화면(빈 상태·온보딩·주간 요약)에서 색을 터뜨린다. 앱 전체 인상은 활기차면서 실사용 중엔 눈이 편해진다.
-
----
-
-## 7. 모션
-
-역동성은 색이 아니라 여기서 나온다.
-
-| 대상 | 동작 | 시간 |
-|---|---|---|
-| 카드 리스트 진입 | y+8px → 0, 40ms 간격 stagger | 220ms `ease-out` |
-| 필터 칩 전환 | 필 색 크로스페이드 | 140ms `ease-out` |
-| 배지 카운트 증가 | scale 1 → 1.12 → 1 | 180ms |
-| 시트 · 드로어 | 스프링 (overshoot 소량) | 280ms |
-| 탭 전환 | 페이드만, 슬라이드 없음 | 120ms |
-
-`prefers-reduced-motion` 지정 시 stagger와 스프링을 제거하고 페이드만 남긴다.
-
----
-
-## 8. 카피
-
-- 문장형 대소문자, 마침표 없음 (버튼·라벨·배지)
-- 버튼은 동사 먼저: "사유 남기기", "글 등록" — "확인", "제출" 금지
-- 빈 상태는 사과가 아니라 초대: "아직 없어요" ❌ → "첫 번째 리더가 되어보세요" ✅
-- 에러는 무슨 일이 있었는지 + 무엇을 하면 되는지 한 문장
-- 느낌표 쓰지 않음
-
----
-
-## 9. 하지 않을 것
-
-- 카드에 보더 또는 그림자 넣기
-- 회색을 세 단계 이상 만들기
-- 라임·스카이 위에 텍스트 얹기
-- 한 화면에 진한 필 두 개 이상
-- 다크 모드에서 액센트 필 밝히기
-- 제목에 모노스페이스 쓰기
-- 채도 낮은 파스텔 틴트로 배지 만들기 (원색을 작게 쓰는 것이 이 시스템의 방식)
-
----
-
-## 부록: 대비 검증값
-
-11px 텍스트는 WCAG AA 기준 4.5:1이 필요하다. 아래는 실제 계산값.
-
-| 조합 | 대비 | 판정 |
-|---|---|---|
-| `#FFFFFF` on `--blue` `#056DFF` | 4.52 | ✅ |
-| `#FFFFFF` on `--orange` `#C75300` | 4.51 | ✅ |
-| `--text-sub` on `--card` (light) | 4.51 | ✅ |
-| `--text-sub` on `--card` (dark) | 5.26 | ✅ |
-| `#FFFFFF` on 라임 `#93C120` | 2.12 | ❌ 사용 금지 |
-| `#FFFFFF` on 오렌지 `#EC6608` | 3.25 | ❌ 사용 금지 |
-
-액센트 값을 조정할 경우 흰 글씨 기준 4.5:1을 반드시 다시 계산할 것. 채도 100%를 유지하면서 흰 글씨가 가능한 상한은 오렌지 `#C75300`, 파랑 `#056DFF` 부근이다.
+## Iteration Guide
+1. 한 번에 한 컴포넌트씩. `globals.css` 토큰 → 클래스 순.
+2. 토큰명 직접 참조(`{colors.ink}`, `{rounded.full}`).
+3. 새 변형은 `-active`/`-disabled` 별도 항목.
+4. 본문 `{typography.body}`, 강조는 weight. 헤드라인 appbar→display-title→hero→card-title.
+5. 브랜드색이 일반 버튼/면에 등장하면 "그 자리를 벌었는가" 자문.

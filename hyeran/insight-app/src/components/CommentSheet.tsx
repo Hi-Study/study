@@ -59,12 +59,12 @@ export default function CommentSheet({
         setComments((c) => [...(c ?? []), data as unknown as Comment]);
         setCount((n) => n + 1);
         setText("");
-        // 알림: 답글이면 상위 댓글 작성자, 아니면 독후감 작성자 (본인 제외)
+        // 알림: 답글이면 상위 댓글 작성자, 아니면 인사이트 작성자 (본인 제외)
         const target = replyTo ? replyTo.authorId : reviewAuthorId;
         if (target !== user.id) {
           await sb.from("notifications").insert({
             user_id: target, type: "comment",
-            title: replyTo ? "회원님의 댓글에 답글이 달렸어요" : "회원님의 독후감에 댓글이 달렸어요",
+            title: replyTo ? "회원님의 댓글에 답글이 달렸어요" : "회원님의 인사이트에 댓글이 달렸어요",
             body,
           });
         }
@@ -102,7 +102,7 @@ export default function CommentSheet({
       {open && <div className="scrim show" onClick={() => setOpen(false)} />}
       <div className={`drawer ${open ? "show" : ""}`}>
         <div className="handle" />
-        <div className="dhead">독후감 댓글 {count}<button className="iconbtn" style={{ marginLeft: "auto" }} onClick={() => setOpen(false)}><Icon name="x" /></button></div>
+        <div className="dhead">인사이트 댓글 {count}<button className="iconbtn" style={{ marginLeft: "auto" }} onClick={() => setOpen(false)}><Icon name="x" /></button></div>
         <div className="dbody">
           <div className="review" style={{ background: "transparent", padding: "0 0 12px", marginBottom: 12, borderBottom: "1px solid var(--card-strong)" }}>
             <div className="who"><span className="avatar">{preview.initial}</span><span style={{ fontSize: 13, fontWeight: 500 }}>{preview.name}</span></div>
@@ -129,7 +129,7 @@ export default function CommentSheet({
         )}
         <div style={{ display: "flex", gap: 8, padding: "12px 16px calc(12px + env(safe-area-inset-bottom))", alignItems: "center" }}>
           <input className="input" style={{ borderRadius: "var(--r-chip)", flex: 1 }}
-            placeholder={replyTo ? `${replyTo.name}님에게 답글 달기` : "독후감에 댓글 달기"}
+            placeholder={replyTo ? `${replyTo.name}님에게 답글 달기` : "인사이트에 댓글 달기"}
             value={text} onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") send(); }} />
           <button onClick={send} disabled={busy}
