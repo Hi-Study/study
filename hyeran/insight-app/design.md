@@ -203,6 +203,7 @@ flat + 하드라인 기본. 떠 있는 요소에만 그림자.
 - FAB·탭바는 `env(safe-area-inset-bottom)` 고려. 터치 타깃 최소 44px.
 
 ## Known Gaps / Notes
+- **PWA**: `manifest.ts`(standalone·portrait, theme `#161616`) + 앱 아이콘(`icon.svg`, `icon-192/512.png`, `apple-icon.png` 180). 폰 "홈 화면에 추가" 시 앱처럼 설치. 아이콘 = 검정 타일 + 흰 "i" + 코랄 점.
 - **폰트**: Pretendard만 CDN 로드. DM Sans/JetBrains Mono 링크 제거.
 - **로고 자산**: 기업별 SVG 심볼 맵(`PostCard`), 신규 기업은 이니셜 폴백.
 - **다크 모드**: 대비 유지 원칙만. 정식 팔레트 추후.
