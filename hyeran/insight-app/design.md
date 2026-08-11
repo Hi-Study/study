@@ -6,16 +6,16 @@
 
 ## Overview
 
-인사이트는 **스타크 모노크롬(화이트 캔버스 + 검정 잉크)** 위에 **코랄 한 색**만 아껴 쓰는 절제된 언어를 쓴다. 검정(`{colors.primary}` = `#000`/`{colors.ink}`)이 대표 CTA이고, 코랄(`{colors.cat-ai-fg}` = `#FF4A28`)은 "지금 주목" 순간 — 뱃지, FAB, 추천 인덱스, 히어로 글로우, 활성 즐겨찾기 — 에만 등장한다. 파랑(`{colors.blue-info}`)은 링크/정보 보조로 강등된다.
+인사이트는 **스타크 모노크롬(화이트 캔버스 + 검정 잉크)** 위에 **코랄 한 색**만 아껴 쓰는 절제된 언어를 쓴다. 검정(`{colors.primary}` = `#000`/`{colors.ink}`)이 대표 CTA이고, 코랄(`{colors.cat-ai-fg}` = `#FF4A28`)은 "지금 주목" 순간 — 뱃지, FAB, 히어로 글로우, 활성 점 인디케이터, 활성 즐겨찾기 — 에만 등장한다. 파랑(`{colors.blue-info}`)은 링크/정보 보조로 강등된다.
 
-카드는 **위계로 구분**된다. 상단 **추천 글**은 한 화면에 한 장씩 넘어가는 **캐러셀(점 인디케이터 + 순위 인덱스)**로, 하단 **기술 블로그 모아보기**는 여러 장이 흐르는 **peek 스와이프**로 — 같은 카드 언어를 쓰되 인터랙션과 인덱스로 성격을 구분한다.
+카드는 **위계로 구분**된다. 상단 **추천 글**은 한 화면에 한 장씩 넘어가는 **캐러셀**이며 각 카드는 **다크 히어로 카드(브랜드 다크 배경 + 코랄 글로우)**로 시선을 끈다. 하단 **기술 블로그 모아보기**는 여러 장이 흐르는 **peek 스와이프**이며 각 카드에 **기업 브랜드색 틴트**를 입혀 생동감을 준다 — 다크(강) ↔ 컬러 틴트(생동)의 대비.
 
 서체는 **Pretendard 단일 서체**를 모든 역할에 쓴다. 디스플레이·본문·라벨·**뱃지·아이콘 옆 메타 문구**까지 전부 Pretendard 하나로 통일한다(별도 라틴/모노 서체 없음).
 
 **Key Characteristics**
 - 모노크롬(화이트 `{colors.canvas}` + 검정 `{colors.primary}`)에 코랄 `{colors.cat-ai-fg}` 단일 포인트
 - 검정 알약 = 대표 CTA. 브랜드색은 정체성 순간에만
-- 카드 위계: 추천 캐러셀(점+인덱스) ↔ 기업별 peek 스와이프
+- 카드 위계: 추천 다크 히어로 캐러셀(점) ↔ 기업별 컬러 틴트 스와이프
 - 실제 기업 로고(인라인 SVG 마크)
 - **Pretendard 단일 서체** — 모든 텍스트(뱃지·메타 포함)
 - 480px 모바일 셸 + 상단 알림 벨 + 하단 탭바(홈/피드/인사이트/마이) + 우하단 FAB
@@ -26,7 +26,7 @@
 ## Colors
 
 ### Brand & Accent
-- **Coral** (`{colors.cat-ai-fg}` = `#FF4A28`): 유일한 브랜드 포인트. NEW 뱃지, FAB, 추천 인덱스 번호, 히어로 글로우, 활성 즐겨찾기. 과용 금지.
+- **Coral** (`{colors.cat-ai-fg}` = `#FF4A28`): 유일한 브랜드 포인트. NEW 뱃지, FAB, 히어로 글로우, 활성 점 인디케이터, 활성 즐겨찾기. 과용 금지.
 - **Blue Info** (`{colors.blue-info}` = `#056DFF`): 링크·정보 보조. 주요 CTA 아님.
 
 ### Ink & Surface
@@ -63,7 +63,7 @@
 "Pretendard","Pretendard Variable",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif
 ```
 
-> DM Sans, JetBrains Mono는 **사용하지 않는다**(사용자 결정). 레퍼런스가 hero/appbar에 DM Sans, eyebrow/meta에 JetBrains Mono를 지정했더라도 전부 Pretendard로 통일한다. 숫자 정렬이 필요한 곳(추천 인덱스·수치 메타)은 `font-variant-numeric: tabular-nums`로 보정한다. 기업 로고 SVG 내부 워드마크는 브랜드 자산이므로 예외.
+> DM Sans, JetBrains Mono는 **사용하지 않는다**(사용자 결정). 레퍼런스가 hero/appbar에 DM Sans, eyebrow/meta에 JetBrains Mono를 지정했더라도 전부 Pretendard로 통일한다. 숫자 정렬이 필요한 곳(수치 메타)은 `font-variant-numeric: tabular-nums`로 보정한다. 기업 로고 SVG 내부 워드마크는 브랜드 자산이므로 예외.
 
 ### Hierarchy (전부 Pretendard)
 
@@ -121,16 +121,17 @@ flat + 하드라인 기본. 떠 있는 요소에만 그림자.
 - **`fab`**: 56px 원형. bg `{colors.cat-ai-fg}` 코랄. 우하단 고정, 탭바 위.
 
 ### Recommended Carousel (`rankcar`) — 홈 상단
-한 화면에 **한 장씩** 스냅 스크롤 + 하단 **점 인디케이터**. 각 카드에 **순위 인덱스 번호**(`01`·`02`…, 코랄, tabular-nums).
-- 카드(`rankcard`): bg `{colors.canvas}`, `1px {colors.hairline}`, `{rounded.2xl}`, padding 16px. 좌측 큰 인덱스 + 우측 본문(카테고리 아이브로우 / 제목 / 로고·기업·인사이트수 푸터).
+한 화면에 **한 장씩** 스냅 스크롤 + 하단 **점 인디케이터**. 각 카드는 **다크 히어로 카드**(`feature`)로, 브랜드 다크 배경 + 코랄 방사 글로우로 시선을 끈다. **인덱스 번호는 쓰지 않는다.**
+- 카드(`feature`): bg `{colors.hero-bg}`(다크), text 화이트, `{rounded.hero}`, 우상단 코랄 방사 글로우(`::after`). 구성: 코랄 아이브로우(✦ 오늘의 글) / 히어로 타이틀 / AI 요약 서브라인 / 상단 구분선 후 푸터(기업·저자 · 인사이트수) / 우상단 원형 열기 버튼.
 - 점(`rankcar-dot`): 비활성 6px 회색 점, **활성 18px 코랄 알약**. 클릭 시 해당 장으로 스크롤.
 - 순서 = 인사이트(리뷰) 많은 순 → 동률 최신순.
 
 ### Quiet Card (`card` / `scard`) — 목록·기업 스와이프
-bg `{colors.canvas}`, `1px {colors.hairline}`, `{rounded.2xl}`, padding 14px.
+**기업별 컬러 틴트**로 생동감을 준다: 배경 = 기업 브랜드색(`--cc` = `company.color`)을 7% 섞은 화이트, 테두리 = 26% 섞은 하드라인(`color-mix`). 기업 없으면 중립 하드라인. `{rounded.2xl}`, padding 14px.
 - 상단행: 로고(26px) + 기업/도메인 + 카테고리 아이브로우 pill
 - 제목 `{typography.card-title}`
 - 구분선 푸터: `읽음`(success) · `읽기시간` · `인사이트 N`(우측)
+- 위계: 기업 틴트(은은한 면) + 카테고리 아이브로우(색 팝) 공존.
 
 ### Company Logo (`clogo`)
 실제 기업 로고(인라인 SVG 마크: 토스·카카오·네이버·배민·당근·라인). 미매칭 시 컬러 이니셜 타일 폴백. 헤더 38px / 카드 26px / 인라인 20px.
@@ -155,9 +156,23 @@ bg `{colors.canvas}`, `1px {colors.hairline}`, `{rounded.2xl}`, padding 14px.
 ### Section Divider (`section-divider`)
 섹션 대분류용 **8px 두께 surface 구분선**(full-bleed). 추천 ↔ 기술 블로그 사이에 사용.
 
+### Loading (`spinner` / `PageSkeleton`)
+전역 로딩 UI. 라우트 전환 시 **즉시 피드백**을 줘 "지연 = 오류" 오인을 막는다. 각 주요 라우트에 `loading.tsx` 폴백 배치.
+- **`spinner`**: 코랄 회전 링(2.5px, `--card-strong` 트랙 + `--coral` 헤드). 중앙 배치 `loading-screen` 또는 클라이언트 액션 인라인.
+- **`PageSkeleton`**: 앱바 라인 + 카드 스켈레톤(shimmer). 리스트형 페이지의 Suspense 폴백.
+- 컴포넌트: `src/components/Loading.tsx` (기본 export = 중앙 스피너).
+
+### Confirm Dialog (`confirm-box`)
+하단 고정 확인 다이얼로그 + `scrim`. 파괴적 액션 확인용.
+- **삭제 시 개수 명시**: 직접 등록 글 삭제 확인에는 달린 **인사이트 N개·댓글 M개**를 문구에 노출("…삭제하면 모두 함께 사라져요"). 참여가 없으면 일반 문구.
+- 버튼: `button-outline`(취소) + `button-danger`(삭제, 진행 중 "삭제 중…").
+
 ### Inputs / Search
 - **`input`**: bg `{colors.canvas}`, `1px {colors.hairline}`, `{rounded.lg}`, focus 테두리 `{colors.ink}`.
 - **`searchbar`**: bg `{colors.surface}`, `{rounded.full}`. **위치는 기존 유지**(앱바 아래 독립 행).
+
+### My — 프로필 / 로그아웃
+프로필 행: 아바타 + 이름/역할 + **로그아웃(`logout-sm`)을 우측에 소형 아웃라인 pill**로. 하단 대형 버튼 아님.
 
 ### Navigation — **기존 유지**
 - **앱바**: 로고(insight**.** — 점 코랄) + 우측 **알림 벨**(유지). 하단 `1px {colors.hairline}`.
@@ -168,8 +183,8 @@ bg `{colors.canvas}`, `1px {colors.hairline}`, `{rounded.2xl}`, padding 14px.
 
 ### Do
 - 대표 CTA는 검정 알약.
-- 코랄은 뱃지·FAB·추천 인덱스·히어로 글로우·활성 별에만.
-- 추천은 캐러셀(점+인덱스), 기업 목록은 peek 스와이프로 성격 구분.
+- 코랄은 뱃지·FAB·히어로 글로우·활성 점·활성 별에만.
+- 추천은 다크 히어로 캐러셀(점), 기업 목록은 기업색 틴트 peek 스와이프로 성격 구분.
 - 모든 버튼·칩·탭·뱃지 `{rounded.full}`.
 - 모든 텍스트 Pretendard.
 - 기업은 실제 로고 마크로.

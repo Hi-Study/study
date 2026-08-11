@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { RankCard } from "@/components/PostCard";
+import { FeatureCard } from "@/components/PostCard";
 import type { Post } from "@/lib/types";
 
 export default function RankCarousel({ posts }: { posts: Post[] }) {
@@ -24,9 +24,9 @@ export default function RankCarousel({ posts }: { posts: Post[] }) {
   return (
     <div className="rankcar">
       <div className="rankcar-track" ref={trackRef} onScroll={onScroll}>
-        {posts.map((p, i) => (
+        {posts.map((p) => (
           <div className="rankcar-slide" key={p.id}>
-            <RankCard post={p} index={i + 1} />
+            <FeatureCard post={p} />
           </div>
         ))}
       </div>

@@ -1,5 +1,5 @@
 import { PageSkeleton } from "@/components/Loading";
 
 export default function Loading() {
-  return <PageSkeleton cards={6} />;
+  return <PageSkeleton cards={5} />;
 }

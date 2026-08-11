@@ -88,6 +88,15 @@ svg.i.lg{ width:26px; height:26px; }
 /* 섹션 대분류 구분선 (8px surface, full-bleed) */
 .section-divider{ border:none; height:8px; background:var(--surface); margin:16px -15px 22px; }
 
+/* 전역 로딩 UI */
+.spinner{ display:inline-block; box-sizing:border-box; border:2.5px solid var(--card-strong); border-top-color:var(--coral); border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+.loading-screen{ min-height:60vh; display:flex; align-items:center; justify-content:center; }
+
+/* 로그아웃 (프로필 우측 소형) */
+.logout-sm{ margin-left:auto; flex:0 0 auto; padding:7px 14px; border-radius:var(--r-full); border:1px solid var(--hairline); background:var(--canvas); color:var(--text-sub); font-size:12px; font-weight:600; cursor:pointer; }
+.logout-sm:active{ background:var(--surface); }
+
 /* ===== search entry ===== */
 .searchbar{ display:flex; align-items:center; gap:8px; background:var(--surface); border-radius:var(--r-full); padding:11px 15px; margin:12px 0; }
 .searchbar input{ border:none; background:none; flex:1; font-size:14px; outline:none; font-family:var(--font); color:var(--text); }
@@ -103,8 +112,8 @@ svg.i.lg{ width:26px; height:26px; }
 .chips.wrap{ flex-wrap:wrap; overflow-x:visible; }
 
 /* ===== card — 하드라인 flat (좌측 바 제거) ===== */
-.card{ position:relative; display:block; background:var(--card); border:1px solid var(--hairline); border-radius:var(--r-card); padding:13px 14px; margin-bottom:9px; animation:rise .22s ease-out both; }
-.card:active{ background:var(--surface); }
+.card{ position:relative; display:block; background:color-mix(in srgb, var(--cc, transparent) 7%, var(--card)); border:1px solid color-mix(in srgb, var(--cc, var(--hairline)) 26%, var(--hairline)); border-radius:var(--r-card); padding:13px 14px; margin-bottom:9px; animation:rise .22s ease-out both; }
+.card:active{ background:color-mix(in srgb, var(--cc, transparent) 13%, var(--surface)); }
 @keyframes rise{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
 
 /* card 내부 편집형 위계: 상단행(로고+기업+카테고리) / 제목 / 구분선 푸터 */
@@ -145,26 +154,16 @@ svg.i.lg{ width:26px; height:26px; }
 .feat-eyebrow{ position:relative; font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--coral); font-weight:600; display:flex; align-items:center; gap:6px; }
 .feat-title{ position:relative; font-size:19px; line-height:1.2; letter-spacing:-.4px; font-weight:600; margin:10px 0 6px; }
 .feat-sub{ position:relative; font-size:12.5px; color:rgba(255,255,255,.62); margin:0 0 16px; line-height:1.5; }
-.feat-foot{ position:relative; display:flex; align-items:center; gap:8px; font-size:11.5px; color:rgba(255,255,255,.9); }
+.feat-foot{ position:relative; display:flex; align-items:center; gap:8px; font-size:11.5px; color:rgba(255,255,255,.9); padding-top:14px; border-top:1px solid rgba(255,255,255,.12); }
 .feat-foot .clogo{ width:22px; height:22px; border-radius:6px; }
 .feat-foot .fcnt{ margin-left:auto; font-family:var(--mono); color:rgba(255,255,255,.6); }
 .feat-arrow{ position:absolute; top:16px; right:16px; width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,.12); display:flex; align-items:center; justify-content:center; color:#fff; }
 
-/* ===== 추천 랭킹 카루셀 (홈 상단 · 한 장씩 + 점 인디케이터) ===== */
+/* ===== 추천 캐러셀 (홈 상단 · 한 장씩 + 점 인디케이터) — 다크 히어로 카드 ===== */
 .rankcar-track{ display:flex; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; }
 .rankcar-track::-webkit-scrollbar{ display:none; height:0; }
 .rankcar-slide{ flex:0 0 100%; scroll-snap-align:center; display:flex; padding:2px; }
-.rankcard{ width:100%; display:flex; gap:14px; background:var(--card); border:1px solid var(--hairline); border-radius:var(--r-card); padding:16px; animation:rise .22s ease-out both; }
-.rankcard:active{ background:var(--surface); }
-.rank-idx{ flex:0 0 auto; font-family:var(--mono); font-size:32px; font-weight:700; line-height:.9; letter-spacing:-1.5px; color:var(--coral); font-variant-numeric:tabular-nums; }
-.rank-body{ flex:1; min-width:0; display:flex; flex-direction:column; }
-.rank-head{ display:flex; align-items:center; }
-.rank-head .qc-cat{ margin-left:0; }
-.rankcard h3{ margin:7px 0 0; font-size:16px; font-weight:600; line-height:1.4; letter-spacing:-.3px; }
-.rank-foot{ display:flex; align-items:center; gap:7px; margin-top:auto; padding-top:14px; font-family:var(--mono); font-size:10.5px; color:var(--text-sub); }
-.rank-foot .clogo{ width:20px; height:20px; border-radius:6px; }
-.rank-co{ color:var(--text); font-weight:600; }
-.rank-cnt{ margin-left:auto; display:inline-flex; align-items:center; gap:4px; }
+.rankcar-slide .feature{ width:100%; margin-bottom:0; }
 .rankcar-dots{ display:flex; justify-content:center; gap:6px; margin-top:12px; }
 .rankcar-dot{ width:6px; height:6px; border-radius:999px; background:var(--card-strong); border:none; padding:0; cursor:pointer; transition:width .2s ease, background .2s ease; }
 .rankcar-dot.on{ width:18px; background:var(--coral); }
@@ -172,8 +171,8 @@ svg.i.lg{ width:26px; height:26px; }
 /* ===== swipe (home) ===== */
 .swipe{ display:flex; gap:9px; overflow-x:auto; margin:0 -15px; padding:2px 15px 4px; }
 .swipe::-webkit-scrollbar{height:0;}
-.scard{ flex:0 0 76%; display:block; background:var(--card); border:1px solid var(--hairline); border-radius:var(--r-card); padding:13px 14px; }
-.scard:active{ background:var(--surface); }
+.scard{ flex:0 0 76%; display:block; background:color-mix(in srgb, var(--cc, transparent) 7%, var(--card)); border:1px solid color-mix(in srgb, var(--cc, var(--hairline)) 26%, var(--hairline)); border-radius:var(--r-card); padding:13px 14px; }
+.scard:active{ background:color-mix(in srgb, var(--cc, transparent) 13%, var(--surface)); }
 
 /* ===== company header (home) ===== */
 .comprow{ display:flex; align-items:center; gap:10px; margin:22px 0 11px; }

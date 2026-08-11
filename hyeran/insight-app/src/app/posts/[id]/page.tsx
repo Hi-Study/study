@@ -43,7 +43,13 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
       <div className="appbar">
         <BackButton />
         <span className="spacer" />
-        {isOwner && <PostOwnerMenu postId={post.id} />}
+        {isOwner && (
+          <PostOwnerMenu
+            postId={post.id}
+            reviewCount={reviews.length}
+            commentCount={reviews.reduce((s, r) => s + (r.comment_count ?? 0), 0)}
+          />
+        )}
         <BookmarkButton postId={post.id} initial={!!bm} />
       </div>
       <ReadTracker postId={post.id} alreadyRead={!!readRes.data} />

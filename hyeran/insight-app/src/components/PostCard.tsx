@@ -70,29 +70,9 @@ export function FeatureCard({ post }: { post: Post }) {
       <div className="feat-title">{post.title}</div>
       {post.ai_summary?.problem && <p className="feat-sub">{post.ai_summary.problem}</p>}
       <div className="feat-foot">
-        <CompanyLogo company={post.company} />
-        {label}
+        <span>{label}</span>
         <span className="fcnt">인사이트 {post.review_count ?? 0}</span>
       </div>
-    </Link>
-  );
-}
-
-// ===== 추천 랭킹 카드 (홈 상단 카루셀 · 인덱스 번호) =====
-export function RankCard({ post, index }: { post: Post; index: number }) {
-  const name = post.source === "direct" ? post.author?.name ?? "직접 등록" : post.company?.name ?? "";
-  return (
-    <Link className="rankcard" href={`/posts/${post.id}`}>
-      <span className="rank-idx">{String(index).padStart(2, "0")}</span>
-      <span className="rank-body">
-        <span className="rank-head"><CatBadge category={post.category} /></span>
-        <h3>{post.title}</h3>
-        <span className="rank-foot">
-          <CompanyLogo company={post.company} />
-          <span className="rank-co">{name}</span>
-          <span className="rank-cnt"><Icon name="review" size="sm" />인사이트 {post.review_count ?? 0}</span>
-        </span>
-      </span>
     </Link>
   );
 }
@@ -124,8 +104,9 @@ function CardFoot({ post }: { post: Post }) {
 
 // 전체 카드 (피드/검색/마이)
 export default function PostCard({ post }: { post: Post }) {
+  const cc = post.company?.color;
   return (
-    <Link className="card" href={`/posts/${post.id}`}>
+    <Link className="card" href={`/posts/${post.id}`} style={cc ? { ["--cc" as string]: cc } : undefined}>
       <CardTop post={post} />
       <h3>{post.title}</h3>
       {post.tags.length > 0 && (
@@ -140,8 +121,9 @@ export default function PostCard({ post }: { post: Post }) {
 
 // 홈 스와이프용 컴팩트 카드
 export function SwipeCard({ post }: { post: Post }) {
+  const cc = post.company?.color;
   return (
-    <Link className="scard" href={`/posts/${post.id}`}>
+    <Link className="scard" href={`/posts/${post.id}`} style={cc ? { ["--cc" as string]: cc } : undefined}>
       <CardTop post={post} />
       <h3>{post.title}</h3>
       <CardFoot post={post} />

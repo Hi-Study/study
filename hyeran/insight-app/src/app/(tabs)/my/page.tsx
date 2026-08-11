@@ -38,9 +38,9 @@ export default async function MyPage() {
             <div className="nm">{profile?.name ?? "인사이터"}</div>
             <div className="sub">인사이터</div>
           </div>
+          <LogoutButton />
         </div>
         <MyPostsClient insights={insights.map(mark)} comments={comments.map(mark)} highlights={highlights.map(mark)} />
-        <div style={{ marginTop: 20 }}><LogoutButton /></div>
       </div>
     </>
   );

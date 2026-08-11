@@ -10,5 +10,5 @@ export default function LogoutButton() {
     router.replace("/");
     router.refresh();
   };
-  return <button className="btn btn-ghost" onClick={signOut}>로그아웃</button>;
+  return <button className="logout-sm" onClick={signOut}>로그아웃</button>;
 }
