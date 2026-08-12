@@ -33,7 +33,10 @@ export const qk = {
     sort ? (["opinions", "feed", sort] as const) : (["opinions", "feed"] as const),
   opinion: (opinionId: string) => ["opinion", opinionId] as const,
   opinionComments: (opinionId: string) => ["opinion-comments", opinionId] as const,
-  articleHighlights: (articleId: string) => ["article-highlights", articleId] as const,
+  articleHighlights: (articleId: string, uid?: string) =>
+    uid
+      ? (["article-highlights", articleId, uid] as const)
+      : (["article-highlights", articleId] as const),
   liked: (targetType: string, targetId: string, uid: string) =>
     ["liked", targetType, targetId, uid] as const,
   myHighlights: (uid: string) => ["my-highlights", uid] as const,

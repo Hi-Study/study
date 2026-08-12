@@ -1,18 +1,16 @@
-// distill 원문 문장 하이라이트 — 문장을 눌러 밑줄+감상(모두에게 공유). article_highlights 기반.
-// 기존 HighlightSection(share 기반)과 동일한 UX를 article 전역판으로 재현.
+// distill 원문 문장 하이라이트 — 문장을 눌러 밑줄+메모(나만 보기, 비공개). article_highlights 기반.
 import { useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { Highlighter, Trash2, X } from "lucide-react-native";
+import { Highlighter, Lock, Trash2, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useUid } from "@/auth/AuthProvider";
@@ -24,7 +22,6 @@ import {
 } from "@/data";
 import { splitSentences, groupSentencesIntoBlocks } from "@/lib/text";
 import { HIGHLIGHT_COLORS, HIGHLIGHT_TEXT, highlightBg } from "@/lib/highlight";
-import { Avatar } from "@/components/Avatar";
 import { WordPickerSheet } from "@/components/distill/WordPickerSheet";
 
 export function ArticleHighlightSection({
@@ -44,21 +41,20 @@ export function ArticleHighlightSection({
   const [wordSentence, setWordSentence] = useState<string | null>(null);
 
   const list = highlights.data ?? [];
-  const sentenceHls = active ? list.filter((h) => h.sentence_index === active.index) : [];
+  const activeHl = active ? list.find((h) => h.sentence_index === active.index) : undefined;
 
   return (
     <View style={styles.section}>
       <View style={styles.head}>
         <Highlighter size={14} color={c.primary} />
         <Text style={[styles.headText, { color: c.primary }]}>
-          눌러서 밑줄·감상 · 길게 눌러 단어 저장
+          눌러서 밑줄·메모(나만 보기) · 길게 눌러 단어 저장
         </Text>
       </View>
 
       <HighlightableText
         text={text}
         highlights={list}
-        myUid={uid}
         activeIndex={active?.index ?? null}
         onTap={(index, quote) => setActive({ index, quote })}
         onLongPress={(quote) => setWordSentence(quote)}
@@ -66,7 +62,12 @@ export function ArticleHighlightSection({
 
       {list.length > 0 ? (
         <View style={[styles.rollup, { borderTopColor: c.hairline }]}>
-          <Text style={[styles.rollupTitle, { color: c.textSecondary }]}>밑줄 & 감상 {list.length}</Text>
+          <View style={styles.rollupHead}>
+            <Lock size={12} color={c.textMuted} />
+            <Text style={[styles.rollupTitle, { color: c.textSecondary }]}>
+              내 밑줄 & 메모 {list.length}
+            </Text>
+          </View>
           {list
             .slice()
             .sort((a, b) => a.sentence_index - b.sentence_index)
@@ -77,13 +78,9 @@ export function ArticleHighlightSection({
                 style={[styles.rollupRow, { backgroundColor: c.surfaceCard, borderColor: c.hairline }]}
               >
                 <View style={[styles.rollupBar, { backgroundColor: highlightBg(h.color) }]} />
-                <Avatar name={h.author?.name ?? "게스트"} size={28} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.rollupWho, { color: c.textPrimary }]}>
-                    {h.author_id === uid ? "나" : h.author?.name ?? "게스트"}
-                  </Text>
                   {h.quote ? (
-                    <Text numberOfLines={1} style={[styles.rollupQuote, { color: c.textMuted }]}>
+                    <Text numberOfLines={1} style={[styles.rollupQuote, { color: c.textPrimary }]}>
                       “{h.quote}”
                     </Text>
                   ) : null}
@@ -104,8 +101,7 @@ export function ArticleHighlightSection({
                 <SheetBody
                   key={active.index}
                   quote={active.quote}
-                  highlights={sentenceHls}
-                  myUid={uid}
+                  mine={activeHl}
                   pending={upsert.isPending || del.isPending}
                   onClose={() => setActive(null)}
                   onSave={(color, note) =>
@@ -134,14 +130,12 @@ export function ArticleHighlightSection({
 function HighlightableText({
   text,
   highlights,
-  myUid,
   activeIndex,
   onTap,
   onLongPress,
 }: {
   text: string;
   highlights: ArticleHighlightRow[];
-  myUid: string;
   activeIndex: number | null;
   onTap: (index: number, quote: string) => void;
   onLongPress: (quote: string) => void;
@@ -151,12 +145,8 @@ function HighlightableText({
   const sentences = useMemo(() => splitSentences(text), [text]);
   const blocks = useMemo(() => groupSentencesIntoBlocks(sentences), [sentences]);
   const byIndex = useMemo(() => {
-    const m = new Map<number, ArticleHighlightRow[]>();
-    for (const h of highlights) {
-      const a = m.get(h.sentence_index) ?? [];
-      a.push(h);
-      m.set(h.sentence_index, a);
-    }
+    const m = new Map<number, ArticleHighlightRow>();
+    for (const h of highlights) m.set(h.sentence_index, h);
     return m;
   }, [highlights]);
 
@@ -164,16 +154,12 @@ function HighlightableText({
   const renderSentence = ({ index: i, seg }: { index: number; seg: string }) => {
     const display = seg.replace(/\n+$/, ""); // 줄 끝 개행은 블록 간격이 대신
     const isActive = i === activeIndex;
-    const hs = byIndex.get(i);
-    const marked = hs && hs.length > 0;
+    const hl = byIndex.get(i);
     const style = isActive
       ? { backgroundColor: c.primary, color: "#ffffff" }
-      : marked
-        ? { backgroundColor: highlightBg(hs![0].color), color: HIGHLIGHT_TEXT }
+      : hl
+        ? { backgroundColor: highlightBg(hl.color), color: HIGHLIGHT_TEXT }
         : undefined;
-    const names = marked
-      ? hs!.map((h) => (h.author_id === myUid ? "나" : h.author?.name ?? "게스트")).join("·")
-      : "";
     return (
       <Text
         key={i}
@@ -182,12 +168,6 @@ function HighlightableText({
         style={style}
       >
         {display}
-        {marked ? (
-          <Text style={[styles.inlineAuthor, { color: isActive ? "#ffffff" : c.primary }]}>
-            {" ✎"}
-            {names}
-          </Text>
-        ) : null}
       </Text>
     );
   };
@@ -212,16 +192,14 @@ function HighlightableText({
 
 function SheetBody({
   quote,
-  highlights,
-  myUid,
+  mine,
   pending,
   onClose,
   onSave,
   onDelete,
 }: {
   quote: string;
-  highlights: ArticleHighlightRow[];
-  myUid: string;
+  mine: ArticleHighlightRow | undefined;
   pending: boolean;
   onClose: () => void;
   onSave: (color: string, note: string | null) => void;
@@ -229,18 +207,21 @@ function SheetBody({
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
-  const mine = highlights.find((h) => h.author_id === myUid);
-  const others = highlights.filter((h) => h.author_id !== myUid);
   const [color, setColor] = useState<string>(mine?.color ?? "yellow");
   const [note, setNote] = useState<string>(mine?.note ?? "");
 
   return (
     <View>
       <View style={styles.sheetHead}>
-        <Text style={[styles.sheetTitle, { color: c.textPrimary }]}>밑줄 & 감상</Text>
+        <Text style={[styles.sheetTitle, { color: c.textPrimary }]}>밑줄 & 메모</Text>
         <Pressable onPress={onClose} hitSlop={8}>
           <X size={20} color={c.textMuted} />
         </Pressable>
+      </View>
+
+      <View style={styles.privacyNote}>
+        <Lock size={12} color={c.textMuted} />
+        <Text style={[styles.privacyText, { color: c.textMuted }]}>나만 볼 수 있어요</Text>
       </View>
 
       <Text style={[styles.sheetLabel, { color: c.textMuted }]}>색 고르기</Text>
@@ -265,7 +246,7 @@ function SheetBody({
       <TextInput
         value={note}
         onChangeText={setNote}
-        placeholder="감상평 (선택)"
+        placeholder="메모 (선택)"
         placeholderTextColor={c.textMuted}
         multiline
         style={[styles.noteInput, { color: c.textPrimary, borderColor: c.hairline }]}
@@ -290,26 +271,6 @@ function SheetBody({
           <Text style={styles.saveText}>{mine ? "수정" : "밑줄 긋기"}</Text>
         </Pressable>
       </View>
-
-      <ScrollView style={{ maxHeight: 170 }} keyboardShouldPersistTaps="handled">
-        {others.length > 0 ? (
-          <Text style={[styles.otherLabel, { color: c.textMuted }]}>다른 사람 밑줄 {others.length}</Text>
-        ) : null}
-        {others.map((h) => (
-          <View key={h.id} style={[styles.other, { backgroundColor: c.surfacePage }]}>
-            <View style={[styles.otherBar, { backgroundColor: highlightBg(h.color) }]} />
-            <Avatar name={h.author?.name ?? "게스트"} size={28} />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.otherName, { color: c.textPrimary }]}>{h.author?.name ?? "게스트"}</Text>
-              {h.note ? (
-                <Text style={[styles.otherNote, { color: c.textSecondary }]}>{h.note}</Text>
-              ) : (
-                <Text style={[styles.otherNote, { color: c.textMuted }]}>밑줄만 그었어요</Text>
-              )}
-            </View>
-          </View>
-        ))}
-      </ScrollView>
     </View>
   );
 }
@@ -319,32 +280,27 @@ const styles = StyleSheet.create({
   section: { marginTop: 8, gap: 10 },
   head: { flexDirection: "row", alignItems: "center", gap: 6 },
   headText: { fontSize: 12.5, fontWeight: "700" },
-  body: { fontSize: 15, lineHeight: 26 },
   blocks: { gap: 14 },
   blockPara: { fontSize: 15.5, lineHeight: 27 },
   blockHeading: { fontSize: 17, lineHeight: 25, fontWeight: "800", marginTop: 4 },
   blockList: { paddingLeft: 10 },
-  inlineAuthor: { fontSize: 11, fontWeight: "800" },
 
   rollup: { marginTop: 14, paddingTop: 16, borderTopWidth: 1, gap: 12 },
+  rollupHead: { flexDirection: "row", alignItems: "center", gap: 5 },
   rollupTitle: { fontSize: 12.5, fontWeight: "800", letterSpacing: 0.2 },
   rollupRow: { flexDirection: "row", gap: 10, alignItems: "flex-start", padding: 12, borderRadius: 12, borderWidth: 1, overflow: "hidden" },
   rollupBar: { width: 4, alignSelf: "stretch", borderRadius: 2 },
-  rollupWho: { fontSize: 14, fontWeight: "800" },
-  rollupQuote: { fontSize: 12.5, lineHeight: 18, marginTop: 4 },
+  rollupQuote: { fontSize: 13.5, lineHeight: 19, fontWeight: "600" },
   rollupNote: { fontSize: 13.5, lineHeight: 19, marginTop: 5 },
 
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 34, gap: 12 },
   sheetHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   sheetTitle: { fontSize: 16, fontWeight: "700" },
+  privacyNote: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: -4 },
+  privacyText: { fontSize: 12, fontWeight: "600" },
   sheetLabel: { fontSize: 12, fontWeight: "700", marginTop: 2 },
   quote: { fontSize: 14.5, lineHeight: 22, borderRadius: 8, padding: 10, overflow: "hidden" },
-  otherLabel: { fontSize: 12, fontWeight: "800", marginTop: 2, marginBottom: 8 },
-  other: { flexDirection: "row", gap: 10, alignItems: "flex-start", padding: 10, borderRadius: 10, overflow: "hidden", marginBottom: 8 },
-  otherBar: { width: 4, alignSelf: "stretch", borderRadius: 2 },
-  otherName: { fontSize: 13.5, fontWeight: "800" },
-  otherNote: { fontSize: 13.5, lineHeight: 19, marginTop: 3 },
   swatches: { flexDirection: "row", gap: 10, marginTop: 2 },
   swatch: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: "rgba(0,0,0,0.08)" },
   noteInput: { borderWidth: 1, borderRadius: 10, padding: 12, fontSize: 15, minHeight: 60, maxHeight: 120 },

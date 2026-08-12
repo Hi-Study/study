@@ -42,13 +42,16 @@ export interface ArticleHighlightRow {
 }
 
 // ---- raw ----
+// 하이라이트/메모는 "나만 보기"(비공개) — 본인 것만 조회한다.
 export async function listArticleHighlights(
+  uid: string,
   articleId: string,
 ): Promise<ArticleHighlightRow[]> {
   const { data, error } = await supabase
     .from("article_highlights")
     .select("*, author:users(name, role_title)")
     .eq("article_id", articleId)
+    .eq("author_id", uid)
     .order("created_at", { ascending: true });
   if (error) throw error;
   return (data ?? []) as unknown as ArticleHighlightRow[];
@@ -98,10 +101,11 @@ export async function listMyHighlights(uid: string): Promise<MyHighlightRow[]> {
 
 // ---- hooks ----
 export function useArticleHighlights(articleId: string) {
+  const uid = useUid();
   return useQuery({
-    queryKey: qk.articleHighlights(articleId),
-    queryFn: () => listArticleHighlights(articleId),
-    enabled: Boolean(articleId),
+    queryKey: qk.articleHighlights(articleId, uid),
+    queryFn: () => listArticleHighlights(uid, articleId),
+    enabled: Boolean(articleId && uid),
   });
 }
 

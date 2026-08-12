@@ -356,3 +356,11 @@ update public.opinions o
     select count(*) from public.reactions r
     where r.target_type = 'opinion' and r.target_id = o.id
   );
+
+-- ============================================================
+-- 12) 하이라이트/메모 "나만 보기"(비공개) — 읽기도 본인 것만
+--     (기존 섹션 3의 ahl_read = 모두 읽기를 본인만 읽기로 교체)
+-- ============================================================
+drop policy if exists ahl_read on public.article_highlights;
+create policy ahl_read on public.article_highlights for select to authenticated
+  using (author_id = auth.uid());
