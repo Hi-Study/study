@@ -3,7 +3,7 @@
 import React from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Bell, ChevronRight, Search } from "lucide-react-native";
+import { Bell, ChevronRight, Plus, Search } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
@@ -78,6 +78,13 @@ function HomeHeader({ blogs }: { blogs: BlogRow[] }) {
         </Pressable>
         <Pressable hitSlop={8} style={styles.iconBtn}>
           <Bell size={22} color={c.textSecondary} />
+        </Pressable>
+        <Pressable
+          hitSlop={8}
+          style={[styles.addBtn, { backgroundColor: c.primary }]}
+          onPress={() => nav.navigate("CreateArticle")}
+        >
+          <Plus size={20} color={c.actionOn} />
         </Pressable>
       </View>
 
@@ -163,6 +170,7 @@ const styles = StyleSheet.create({
   greetTitle: { ...dtype.display },
   greetSub: { ...dtype.body, marginTop: 2 },
   iconBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  addBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", marginLeft: 2 },
 
   featuredWrap: { paddingHorizontal: 16, marginTop: 12 },
 

@@ -100,6 +100,7 @@ export interface Database {
           tags: string[];
           ai_summaries: Record<string, string>;
           like_count: number;
+          submitted_by: string | null;
           created_at: string;
         };
         Insert: {
@@ -116,6 +117,7 @@ export interface Database {
           tags?: string[];
           ai_summaries?: Record<string, string>;
           like_count?: number;
+          submitted_by?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["articles"]["Insert"]>;

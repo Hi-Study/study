@@ -41,6 +41,7 @@ export type RootStackParamList = {
   BlogArticles: { blogId: string; blogName: string };
   CreateOpinion: { articleId: string };
   OpinionDetail: { opinionId: string };
+  CreateArticle: undefined;
 };
 
 export type RootNav = NativeStackNavigationProp<RootStackParamList>;

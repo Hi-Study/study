@@ -364,3 +364,16 @@ update public.opinions o
 drop policy if exists ahl_read on public.article_highlights;
 create policy ahl_read on public.article_highlights for select to authenticated
   using (author_id = auth.uid());
+
+-- ============================================================
+-- 13) 사용자 글 등록(URL) — 누가 등록했는지 + 시스템 '직접 등록' 블로그
+--     · 삽입은 register 엣지함수(service role)가 수행하므로 articles insert 정책 불필요
+--     · submitted_by 로 마이 "내가 등록한 글" 구분
+-- ============================================================
+alter table public.articles add column if not exists submitted_by uuid references public.users(id) on delete set null;
+create index if not exists idx_articles_submitted_by on public.articles(submitted_by);
+
+-- 도메인이 매칭되는 기존 블로그가 없을 때 귀속시킬 시스템 블로그.
+insert into public.blogs (key, name, collect, active)
+values ('user', '직접 등록', 'listscrape', false)
+on conflict (key) do nothing;
