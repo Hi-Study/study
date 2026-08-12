@@ -9,6 +9,7 @@ import {
 
 import { supabase } from "@/lib/supabase";
 import { qk } from "@/lib/queryKeys";
+import { topTags } from "@/lib/tags";
 import type { SummaryMode } from "@/lib/summary";
 import type { ArticleRow } from "@/types/tables";
 import type { Topic } from "@/types/database";
@@ -200,6 +201,21 @@ export function useBlogTopics(blogId: string) {
 }
 
 // ---- AI 요약(모드별) — summarize 엣지 함수 호출 → articles.ai_summaries[mode] 캐시 ----
+/** 최근 글들의 태그를 집계한 인기 키워드(검색 탭 추천용). */
+export async function listPopularTags(limit = 12): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("articles")
+    .select("tags")
+    .order("published_at", { ascending: false })
+    .limit(300);
+  if (error) throw error;
+  return topTags((data ?? []).map((r) => r.tags), limit);
+}
+
+export function usePopularTags() {
+  return useQuery({ queryKey: qk.popularTags(), queryFn: () => listPopularTags() });
+}
+
 export async function requestArticleSummary(
   articleId: string,
   mode: SummaryMode,

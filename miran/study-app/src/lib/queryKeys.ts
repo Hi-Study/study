@@ -24,6 +24,7 @@ export const qk = {
 
   // ===== distill =====
   blogs: () => ["blogs"] as const,
+  popularTags: () => ["popular-tags"] as const,
   articles: () => ["articles"] as const,
   article: (articleId: string) => ["article", articleId] as const,
   articlesByBlog: (blogKey: string) => ["articles", "blog", blogKey] as const,

@@ -1,12 +1,21 @@
-// distill 검색 탭 (DESIGN_GUIDE §7.3) — 검색 전: 주제 탐색 카드 / 검색 후: 결과 리스트.
+// distill 검색 탭 (회의록 §검색) — 검색 전: 최근 검색어 · 인기 키워드 · 주제 둘러보기 / 검색 후: 결과.
 import React, { useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  FlatList,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Search, X } from "lucide-react-native";
+import { Clock, Search, TrendingUp, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
-import { useArticlesFeed } from "@/data";
+import { useArticlesFeed, usePopularTags } from "@/data";
+import { useRecentSearches } from "@/lib/recentSearches";
 import { dtype, TOPIC_META, TOPIC_ORDER } from "@/theme";
 import type { Topic } from "@/types/database";
 import { ArticleRow } from "@/components/distill/ArticleCards";
@@ -18,6 +27,8 @@ export function DistillSearchScreen() {
   const nav = useRootNav();
   const [query, setQuery] = useState("");
   const [topic, setTopic] = useState<Topic | null>(null);
+  const { recents, add, remove, clear } = useRecentSearches();
+  const popular = usePopularTags();
 
   const q = query.trim();
   const active = q.length > 0 || topic !== null;
@@ -25,6 +36,11 @@ export function DistillSearchScreen() {
     active ? { search: q || undefined, topic: topic ?? undefined } : {},
   );
   const rows = feed.data?.pages.flatMap((p) => p.rows) ?? [];
+
+  const runSearch = (term: string) => {
+    setQuery(term);
+    add(term);
+  };
 
   return (
     <SafeAreaView
@@ -38,6 +54,7 @@ export function DistillSearchScreen() {
           <TextInput
             value={query}
             onChangeText={setQuery}
+            onSubmitEditing={() => q && add(q)}
             placeholder="글 제목·주제·태그 검색"
             placeholderTextColor={c.textMuted}
             style={[styles.searchInput, { color: c.textPrimary }]}
@@ -52,28 +69,75 @@ export function DistillSearchScreen() {
       </View>
 
       {!active ? (
-        // 검색 전 — 주제 탐색 카드(2열)
-        <FlatList
-          data={TOPIC_ORDER}
-          keyExtractor={(t) => t}
-          numColumns={2}
-          columnWrapperStyle={styles.gridRow}
-          contentContainerStyle={styles.gridContent}
-          ListHeaderComponent={
-            <Text style={[styles.browseLabel, { color: c.textSecondary }]}>주제로 둘러보기</Text>
-          }
-          renderItem={({ item }) => {
-            const meta = TOPIC_META[item];
-            return (
-              <Pressable
-                style={[styles.topicCard, { backgroundColor: meta.tint }]}
-                onPress={() => setTopic(item)}
-              >
-                <Text style={[styles.topicCardText, { color: meta.color }]}>{meta.label}</Text>
-              </Pressable>
-            );
-          }}
-        />
+        // 검색 전 — 최근 검색어 · 인기 키워드 · 주제 둘러보기
+        <ScrollView contentContainerStyle={styles.preContent} keyboardShouldPersistTaps="handled">
+          {recents.length > 0 ? (
+            <View style={styles.section}>
+              <View style={styles.sectionHead}>
+                <View style={styles.sectionLabelRow}>
+                  <Clock size={14} color={c.textSecondary} />
+                  <Text style={[styles.sectionLabel, { color: c.textSecondary }]}>최근 검색어</Text>
+                </View>
+                <Pressable onPress={clear} hitSlop={8}>
+                  <Text style={[styles.clearAll, { color: c.textMuted }]}>전체삭제</Text>
+                </Pressable>
+              </View>
+              <View style={styles.chipWrap}>
+                {recents.map((t) => (
+                  <View
+                    key={t}
+                    style={[styles.recentChip, { backgroundColor: c.surfaceSunken, borderColor: c.hairline }]}
+                  >
+                    <Pressable onPress={() => runSearch(t)} hitSlop={6}>
+                      <Text style={[styles.recentText, { color: c.textPrimary }]}>{t}</Text>
+                    </Pressable>
+                    <Pressable onPress={() => remove(t)} hitSlop={6}>
+                      <X size={13} color={c.textMuted} />
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          {popular.data && popular.data.length > 0 ? (
+            <View style={styles.section}>
+              <View style={styles.sectionLabelRow}>
+                <TrendingUp size={14} color={c.textSecondary} />
+                <Text style={[styles.sectionLabel, { color: c.textSecondary }]}>인기 키워드</Text>
+              </View>
+              <View style={styles.chipWrap}>
+                {popular.data.map((t) => (
+                  <Pressable
+                    key={t}
+                    style={[styles.popularChip, { backgroundColor: c.primaryTint }]}
+                    onPress={() => runSearch(t)}
+                  >
+                    <Text style={[styles.popularText, { color: c.primary }]}>#{t}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          <View style={styles.section}>
+            <Text style={[styles.sectionLabel, { color: c.textSecondary }]}>주제로 둘러보기</Text>
+            <View style={styles.grid}>
+              {TOPIC_ORDER.map((item) => {
+                const meta = TOPIC_META[item];
+                return (
+                  <Pressable
+                    key={item}
+                    style={[styles.topicCard, { backgroundColor: meta.tint }]}
+                    onPress={() => setTopic(item)}
+                  >
+                    <Text style={[styles.topicCardText, { color: meta.color }]}>{meta.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        </ScrollView>
       ) : feed.isLoading ? (
         <Loading label="검색 중…" />
       ) : feed.isError ? (
@@ -118,10 +182,21 @@ const styles = StyleSheet.create({
   searchBar: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 12, paddingHorizontal: 12, height: 44 },
   searchInput: { flex: 1, ...dtype.body },
 
-  browseLabel: { ...dtype.title, marginBottom: 12 },
-  gridContent: { padding: 16 },
-  gridRow: { gap: 12 },
-  topicCard: { flex: 1, height: 84, borderRadius: 16, alignItems: "center", justifyContent: "center", marginBottom: 12 },
+  preContent: { padding: 16, gap: 24 },
+  section: { gap: 12 },
+  sectionHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sectionLabelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  sectionLabel: { ...dtype.title },
+  clearAll: { ...dtype.meta },
+
+  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  recentChip: { flexDirection: "row", alignItems: "center", gap: 7, borderWidth: 1, borderRadius: 999, paddingLeft: 14, paddingRight: 10, paddingVertical: 8 },
+  recentText: { ...dtype.label, fontSize: 13.5 },
+  popularChip: { borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 },
+  popularText: { ...dtype.label, fontSize: 13.5, fontWeight: "700" },
+
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  topicCard: { width: "47%", flexGrow: 1, height: 84, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   topicCardText: { ...dtype.cardTitle, fontWeight: "700" },
 
   filterChip: { alignSelf: "flex-start", paddingVertical: 6, marginBottom: 4 },
