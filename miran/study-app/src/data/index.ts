@@ -19,3 +19,4 @@ export * from "./userWords";
 export * from "./submit";
 export * from "./favorites";
 export * from "./bookmarks";
+export * from "./appNotifications";

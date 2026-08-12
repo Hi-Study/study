@@ -13,6 +13,7 @@ import {
   useArticlesByBlog,
   useFavoriteBlogIds,
   useToggleBlogFavorite,
+  useUnreadNotificationCount,
 } from "@/data";
 import type { BlogRow } from "@/types/tables";
 import { dtype } from "@/theme";
@@ -93,6 +94,7 @@ function HomeHeader({
   const c = theme.colors;
   const nav = useRootNav();
   const featured = useFeaturedArticle();
+  const unread = useUnreadNotificationCount().data ?? 0;
 
   return (
     <View>
@@ -107,8 +109,15 @@ function HomeHeader({
         <Pressable hitSlop={8} style={styles.iconBtn}>
           <Search size={22} color={c.textSecondary} />
         </Pressable>
-        <Pressable hitSlop={8} style={styles.iconBtn}>
+        <Pressable
+          hitSlop={8}
+          style={styles.iconBtn}
+          onPress={() => nav.navigate("DistillNotifications")}
+        >
           <Bell size={22} color={c.textSecondary} />
+          {unread > 0 ? (
+            <View style={[styles.bellDot, { backgroundColor: c.hot, borderColor: c.surfacePage }]} />
+          ) : null}
         </Pressable>
         <Pressable
           hitSlop={8}
@@ -232,6 +241,7 @@ const styles = StyleSheet.create({
   greetTitle: { ...dtype.display },
   greetSub: { ...dtype.body, marginTop: 2 },
   iconBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  bellDot: { position: "absolute", top: 8, right: 9, width: 9, height: 9, borderRadius: 5, borderWidth: 1.5 },
   addBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", marginLeft: 2 },
 
   featuredWrap: { paddingHorizontal: 16, marginTop: 12 },

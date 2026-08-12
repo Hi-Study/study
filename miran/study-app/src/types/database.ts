@@ -231,6 +231,33 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["user_blog_favorites"]["Insert"]>;
         Relationships: [];
       };
+      // ---- distill: 알림 ----
+      app_notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          kind: "new_article" | "comment" | "reply";
+          actor_id: string | null;
+          article_id: string | null;
+          opinion_id: string | null;
+          title: string;
+          read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          kind: "new_article" | "comment" | "reply";
+          actor_id?: string | null;
+          article_id?: string | null;
+          opinion_id?: string | null;
+          title?: string;
+          read?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["app_notifications"]["Insert"]>;
+        Relationships: [];
+      };
       // ---- distill: 좋아요(의견/토론) ----
       reactions: {
         Row: {

@@ -42,6 +42,7 @@ export type RootStackParamList = {
   CreateOpinion: { articleId: string };
   OpinionDetail: { opinionId: string };
   CreateArticle: undefined;
+  DistillNotifications: undefined;
 };
 
 export type RootNav = NativeStackNavigationProp<RootStackParamList>;

@@ -394,3 +394,70 @@ alter table public.user_blog_favorites enable row level security;
 drop policy if exists ublogfav_all_own on public.user_blog_favorites;
 create policy ublogfav_all_own on public.user_blog_favorites for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- ============================================================
+-- 15) 알림(app_notifications) — 즐겨찾기 기업 새 글 · 내 의견 댓글 · 대댓글
+--     · 본인만 읽기/수정(읽음 처리). insert 는 트리거(SECURITY DEFINER)가 수행.
+-- ============================================================
+create table if not exists public.app_notifications (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references public.users(id) on delete cascade,   -- 받는 사람
+  kind       text not null check (kind in ('new_article','comment','reply')),
+  actor_id   uuid references public.users(id) on delete set null,           -- 행위자(댓글 단 사람)
+  article_id uuid references public.articles(id) on delete cascade,
+  opinion_id uuid references public.opinions(id) on delete cascade,
+  title      text not null default '',
+  read       boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_app_notif_user on public.app_notifications(user_id, created_at desc);
+
+alter table public.app_notifications enable row level security;
+drop policy if exists appnotif_select_own on public.app_notifications;
+create policy appnotif_select_own on public.app_notifications for select to authenticated
+  using (user_id = auth.uid());
+drop policy if exists appnotif_update_own on public.app_notifications;
+create policy appnotif_update_own on public.app_notifications for update to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- 트리거 1: 즐겨찾기한 기업에 새 글 → 즐겨찾은 사용자에게 알림(등록 본인 제외).
+create or replace function public.notify_new_article()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.app_notifications (user_id, kind, article_id, title)
+  select f.user_id, 'new_article', new.id, new.title
+  from public.user_blog_favorites f
+  where f.blog_id = new.blog_id
+    and f.user_id <> coalesce(new.submitted_by, '00000000-0000-0000-0000-000000000000'::uuid);
+  return null;
+end; $$;
+drop trigger if exists trg_notify_new_article on public.articles;
+create trigger trg_notify_new_article after insert on public.articles
+  for each row execute function public.notify_new_article();
+
+-- 트리거 2: 의견 댓글 → 의견 작성자에게 / 대댓글이면 부모 댓글 작성자에게도(본인·중복 제외).
+create or replace function public.notify_opinion_comment()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  opinion_author uuid;
+  parent_author uuid;
+begin
+  select author_id into opinion_author from public.opinions where id = new.opinion_id;
+  if opinion_author is not null and opinion_author <> new.author_id then
+    insert into public.app_notifications (user_id, kind, actor_id, opinion_id, title)
+    values (opinion_author, 'comment', new.author_id, new.opinion_id, left(new.text, 80));
+  end if;
+  if new.parent_id is not null then
+    select author_id into parent_author from public.opinion_comments where id = new.parent_id;
+    if parent_author is not null
+       and parent_author <> new.author_id
+       and parent_author is distinct from opinion_author then
+      insert into public.app_notifications (user_id, kind, actor_id, opinion_id, title)
+      values (parent_author, 'reply', new.author_id, new.opinion_id, left(new.text, 80));
+    end if;
+  end if;
+  return null;
+end; $$;
+drop trigger if exists trg_notify_opinion_comment on public.opinion_comments;
+create trigger trg_notify_opinion_comment after insert on public.opinion_comments
+  for each row execute function public.notify_opinion_comment();

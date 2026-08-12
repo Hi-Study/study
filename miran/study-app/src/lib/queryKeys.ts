@@ -46,4 +46,6 @@ export const qk = {
   bookmarks: (uid: string) => ["bookmarks", uid] as const,
   bookmarkIds: (uid: string) => ["bookmark-ids", uid] as const,
   myComments: (uid: string) => ["my-comments", uid] as const,
+  appNotifications: (uid: string) => ["app-notifications", uid] as const,
+  appNotificationsUnread: (uid: string) => ["app-notifications", "unread", uid] as const,
 };
