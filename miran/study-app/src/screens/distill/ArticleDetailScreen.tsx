@@ -1,7 +1,7 @@
 // distill 글 상세 — 원문(DESIGN_GUIDE §7.4).
 //   [히어로 + 뒤로] · 주제칩·읽기시간 · 제목 · 출처칩·작성일 · 본문 · 원문보기↗ · 하단 CTA
 // TODO(B-2 확장): 본문 문장 하이라이트(article_highlights) + 하단 인사이트 모아보기.
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -20,7 +20,7 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav, type RootStackParamList } from "@/navigation/types";
 import { dtype } from "@/theme";
 import { cleanBody, readingMinutes } from "@/lib/text";
-import type { SummaryMode } from "@/lib/summary";
+import { splitInsightSections } from "@/lib/summary";
 import {
   useArticle,
   useOpinions,
@@ -100,6 +100,17 @@ export function ArticleDetailScreen({ route }: Props) {
 
           {/* 제목 */}
           <Text style={[styles.title, { color: c.textPrimary }]}>{a.title}</Text>
+
+          {/* 키워드 태그 */}
+          {a.tags && a.tags.length > 0 ? (
+            <View style={styles.tagRow}>
+              {a.tags.slice(0, 6).map((tg) => (
+                <View key={tg} style={[styles.tagChip, { backgroundColor: c.surfaceSunken }]}>
+                  <Text style={[styles.tagText, { color: c.textSecondary }]}>#{tg}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
 
           {/* 출처 + 작성일 */}
           <View style={styles.source}>
@@ -182,13 +193,7 @@ export function ArticleDetailScreen({ route }: Props) {
   );
 }
 
-// AI 요약 패널 — 3모드(원문요약·기획자관점·쉽게풀기). 캐시 있으면 즉시, 없으면 생성.
-const SUMMARY_MODES: { key: SummaryMode; label: string }[] = [
-  { key: "plain", label: "원문 요약" },
-  { key: "planner", label: "기획자 관점" },
-  { key: "explain", label: "쉽게 풀기" },
-];
-
+// AI 요약 패널 — 3관점 고정(무슨 문제/어떻게 해결/기획 관점 배울 점) + 쉽게 풀기(선택).
 function AiSummaryPanel({
   articleId,
   cached,
@@ -198,55 +203,79 @@ function AiSummaryPanel({
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
-  const [mode, setMode] = useState<SummaryMode>("plain");
   const [results, setResults] = useState<Record<string, string>>({ ...(cached ?? {}) });
+  const [running, setRunning] = useState<string | null>(null);
   const req = useRequestArticleSummary(articleId);
-  const summary = results[mode];
 
-  const run = (m: SummaryMode) => {
-    setMode(m);
-    if (results[m]) return;
+  const run = (m: "insight" | "explain") => {
+    if (results[m] || running) return;
+    setRunning(m);
     req.mutate(m, {
       onSuccess: (s) => {
         if (s) setResults((p) => ({ ...p, [m]: s }));
+        setRunning(null);
       },
+      onError: () => setRunning(null),
     });
   };
 
+  // AI 요약 탭 진입 시 3관점을 자동 생성(캐시 있으면 즉시).
+  useEffect(() => {
+    if (!results.insight) run("insight");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const sections = results.insight ? splitInsightSections(results.insight) : [];
+
   return (
     <View style={styles.ai}>
-      <View style={styles.aiModes}>
-        {SUMMARY_MODES.map((sm) => {
-          const on = mode === sm.key;
-          return (
-            <Pressable
-              key={sm.key}
-              onPress={() => run(sm.key)}
-              style={[
-                styles.aiMode,
-                { borderColor: on ? c.primary : c.hairline, backgroundColor: on ? c.primaryTint : "transparent" },
-              ]}
-            >
-              <Text style={[styles.aiModeText, { color: on ? c.primary : c.textSecondary }]}>
-                {sm.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {req.isPending && !summary ? (
+      {sections.length > 0 ? (
+        sections.map((s, i) => (
+          <View
+            key={i}
+            style={[styles.aiCard, { backgroundColor: c.surfaceCard, borderColor: c.hairline }]}
+          >
+            <View style={styles.aiCardHead}>
+              <View style={[styles.aiNum, { backgroundColor: c.primaryTint }]}>
+                <Text style={[styles.aiNumText, { color: c.primary }]}>{i + 1}</Text>
+              </View>
+              <Text style={[styles.aiCardTitle, { color: c.textPrimary }]}>{s.title}</Text>
+            </View>
+            {s.body ? <Text style={[styles.aiCardBody, { color: c.textSecondary }]}>{s.body}</Text> : null}
+          </View>
+        ))
+      ) : running === "insight" ? (
         <View style={styles.aiLoading}>
           <ActivityIndicator color={c.primary} />
-          <Text style={[styles.aiHint, { color: c.textMuted }]}>요약을 만들고 있어요…</Text>
+          <Text style={[styles.aiHint, { color: c.textMuted }]}>3가지 관점으로 정리하고 있어요…</Text>
         </View>
-      ) : summary ? (
-        <Text style={[styles.aiText, { color: c.textPrimary }]}>{summary}</Text>
       ) : (
-        <Pressable style={[styles.aiRun, { backgroundColor: c.primary }]} onPress={() => run(mode)}>
+        <Pressable style={[styles.aiRun, { backgroundColor: c.primary }]} onPress={() => run("insight")}>
           <Text style={[styles.aiRunText, { color: c.actionOn }]}>AI 요약 생성</Text>
         </Pressable>
       )}
+
+      {/* 쉽게 풀기(선택) */}
+      {sections.length > 0 ? (
+        results.explain ? (
+          <View style={[styles.aiCard, { backgroundColor: c.primaryTint, borderColor: c.primaryTint }]}>
+            <Text style={[styles.aiCardTitle, { color: c.primary, marginBottom: 6 }]}>쉽게 풀면</Text>
+            <Text style={[styles.aiCardBody, { color: c.textPrimary }]}>{results.explain}</Text>
+          </View>
+        ) : (
+          <Pressable
+            style={[styles.aiExplain, { borderColor: c.hairline }]}
+            onPress={() => run("explain")}
+            disabled={running === "explain"}
+          >
+            {running === "explain" ? (
+              <ActivityIndicator color={c.primary} />
+            ) : (
+              <Text style={[styles.aiExplainText, { color: c.primary }]}>🍬 더 쉽게 풀어서 보기</Text>
+            )}
+          </Pressable>
+        )
+      ) : null}
     </View>
   );
 }
@@ -316,6 +345,10 @@ const styles = StyleSheet.create({
 
   title: { ...dtype.titleL, marginBottom: 12 },
 
+  tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
+  tagChip: { borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4 },
+  tagText: { ...dtype.meta, fontWeight: "600" },
+
   source: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
   sourceText: { ...dtype.bodyS, flex: 1 },
 
@@ -347,6 +380,15 @@ const styles = StyleSheet.create({
   aiText: { ...dtype.body, lineHeight: 25 },
   aiRun: { borderRadius: 12, paddingVertical: 13, alignItems: "center", marginTop: 4 },
   aiRunText: { ...dtype.cardTitle },
+
+  aiCard: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 8 },
+  aiCardHead: { flexDirection: "row", alignItems: "center", gap: 8 },
+  aiNum: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  aiNumText: { fontSize: 13, fontWeight: "800" },
+  aiCardTitle: { ...dtype.cardTitle, flex: 1 },
+  aiCardBody: { ...dtype.body, lineHeight: 24 },
+  aiExplain: { borderWidth: 1, borderRadius: 12, paddingVertical: 12, alignItems: "center" },
+  aiExplainText: { ...dtype.cardTitle, fontSize: 14 },
 
   opinions: { marginTop: 28, gap: 12 },
   opinionsTitle: { ...dtype.title },

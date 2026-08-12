@@ -10,7 +10,7 @@ import { corsHeaders, json } from "../_shared/cors.ts";
 import { serviceClient } from "../_shared/supabase.ts";
 import { extractArticle, fetchHtml, stripFooter } from "../_shared/extract.ts";
 
-type Mode = "plain" | "planner" | "explain";
+type Mode = "plain" | "planner" | "explain" | "insight";
 
 interface Payload {
   share_id?: string;
@@ -43,6 +43,11 @@ const CONTENT_SYS: Record<Mode, string> = {
     "(2) 짧은 문장과 일상적인 비유를 적극 써라. " +
     "(3) 전문 지식이 전혀 없어도 '무슨 얘기이고 왜 중요한지'가 이해되게 써라. " +
     "(4) 원문 문장을 그대로 옮기지 말고 네 말로 다시 설명하라. 4~6문장, 존댓말.",
+  insight:
+    "너는 기획자·디자이너를 돕는 한국어 분석가다. 이 글을 읽고 정확히 세 부분으로 나눠 정리해라. " +
+    "각 부분은 반드시 '### ' 로 시작하는 제목 줄 다음에 2~3문장으로 쓴다. 아래 제목을 그대로 사용해라:\n" +
+    "### 무슨 문제를 다뤘나\n### 어떻게 해결했나\n### 기획 관점에서 배울 점\n" +
+    "원문 문장을 그대로 옮기지 말고 네 말로 정리하라. 존댓말, 불릿 없이 문단으로.",
 };
 
 const RESULT_SYS =
@@ -230,7 +235,8 @@ Deno.serve(async (req) => {
 
   try {
     const { share_id, article_id, discussion_id, word_id, target, mode } = (await req.json()) as Payload;
-    const m: Mode = mode === "planner" || mode === "explain" ? mode : "plain";
+    const m: Mode =
+      mode === "planner" || mode === "explain" || mode === "insight" ? mode : "plain";
 
     if (word_id) {
       const definition = await defineWord(word_id);
