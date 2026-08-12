@@ -48,4 +48,8 @@ export const qk = {
   myComments: (uid: string) => ["my-comments", uid] as const,
   appNotifications: (uid: string) => ["app-notifications", uid] as const,
   appNotificationsUnread: (uid: string) => ["app-notifications", "unread", uid] as const,
+  reads: (uid: string) => ["reads", uid] as const,
+  readIds: (uid: string) => ["read-ids", uid] as const,
+  drafts: (uid: string) => ["opinion-drafts", uid] as const,
+  draft: (uid: string, articleId: string) => ["opinion-draft", uid, articleId] as const,
 };

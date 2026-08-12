@@ -461,3 +461,37 @@ end; $$;
 drop trigger if exists trg_notify_opinion_comment on public.opinion_comments;
 create trigger trg_notify_opinion_comment after insert on public.opinion_comments
   for each row execute function public.notify_opinion_comment();
+
+-- ============================================================
+-- 16) 읽은 아티클(article_reads) — 스크롤 90% 도달 시 '다 읽음' + 마이 읽음 모아보기
+-- ============================================================
+create table if not exists public.article_reads (
+  user_id    uuid not null references public.users(id) on delete cascade,
+  article_id uuid not null references public.articles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, article_id)
+);
+create index if not exists idx_article_reads_user on public.article_reads(user_id, created_at desc);
+
+alter table public.article_reads enable row level security;
+drop policy if exists areads_all_own on public.article_reads;
+create policy areads_all_own on public.article_reads for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- ============================================================
+-- 17) 의견(독후감) 임시저장(opinion_drafts) — 작성중 저장/이어쓰기(글당 1개)
+-- ============================================================
+create table if not exists public.opinion_drafts (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references public.users(id) on delete cascade,
+  article_id uuid not null references public.articles(id) on delete cascade,
+  insight    jsonb not null default '{}',
+  updated_at timestamptz not null default now(),
+  unique (user_id, article_id)
+);
+create index if not exists idx_opinion_drafts_user on public.opinion_drafts(user_id, updated_at desc);
+
+alter table public.opinion_drafts enable row level security;
+drop policy if exists odrafts_all_own on public.opinion_drafts;
+create policy odrafts_all_own on public.opinion_drafts for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());

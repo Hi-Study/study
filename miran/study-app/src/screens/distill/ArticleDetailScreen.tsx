@@ -1,7 +1,7 @@
 // distill 글 상세 — 원문(DESIGN_GUIDE §7.4).
 //   [히어로 + 뒤로] · 주제칩·읽기시간 · 제목 · 출처칩·작성일 · 본문 · 원문보기↗ · 하단 CTA
 // TODO(B-2 확장): 본문 문장 하이라이트(article_highlights) + 하단 인사이트 모아보기.
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -29,6 +29,7 @@ import {
   useToggleReaction,
   useIsBookmarked,
   useToggleBookmark,
+  useMarkArticleRead,
 } from "@/data";
 import { ServiceLogo, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
 import { ArticleHighlightSection } from "@/components/distill/ArticleHighlightSection";
@@ -49,6 +50,8 @@ export function ArticleDetailScreen({ route }: Props) {
   const toggleLike = useToggleReaction("article", articleId);
   const bookmarked = useIsBookmarked(articleId);
   const toggleBookmark = useToggleBookmark(articleId);
+  const markRead = useMarkArticleRead(articleId);
+  const readMarked = useRef(false);
 
   if (q.isLoading) {
     return (
@@ -71,7 +74,22 @@ export function ArticleDetailScreen({ route }: Props) {
 
   return (
     <View style={[styles.screen, { backgroundColor: c.surfacePage }]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={200}
+        onScroll={(e) => {
+          if (readMarked.current) return;
+          const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+          if (
+            contentSize.height > 0 &&
+            (contentOffset.y + layoutMeasurement.height) / contentSize.height >= 0.9
+          ) {
+            readMarked.current = true;
+            markRead.mutate();
+          }
+        }}
+      >
         {/* 히어로 */}
         <View style={[styles.hero, { backgroundColor: c.surfaceSunken }]}>
           {a.og_image ? (

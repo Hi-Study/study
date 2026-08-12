@@ -258,6 +258,32 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["app_notifications"]["Insert"]>;
         Relationships: [];
       };
+      // ---- distill: 읽은 아티클 ----
+      article_reads: {
+        Row: { user_id: string; article_id: string; created_at: string };
+        Insert: { user_id: string; article_id: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["article_reads"]["Insert"]>;
+        Relationships: [];
+      };
+      // ---- distill: 의견(독후감) 임시저장 ----
+      opinion_drafts: {
+        Row: {
+          id: string;
+          user_id: string;
+          article_id: string;
+          insight: Insight;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          article_id: string;
+          insight?: Insight;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["opinion_drafts"]["Insert"]>;
+        Relationships: [];
+      };
       // ---- distill: 좋아요(의견/토론) ----
       reactions: {
         Row: {

@@ -22,6 +22,8 @@ import {
   useMyWords,
   useMyBookmarks,
   useMyComments,
+  useMyReads,
+  useMyDrafts,
   useDefineWord,
   useDeleteWord,
   type OpinionFeedItem,
@@ -29,6 +31,7 @@ import {
   type UserWordRow,
   type MyCommentRow,
   type ArticleWithBlog,
+  type OpinionDraftRow,
 } from "@/data";
 import { dtype } from "@/theme";
 import { highlightBg } from "@/lib/highlight";
@@ -37,13 +40,22 @@ import { OpinionCard } from "@/components/distill/OpinionCard";
 import { ArticleRow, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
 import { Loading, EmptyState } from "@/components";
 
-type MyTab = "opinions" | "highlights" | "bookmarks" | "comments" | "words";
+type MyTab =
+  | "opinions"
+  | "highlights"
+  | "bookmarks"
+  | "comments"
+  | "reads"
+  | "drafts"
+  | "words";
 
 const TABS: { key: MyTab; label: string }[] = [
   { key: "opinions", label: "내 의견" },
   { key: "highlights", label: "하이라이트" },
   { key: "bookmarks", label: "북마크" },
   { key: "comments", label: "댓글" },
+  { key: "reads", label: "읽음" },
+  { key: "drafts", label: "임시저장" },
   { key: "words", label: "단어장" },
 ];
 
@@ -57,12 +69,12 @@ export function DistillMyPageScreen() {
   const highlightsQ = useMyHighlights();
   const bookmarksQ = useMyBookmarks();
   const commentsQ = useMyComments();
+  const readsQ = useMyReads();
+  const draftsQ = useMyDrafts();
   const wordsQ = useMyWords();
 
   const opinions = opinionsQ.data ?? [];
   const highlights = highlightsQ.data ?? [];
-  const bookmarks = bookmarksQ.data ?? [];
-  const comments = commentsQ.data ?? [];
   const words = wordsQ.data ?? [];
 
   const byTab = {
@@ -70,27 +82,27 @@ export function DistillMyPageScreen() {
     highlights: highlightsQ,
     bookmarks: bookmarksQ,
     comments: commentsQ,
+    reads: readsQ,
+    drafts: draftsQ,
     words: wordsQ,
   } as const;
   const activeQ = byTab[tab];
-  const data: Array<
-    OpinionFeedItem | MyHighlightRow | ArticleWithBlog | MyCommentRow | UserWordRow
-  > =
-    tab === "opinions"
-      ? opinions
-      : tab === "highlights"
-        ? highlights
-        : tab === "bookmarks"
-          ? bookmarks
-          : tab === "comments"
-            ? comments
-            : words;
+  const data = (byTab[tab].data ?? []) as Array<
+    | OpinionFeedItem
+    | MyHighlightRow
+    | ArticleWithBlog
+    | MyCommentRow
+    | OpinionDraftRow
+    | UserWordRow
+  >;
 
   const emptyByTab: Record<MyTab, { title: string; hint: string }> = {
     opinions: { title: "아직 남긴 의견이 없어요", hint: "글을 읽고 첫 의견을 남겨보세요" },
     highlights: { title: "밑줄 그은 문장이 없어요", hint: "글에서 문장을 눌러 밑줄을 그어보세요" },
     bookmarks: { title: "북마크한 글이 없어요", hint: "글 상세에서 북마크를 눌러 저장해보세요" },
     comments: { title: "남긴 댓글이 없어요", hint: "의견에 답글을 달아보세요" },
+    reads: { title: "읽은 글이 없어요", hint: "글을 끝까지 읽으면 여기 모여요" },
+    drafts: { title: "임시저장한 독후감이 없어요", hint: "의견 작성 중 임시저장하면 여기서 이어써요" },
     words: { title: "저장한 단어가 없어요", hint: "글에서 문장을 길게 눌러 단어를 담아보세요" },
   };
 
@@ -120,7 +132,7 @@ export function DistillMyPageScreen() {
               />
             );
           }
-          if (tab === "bookmarks") {
+          if (tab === "bookmarks" || tab === "reads") {
             const a = item as ArticleWithBlog;
             return (
               <ArticleRow article={a} onPress={() => nav.navigate("ArticleDetail", { articleId: a.id })} />
@@ -134,10 +146,18 @@ export function DistillMyPageScreen() {
               />
             );
           }
+          if (tab === "drafts") {
+            return (
+              <DraftRow
+                row={item as OpinionDraftRow}
+                onPress={(articleId) => nav.navigate("CreateOpinion", { articleId })}
+              />
+            );
+          }
           return <WordCard row={item as UserWordRow} />;
         }}
         ItemSeparatorComponent={
-          tab === "bookmarks"
+          tab === "bookmarks" || tab === "reads"
             ? () => <View style={[styles.sep, { backgroundColor: c.hairline }]} />
             : () => <View style={{ height: 12 }} />
         }
@@ -360,6 +380,49 @@ function CommentRow({
   );
 }
 
+// 임시저장 카드 — "작성중" 배지 + 독후감 미리보기 + 출처 글(탭하면 이어쓰기).
+function DraftRow({
+  row,
+  onPress,
+}: {
+  row: OpinionDraftRow;
+  onPress: (articleId: string) => void;
+}) {
+  const { theme } = useTheme();
+  const c = theme.colors;
+  const preview =
+    row.insight?.core?.trim() ||
+    row.insight?.apply?.trim() ||
+    row.insight?.quote?.trim() ||
+    "작성 중인 독후감";
+  return (
+    <Pressable
+      onPress={() => onPress(row.article_id)}
+      style={({ pressed }) => [
+        styles.commentCard,
+        { backgroundColor: c.surfaceCard, borderColor: c.hairline, opacity: pressed ? 0.95 : 1 },
+      ]}
+    >
+      <View style={styles.commentHead}>
+        <View style={[styles.draftBadge, { backgroundColor: c.hotTint }]}>
+          <Text style={[styles.draftBadgeText, { color: c.hot }]}>작성중</Text>
+        </View>
+        <Text style={[styles.commentDate, { color: c.textMuted }]}>
+          {relativeDate(row.updated_at)}
+        </Text>
+      </View>
+      <Text style={[styles.commentText, { color: c.textPrimary }]} numberOfLines={3}>
+        {preview}
+      </Text>
+      {row.article ? (
+        <Text style={[styles.commentSource, { color: c.textMuted }]} numberOfLines={1}>
+          {row.article.title}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   listContent: { paddingHorizontal: 16, paddingBottom: 32 },
@@ -397,6 +460,8 @@ const styles = StyleSheet.create({
   commentDate: { ...dtype.meta },
   commentText: { ...dtype.body, lineHeight: 22 },
   commentSource: { ...dtype.meta },
+  draftBadge: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
+  draftBadgeText: { ...dtype.meta, fontWeight: "800" },
 
   hlCard: { flexDirection: "row", gap: 12, borderWidth: 1, borderRadius: 16, padding: 14, overflow: "hidden" },
   hlBar: { width: 4, alignSelf: "stretch", borderRadius: 2 },
