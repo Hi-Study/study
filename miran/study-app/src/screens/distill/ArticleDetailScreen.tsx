@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ChevronLeft, ExternalLink, Heart } from "lucide-react-native";
+import { Bookmark, ChevronLeft, ExternalLink, Heart } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav, type RootStackParamList } from "@/navigation/types";
@@ -27,6 +27,8 @@ import {
   useRequestArticleSummary,
   useLiked,
   useToggleReaction,
+  useIsBookmarked,
+  useToggleBookmark,
 } from "@/data";
 import { ServiceLogo, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
 import { ArticleHighlightSection } from "@/components/distill/ArticleHighlightSection";
@@ -45,6 +47,8 @@ export function ArticleDetailScreen({ route }: Props) {
   const [tab, setTab] = useState<"original" | "ai" | "opinions">("original");
   const liked = useLiked("article", articleId);
   const toggleLike = useToggleReaction("article", articleId);
+  const bookmarked = useIsBookmarked(articleId);
+  const toggleBookmark = useToggleBookmark(articleId);
 
   if (q.isLoading) {
     return (
@@ -81,6 +85,18 @@ export function ArticleDetailScreen({ route }: Props) {
             {a.topic ? <TopicChip topic={a.topic} /> : null}
             {mins ? <Text style={[styles.readTime, { color: c.textMuted }]}>{mins}분 읽기</Text> : null}
             <View style={{ flex: 1 }} />
+            <Pressable
+              onPress={() => toggleBookmark.mutate(!(bookmarked.data ?? false))}
+              disabled={toggleBookmark.isPending}
+              hitSlop={8}
+              style={styles.bookmarkBtn}
+            >
+              <Bookmark
+                size={18}
+                color={bookmarked.data ? c.primary : c.textMuted}
+                fill={bookmarked.data ? c.primary : "transparent"}
+              />
+            </Pressable>
             <Pressable
               onPress={() => toggleLike.mutate(liked.data ?? false)}
               disabled={toggleLike.isPending}
@@ -340,6 +356,7 @@ const styles = StyleSheet.create({
   body: { paddingHorizontal: 16, paddingTop: 16 },
   metaTop: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
   readTime: { ...dtype.meta },
+  bookmarkBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   likeBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
   likeCount: { ...dtype.meta, fontWeight: "700" },
 

@@ -5,12 +5,13 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronRight, LogOut, RotateCw, Settings, Trash2 } from "lucide-react-native";
+import { ChevronRight, LogOut, MessageSquare, RotateCw, Settings, Trash2 } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
@@ -19,24 +20,30 @@ import {
   useMyOpinions,
   useMyHighlights,
   useMyWords,
+  useMyBookmarks,
+  useMyComments,
   useDefineWord,
   useDeleteWord,
   type OpinionFeedItem,
   type MyHighlightRow,
   type UserWordRow,
+  type MyCommentRow,
+  type ArticleWithBlog,
 } from "@/data";
 import { dtype } from "@/theme";
 import { highlightBg } from "@/lib/highlight";
 import { Avatar } from "@/components/Avatar";
 import { OpinionCard } from "@/components/distill/OpinionCard";
-import { TopicChip } from "@/components/distill/ArticleCards";
+import { ArticleRow, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
 import { Loading, EmptyState } from "@/components";
 
-type MyTab = "opinions" | "highlights" | "words";
+type MyTab = "opinions" | "highlights" | "bookmarks" | "comments" | "words";
 
 const TABS: { key: MyTab; label: string }[] = [
   { key: "opinions", label: "내 의견" },
   { key: "highlights", label: "하이라이트" },
+  { key: "bookmarks", label: "북마크" },
+  { key: "comments", label: "댓글" },
   { key: "words", label: "단어장" },
 ];
 
@@ -48,19 +55,42 @@ export function DistillMyPageScreen() {
 
   const opinionsQ = useMyOpinions();
   const highlightsQ = useMyHighlights();
+  const bookmarksQ = useMyBookmarks();
+  const commentsQ = useMyComments();
   const wordsQ = useMyWords();
 
   const opinions = opinionsQ.data ?? [];
   const highlights = highlightsQ.data ?? [];
+  const bookmarks = bookmarksQ.data ?? [];
+  const comments = commentsQ.data ?? [];
   const words = wordsQ.data ?? [];
 
-  const activeQ = tab === "opinions" ? opinionsQ : tab === "highlights" ? highlightsQ : wordsQ;
-  const data: Array<OpinionFeedItem | MyHighlightRow | UserWordRow> =
-    tab === "opinions" ? opinions : tab === "highlights" ? highlights : words;
+  const byTab = {
+    opinions: opinionsQ,
+    highlights: highlightsQ,
+    bookmarks: bookmarksQ,
+    comments: commentsQ,
+    words: wordsQ,
+  } as const;
+  const activeQ = byTab[tab];
+  const data: Array<
+    OpinionFeedItem | MyHighlightRow | ArticleWithBlog | MyCommentRow | UserWordRow
+  > =
+    tab === "opinions"
+      ? opinions
+      : tab === "highlights"
+        ? highlights
+        : tab === "bookmarks"
+          ? bookmarks
+          : tab === "comments"
+            ? comments
+            : words;
 
   const emptyByTab: Record<MyTab, { title: string; hint: string }> = {
     opinions: { title: "아직 남긴 의견이 없어요", hint: "글을 읽고 첫 의견을 남겨보세요" },
     highlights: { title: "밑줄 그은 문장이 없어요", hint: "글에서 문장을 눌러 밑줄을 그어보세요" },
+    bookmarks: { title: "북마크한 글이 없어요", hint: "글 상세에서 북마크를 눌러 저장해보세요" },
+    comments: { title: "남긴 댓글이 없어요", hint: "의견에 답글을 달아보세요" },
     words: { title: "저장한 단어가 없어요", hint: "글에서 문장을 길게 눌러 단어를 담아보세요" },
   };
 
@@ -90,9 +120,27 @@ export function DistillMyPageScreen() {
               />
             );
           }
+          if (tab === "bookmarks") {
+            const a = item as ArticleWithBlog;
+            return (
+              <ArticleRow article={a} onPress={() => nav.navigate("ArticleDetail", { articleId: a.id })} />
+            );
+          }
+          if (tab === "comments") {
+            return (
+              <CommentRow
+                row={item as MyCommentRow}
+                onPress={(opinionId) => nav.navigate("OpinionDetail", { opinionId })}
+              />
+            );
+          }
           return <WordCard row={item as UserWordRow} />;
         }}
-        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        ItemSeparatorComponent={
+          tab === "bookmarks"
+            ? () => <View style={[styles.sep, { backgroundColor: c.hairline }]} />
+            : () => <View style={{ height: 12 }} />
+        }
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -150,23 +198,28 @@ export function DistillMyPageScreen() {
               <LogOut size={18} color={c.danger} />
             </Pressable>
 
-            {/* 세그먼트 탭 */}
-            <View style={[styles.segment, { backgroundColor: c.surfaceSunken }]}>
+            {/* 세그먼트 탭 (가로 스크롤) */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.segScroll}
+              style={styles.segmentWrap}
+            >
               {TABS.map((t) => {
                 const on = tab === t.key;
                 return (
                   <Pressable
                     key={t.key}
-                    style={[styles.segBtn, on && { backgroundColor: c.surfaceCard }]}
+                    style={[styles.segPill, { backgroundColor: on ? c.primary : c.surfaceSunken }]}
                     onPress={() => setTab(t.key)}
                   >
-                    <Text style={[styles.segText, { color: on ? c.primary : c.textMuted }]}>
+                    <Text style={[styles.segPillText, { color: on ? c.actionOn : c.textSecondary }]}>
                       {t.label}
                     </Text>
                   </Pressable>
                 );
               })}
-            </View>
+            </ScrollView>
 
             {activeQ.isLoading ? <Loading label="불러오는 중…" /> : null}
             {!activeQ.isLoading && data.length === 0 ? (
@@ -271,6 +324,42 @@ function WordCard({ row }: { row: UserWordRow }) {
   );
 }
 
+// 내 댓글 한 줄 — 댓글 내용 + 어떤 글/의견에 달았는지(탭하면 의견 상세).
+function CommentRow({
+  row,
+  onPress,
+}: {
+  row: MyCommentRow;
+  onPress: (opinionId: string) => void;
+}) {
+  const { theme } = useTheme();
+  const c = theme.colors;
+  return (
+    <Pressable
+      onPress={() => onPress(row.opinion_id)}
+      style={({ pressed }) => [
+        styles.commentCard,
+        { backgroundColor: c.surfaceCard, borderColor: c.hairline, opacity: pressed ? 0.95 : 1 },
+      ]}
+    >
+      <View style={styles.commentHead}>
+        <MessageSquare size={14} color={c.textMuted} />
+        <Text style={[styles.commentDate, { color: c.textMuted }]}>
+          {relativeDate(row.created_at)}
+        </Text>
+      </View>
+      <Text style={[styles.commentText, { color: c.textPrimary }]} numberOfLines={4}>
+        {row.text}
+      </Text>
+      {row.opinion?.article ? (
+        <Text style={[styles.commentSource, { color: c.textMuted }]} numberOfLines={1}>
+          {row.opinion.article.title}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   listContent: { paddingHorizontal: 16, paddingBottom: 32 },
@@ -297,9 +386,17 @@ const styles = StyleSheet.create({
   },
   menuText: { ...dtype.cardTitle },
 
-  segment: { flexDirection: "row", borderRadius: 12, padding: 3, marginBottom: 16, gap: 3 },
-  segBtn: { flex: 1, paddingVertical: 9, borderRadius: 9, alignItems: "center" },
-  segText: { ...dtype.cardTitle, fontSize: 14 },
+  segmentWrap: { marginBottom: 16 },
+  segScroll: { gap: 8, paddingRight: 8 },
+  segPill: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 999 },
+  segPillText: { ...dtype.cardTitle, fontSize: 14 },
+  sep: { height: 1 },
+
+  commentCard: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 8 },
+  commentHead: { flexDirection: "row", alignItems: "center", gap: 6 },
+  commentDate: { ...dtype.meta },
+  commentText: { ...dtype.body, lineHeight: 22 },
+  commentSource: { ...dtype.meta },
 
   hlCard: { flexDirection: "row", gap: 12, borderWidth: 1, borderRadius: 16, padding: 14, overflow: "hidden" },
   hlBar: { width: 4, alignSelf: "stretch", borderRadius: 2 },

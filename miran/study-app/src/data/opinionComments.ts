@@ -34,6 +34,25 @@ export async function listOpinionComments(
   return (data ?? []) as unknown as OpinionCommentRow[];
 }
 
+// 마이 "내 댓글" — 내가 단 댓글 + 어떤 의견/글에 달았는지.
+export interface MyCommentRow {
+  id: string;
+  opinion_id: string;
+  text: string;
+  created_at: string;
+  opinion: { id: string; article: { id: string; title: string } | null } | null;
+}
+
+export async function listMyComments(uid: string): Promise<MyCommentRow[]> {
+  const { data, error } = await supabase
+    .from("opinion_comments")
+    .select("id, opinion_id, text, created_at, opinion:opinions(id, article:articles(id, title))")
+    .eq("author_id", uid)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as MyCommentRow[];
+}
+
 export interface CreateOpinionCommentInput {
   text: string;
   parentId?: string | null;
@@ -71,6 +90,15 @@ export function useOpinionComments(opinionId: string) {
     queryKey: qk.opinionComments(opinionId),
     queryFn: () => listOpinionComments(opinionId),
     enabled: Boolean(opinionId),
+  });
+}
+
+export function useMyComments() {
+  const uid = useUid();
+  return useQuery({
+    queryKey: qk.myComments(uid),
+    queryFn: () => listMyComments(uid),
+    enabled: Boolean(uid),
   });
 }
 

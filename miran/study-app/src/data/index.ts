@@ -18,3 +18,4 @@ export * from "./reactions";
 export * from "./userWords";
 export * from "./submit";
 export * from "./favorites";
+export * from "./bookmarks";

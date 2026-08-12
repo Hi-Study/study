@@ -43,4 +43,7 @@ export const qk = {
     ["liked", targetType, targetId, uid] as const,
   myHighlights: (uid: string) => ["my-highlights", uid] as const,
   words: (uid: string) => ["words", uid] as const,
+  bookmarks: (uid: string) => ["bookmarks", uid] as const,
+  bookmarkIds: (uid: string) => ["bookmark-ids", uid] as const,
+  myComments: (uid: string) => ["my-comments", uid] as const,
 };
