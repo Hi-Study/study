@@ -1,13 +1,19 @@
 // distill 홈 — "발견" (DESIGN_GUIDE §7.1).
 //   [그리팅] · [피처드 대표글] · [서비스별 보기 로고 그리드] · [서비스별 아티클 가로 캐러셀]
-import React from "react";
+import React, { useMemo } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Bell, ChevronRight, Plus, Search } from "lucide-react-native";
+import { Bell, ChevronRight, Plus, Search, Star } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
-import { useBlogs, useFeaturedArticle, useArticlesByBlog } from "@/data";
+import {
+  useBlogs,
+  useFeaturedArticle,
+  useArticlesByBlog,
+  useFavoriteBlogIds,
+  useToggleBlogFavorite,
+} from "@/data";
 import type { BlogRow } from "@/types/tables";
 import { dtype } from "@/theme";
 import { ArticleCardH, FeaturedCard, ServiceLogo } from "@/components/distill/ArticleCards";
@@ -22,7 +28,15 @@ function greeting(): string {
 }
 
 // 서비스별 가로 캐러셀 — 블로그 최신글이 있을 때만 렌더.
-function ServiceCarousel({ blog }: { blog: BlogRow }) {
+function ServiceCarousel({
+  blog,
+  favorite,
+  onToggleFavorite,
+}: {
+  blog: BlogRow;
+  favorite: boolean;
+  onToggleFavorite: (blogId: string, next: boolean) => void;
+}) {
   const { theme } = useTheme();
   const c = theme.colors;
   const nav = useRootNav();
@@ -32,14 +46,23 @@ function ServiceCarousel({ blog }: { blog: BlogRow }) {
 
   return (
     <View style={styles.section}>
-      <Pressable
-        style={styles.sectionHead}
-        onPress={() => nav.navigate("BlogArticles", { blogId: blog.id, blogName: blog.name })}
-      >
-        <ServiceLogo name={blog.name} brandColor={blog.brand_color} size={26} />
-        <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>{blog.name}</Text>
-        <ChevronRight size={18} color={c.textMuted} />
-      </Pressable>
+      <View style={styles.sectionHead}>
+        <Pressable
+          style={styles.sectionHeadMain}
+          onPress={() => nav.navigate("BlogArticles", { blogId: blog.id, blogName: blog.name })}
+        >
+          <ServiceLogo name={blog.name} brandColor={blog.brand_color} size={26} />
+          <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>{blog.name}</Text>
+          <ChevronRight size={18} color={c.textMuted} />
+        </Pressable>
+        <Pressable onPress={() => onToggleFavorite(blog.id, !favorite)} hitSlop={8} style={styles.starBtn}>
+          <Star
+            size={19}
+            color={favorite ? c.hot : c.textMuted}
+            fill={favorite ? c.hot : "transparent"}
+          />
+        </Pressable>
+      </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -57,7 +80,15 @@ function ServiceCarousel({ blog }: { blog: BlogRow }) {
   );
 }
 
-function HomeHeader({ blogs }: { blogs: BlogRow[] }) {
+function HomeHeader({
+  blogs,
+  favSet,
+  onToggleFavorite,
+}: {
+  blogs: BlogRow[];
+  favSet: Set<string>;
+  onToggleFavorite: (blogId: string, next: boolean) => void;
+}) {
   const { theme } = useTheme();
   const c = theme.colors;
   const nav = useRootNav();
@@ -106,18 +137,30 @@ function HomeHeader({ blogs }: { blogs: BlogRow[] }) {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.logoGrid}
         >
-          {blogs.map((b) => (
-            <Pressable
-              key={b.id}
-              style={styles.logoItem}
-              onPress={() => nav.navigate("BlogArticles", { blogId: b.id, blogName: b.name })}
-            >
-              <ServiceLogo name={b.name} brandColor={b.brand_color} size={52} />
-              <Text style={[styles.logoName, { color: c.textSecondary }]} numberOfLines={1}>
-                {b.name}
-              </Text>
-            </Pressable>
-          ))}
+          {blogs.map((b) => {
+            const fav = favSet.has(b.id);
+            return (
+              <Pressable
+                key={b.id}
+                style={styles.logoItem}
+                onPress={() => nav.navigate("BlogArticles", { blogId: b.id, blogName: b.name })}
+              >
+                <View style={styles.logoWrap}>
+                  <ServiceLogo name={b.name} brandColor={b.brand_color} size={52} />
+                  <Pressable
+                    onPress={() => onToggleFavorite(b.id, !fav)}
+                    hitSlop={6}
+                    style={[styles.logoStar, { backgroundColor: c.surfaceCard, borderColor: c.hairline }]}
+                  >
+                    <Star size={11} color={fav ? c.hot : c.textMuted} fill={fav ? c.hot : "transparent"} />
+                  </Pressable>
+                </View>
+                <Text style={[styles.logoName, { color: c.textSecondary }]} numberOfLines={1}>
+                  {b.name}
+                </Text>
+              </Pressable>
+            );
+          })}
         </ScrollView>
       </View>
     </View>
@@ -128,6 +171,18 @@ export function DistillHomeScreen() {
   const { theme } = useTheme();
   const c = theme.colors;
   const blogsQ = useBlogs();
+  const favsQ = useFavoriteBlogIds();
+  const toggleFav = useToggleBlogFavorite();
+
+  const favSet = useMemo(() => new Set(favsQ.data ?? []), [favsQ.data]);
+  const blogs = useMemo(() => {
+    const list = blogsQ.data ?? [];
+    // 즐겨찾기한 기업을 앞쪽으로(그 외 순서는 원본 유지).
+    return [...list].sort((a, b) => (favSet.has(b.id) ? 1 : 0) - (favSet.has(a.id) ? 1 : 0));
+  }, [blogsQ.data, favSet]);
+
+  const onToggleFav = (blogId: string, next: boolean) =>
+    toggleFav.mutate({ blogId, favorite: next });
 
   if (blogsQ.isLoading) {
     return (
@@ -144,7 +199,6 @@ export function DistillHomeScreen() {
     );
   }
 
-  const blogs = blogsQ.data ?? [];
   return (
     <SafeAreaView
       style={[styles.screen, { backgroundColor: c.surfacePage }]}
@@ -153,8 +207,16 @@ export function DistillHomeScreen() {
       <FlatList
         data={blogs}
         keyExtractor={(b) => b.id}
-        renderItem={({ item }) => <ServiceCarousel blog={item} />}
-        ListHeaderComponent={<HomeHeader blogs={blogs} />}
+        renderItem={({ item }) => (
+          <ServiceCarousel
+            blog={item}
+            favorite={favSet.has(item.id)}
+            onToggleFavorite={onToggleFav}
+          />
+        )}
+        ListHeaderComponent={
+          <HomeHeader blogs={blogs} favSet={favSet} onToggleFavorite={onToggleFav} />
+        }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
       />
@@ -177,10 +239,14 @@ const styles = StyleSheet.create({
   section: { marginTop: 24 },
   sectionLabel: { ...dtype.title, paddingHorizontal: 16, marginBottom: 12 },
   sectionHead: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, marginBottom: 12 },
+  sectionHeadMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
   sectionTitle: { ...dtype.title, flex: 1 },
+  starBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
 
   logoGrid: { paddingHorizontal: 16, gap: 16 },
   logoItem: { alignItems: "center", width: 60, gap: 6 },
+  logoWrap: { width: 52, height: 52 },
+  logoStar: { position: "absolute", top: -4, right: -6, width: 20, height: 20, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   logoName: { ...dtype.meta, textAlign: "center" },
 
   carousel: { paddingHorizontal: 16, gap: 12 },

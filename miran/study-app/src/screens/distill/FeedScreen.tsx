@@ -1,11 +1,11 @@
 // distill 피드 탭 — 주제별 테크 글 스트림 (DESIGN_GUIDE §7.2). 순수 '글' 스트림(의견 아님).
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
-import { useArticlesFeed } from "@/data";
+import { useArticlesFeed, useBlogs, useFavoriteBlogIds } from "@/data";
 import { dtype, TOPIC_META, TOPIC_ORDER } from "@/theme";
 import type { Topic } from "@/types/database";
 import { ArticleRow } from "@/components/distill/ArticleCards";
@@ -16,8 +16,23 @@ export function FeedScreen() {
   const c = theme.colors;
   const nav = useRootNav();
   const [topic, setTopic] = useState<Topic | null>(null);
+  const [blogId, setBlogId] = useState<string | null>(null);
   const [sort, setSort] = useState<"latest" | "popular">("latest");
-  const q = useArticlesFeed({ ...(topic ? { topic } : {}), sort });
+
+  const blogsQ = useBlogs();
+  const favsQ = useFavoriteBlogIds();
+  const blogs = useMemo(() => {
+    const favSet = new Set(favsQ.data ?? []);
+    return [...(blogsQ.data ?? [])].sort(
+      (a, b) => (favSet.has(b.id) ? 1 : 0) - (favSet.has(a.id) ? 1 : 0),
+    );
+  }, [blogsQ.data, favsQ.data]);
+
+  const q = useArticlesFeed({
+    ...(topic ? { topic } : {}),
+    ...(blogId ? { blogId } : {}),
+    sort,
+  });
   const rows = q.data?.pages.flatMap((p) => p.rows) ?? [];
 
   return (
@@ -61,6 +76,27 @@ export function FeedScreen() {
           ))}
         </ScrollView>
       </View>
+
+      {/* 기업 칩 */}
+      {blogs.length > 0 ? (
+        <View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chips}
+          >
+            <Chip label="전체 기업" active={blogId === null} onPress={() => setBlogId(null)} />
+            {blogs.map((b) => (
+              <Chip
+                key={b.id}
+                label={b.name}
+                active={blogId === b.id}
+                onPress={() => setBlogId(blogId === b.id ? null : b.id)}
+              />
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
 
       {q.isLoading ? (
         <Loading label="불러오는 중…" />

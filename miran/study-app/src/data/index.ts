@@ -17,3 +17,4 @@ export * from "./opinionComments";
 export * from "./reactions";
 export * from "./userWords";
 export * from "./submit";
+export * from "./favorites";

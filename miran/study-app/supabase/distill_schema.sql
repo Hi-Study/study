@@ -377,3 +377,20 @@ create index if not exists idx_articles_submitted_by on public.articles(submitte
 insert into public.blogs (key, name, collect, active)
 values ('user', '직접 등록', 'listscrape', false)
 on conflict (key) do nothing;
+
+-- ============================================================
+-- 14) 기업(블로그) 즐겨찾기 — 홈 정렬 + 새 글 알림 대상
+--     · 본인만 읽기/쓰기/삭제
+-- ============================================================
+create table if not exists public.user_blog_favorites (
+  user_id    uuid not null references public.users(id) on delete cascade,
+  blog_id    uuid not null references public.blogs(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, blog_id)
+);
+
+alter table public.user_blog_favorites enable row level security;
+
+drop policy if exists ublogfav_all_own on public.user_blog_favorites;
+create policy ublogfav_all_own on public.user_blog_favorites for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());

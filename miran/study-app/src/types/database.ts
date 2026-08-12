@@ -224,6 +224,13 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["article_bookmarks"]["Insert"]>;
         Relationships: [];
       };
+      // ---- distill: 기업(블로그) 즐겨찾기 ----
+      user_blog_favorites: {
+        Row: { user_id: string; blog_id: string; created_at: string };
+        Insert: { user_id: string; blog_id: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["user_blog_favorites"]["Insert"]>;
+        Relationships: [];
+      };
       // ---- distill: 좋아요(의견/토론) ----
       reactions: {
         Row: {
