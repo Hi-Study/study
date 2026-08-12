@@ -21,6 +21,8 @@ export const supabase = createClient<Database>(
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
+      // 구글 OAuth(딥링크 복귀 후 code→session 교환)에 PKCE 사용.
+      flowType: "pkce",
     },
   },
 );

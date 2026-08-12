@@ -11,6 +11,7 @@ import { View } from "react-native";
 import { useAuth } from "@/auth/AuthProvider";
 import { useTheme } from "@/providers/ThemeProvider";
 import { Loading, ErrorState } from "@/components";
+import { LoginScreen } from "@/screens/LoginScreen";
 import { MyStudiesScreen } from "@/screens/MyStudiesScreen";
 import { CreateStudyScreen } from "@/screens/CreateStudyScreen";
 import { JoinStudyScreen } from "@/screens/JoinStudyScreen";
@@ -53,7 +54,7 @@ function navTheme(base: NavTheme, colors: ReturnType<typeof useTheme>["theme"]["
 /** 세션 준비 게이트 — 익명 로그인 완료 전에는 화면을 마운트하지 않는다. */
 function Gate() {
   const { theme } = useTheme();
-  const { status, error } = useAuth();
+  const { status, session, error } = useAuth();
 
   if (status === "loading") {
     return (
@@ -68,6 +69,10 @@ function Gate() {
         <ErrorState message={error ?? undefined} />
       </View>
     );
+  }
+  // 인증 상태 파악 완료했는데 세션이 없으면 → 로그인 화면(구글).
+  if (!session) {
+    return <LoginScreen />;
   }
 
   return (

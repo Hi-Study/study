@@ -1,6 +1,7 @@
 // distill 마이 탭 (DESIGN_GUIDE §7.6) — 프로필 · 3모아보기(내 의견 · 하이라이트 · 단어장) · 설정.
 import React, { useState } from "react";
 import {
+  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -9,10 +10,11 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronRight, RotateCw, Settings, Trash2 } from "lucide-react-native";
+import { ChevronRight, LogOut, RotateCw, Settings, Trash2 } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
+import { signOut } from "@/auth/googleSignIn";
 import {
   useMyOpinions,
   useMyHighlights,
@@ -132,6 +134,20 @@ export function DistillMyPageScreen() {
             >
               <Text style={[styles.menuText, { color: c.textPrimary }]}>화면 설정 (테마)</Text>
               <ChevronRight size={18} color={c.textMuted} />
+            </Pressable>
+
+            {/* 로그아웃 */}
+            <Pressable
+              style={[styles.menuRow, { borderColor: c.hairline }]}
+              onPress={() =>
+                Alert.alert("로그아웃", "로그아웃할까요?", [
+                  { text: "취소", style: "cancel" },
+                  { text: "로그아웃", style: "destructive", onPress: () => void signOut() },
+                ])
+              }
+            >
+              <Text style={[styles.menuText, { color: c.danger }]}>로그아웃</Text>
+              <LogOut size={18} color={c.danger} />
             </Pressable>
 
             {/* 세그먼트 탭 */}

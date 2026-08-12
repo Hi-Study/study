@@ -13,13 +13,13 @@ interface SessionState {
 }
 
 /**
- * 익명 인증 부트스트랩 (dev/api.md §1: 로그인 화면 없음 → Anonymous Auth).
- * - 첫 실행: 세션이 없으면 signInAnonymously() 로 화면 없이 사용자 자동 생성.
- * - auth.users insert 트리거가 users 프로필(name '게스트') 자동 생성.
- * - 이후 실행: AsyncStorage 에 영속된 세션 복원.
+ * 로그인 세션 부트스트랩 (구글 로그인 기반).
+ * - 첫 실행: 저장된 세션이 있으면 복원, 없으면 session=null 로 ready → 로그인 화면 노출.
+ * - onAuthStateChange 로 로그인/로그아웃을 단일 소스로 반영.
+ * - 'ready' 는 "인증 상태를 파악 완료"를 뜻하며, session 이 null 이면 로그인 필요.
  *
- * ⚠️ Supabase 대시보드 > Authentication > Providers 에서 **Anonymous sign-ins**
- *    를 활성화해야 동작합니다.
+ * ⚠️ Supabase 대시보드 > Authentication > Providers 에서 Google 을 켜고,
+ *    URL Configuration > Redirect URLs 에 studyapp://** 를 등록해야 로그인이 동작합니다.
  */
 export function useSession(): SessionState {
   const [state, setState] = useState<SessionState>({
@@ -40,13 +40,10 @@ export function useSession(): SessionState {
         });
         return;
       }
-
       try {
         const { data } = await supabase.auth.getSession();
-        if (!data.session) {
-          const { error } = await supabase.auth.signInAnonymously();
-          if (error) throw error;
-        }
+        if (!mounted) return;
+        setState({ status: "ready", session: data.session, error: null });
       } catch (err) {
         if (!mounted) return;
         setState({
@@ -54,19 +51,13 @@ export function useSession(): SessionState {
           session: null,
           error: err instanceof Error ? err.message : String(err),
         });
-        return;
       }
     }
 
-    // 세션 변화를 단일 소스로 구독 (초기 + 이후 변경 모두 수신).
-    // ⚠️ 첫 실행 시 supabase 는 session=null 인 INITIAL_SESSION 이벤트를 먼저 보낸다.
-    //    이때 'ready' 로 넘기면 로그인 전에 화면이 떠서 uid 없이 크래시하므로,
-    //    **세션이 실제로 존재할 때만** ready 로 전환한다. (익명 로그인은 곧 성공)
+    // 로그인/로그아웃/토큰 갱신을 모두 수신해 세션을 갱신.
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
-      if (session) {
-        setState({ status: "ready", session, error: null });
-      }
+      setState({ status: "ready", session, error: null });
     });
 
     bootstrap();
