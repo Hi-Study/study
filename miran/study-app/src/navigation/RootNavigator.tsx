@@ -71,8 +71,9 @@ function Gate() {
       </View>
     );
   }
-  // 인증 상태 파악 완료했는데 세션이 없으면 → 로그인 화면(구글).
-  if (!session) {
+  // 세션이 없거나 '익명(게스트) 세션'이면 → 로그인 화면(구글).
+  //   예전 익명 로그인 세션이 기기에 남아 있으면 로그인 화면을 건너뛰던 문제를 방지.
+  if (!session || session.user.is_anonymous) {
     return <LoginScreen />;
   }
 
