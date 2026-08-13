@@ -35,6 +35,7 @@ import {
 } from "@/data";
 import { dtype } from "@/theme";
 import { highlightBg } from "@/lib/highlight";
+import { bucketHeaders } from "@/lib/dateBucket";
 import { Avatar } from "@/components/Avatar";
 import { OpinionCard } from "@/components/distill/OpinionCard";
 import { ArticleRow, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
@@ -73,10 +74,6 @@ export function DistillMyPageScreen() {
   const draftsQ = useMyDrafts();
   const wordsQ = useMyWords();
 
-  const opinions = opinionsQ.data ?? [];
-  const highlights = highlightsQ.data ?? [];
-  const words = wordsQ.data ?? [];
-
   const byTab = {
     opinions: opinionsQ,
     highlights: highlightsQ,
@@ -96,6 +93,24 @@ export function DistillMyPageScreen() {
     | UserWordRow
   >;
 
+  // 날짜별 그룹 헤더 — 의견·하이라이트·댓글·단어·임시저장(날짜 있는 탭).
+  const dated =
+    tab === "opinions" ||
+    tab === "highlights" ||
+    tab === "comments" ||
+    tab === "words" ||
+    tab === "drafts";
+  const headers = dated
+    ? bucketHeaders(
+        data.map((it) =>
+          tab === "drafts"
+            ? (it as OpinionDraftRow).updated_at
+            : (it as { created_at?: string }).created_at ?? null,
+        ),
+        Date.now(),
+      )
+    : [];
+
   const emptyByTab: Record<MyTab, { title: string; hint: string }> = {
     opinions: { title: "아직 남긴 의견이 없어요", hint: "글을 읽고 첫 의견을 남겨보세요" },
     highlights: { title: "밑줄 그은 문장이 없어요", hint: "글에서 문장을 눌러 밑줄을 그어보세요" },
@@ -114,47 +129,52 @@ export function DistillMyPageScreen() {
       <FlatList
         data={data}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
+          const header = dated ? headers[index] : null;
+          let body: React.ReactElement;
           if (tab === "opinions") {
             const o = item as OpinionFeedItem;
-            return (
+            body = (
               <OpinionCard
                 opinion={o}
                 onPress={() => nav.navigate("OpinionDetail", { opinionId: o.id })}
               />
             );
-          }
-          if (tab === "highlights") {
-            return (
+          } else if (tab === "highlights") {
+            body = (
               <HighlightRow
                 row={item as MyHighlightRow}
                 onPress={(articleId) => nav.navigate("ArticleDetail", { articleId })}
               />
             );
-          }
-          if (tab === "bookmarks" || tab === "reads") {
+          } else if (tab === "bookmarks" || tab === "reads") {
             const a = item as ArticleWithBlog;
-            return (
-              <ArticleRow article={a} onPress={() => nav.navigate("ArticleDetail", { articleId: a.id })} />
-            );
-          }
-          if (tab === "comments") {
-            return (
+            body = <ArticleRow article={a} onPress={() => nav.navigate("ArticleDetail", { articleId: a.id })} />;
+          } else if (tab === "comments") {
+            body = (
               <CommentRow
                 row={item as MyCommentRow}
                 onPress={(opinionId) => nav.navigate("OpinionDetail", { opinionId })}
               />
             );
-          }
-          if (tab === "drafts") {
-            return (
+          } else if (tab === "drafts") {
+            body = (
               <DraftRow
                 row={item as OpinionDraftRow}
                 onPress={(articleId) => nav.navigate("CreateOpinion", { articleId })}
               />
             );
+          } else {
+            body = <WordCard row={item as UserWordRow} />;
           }
-          return <WordCard row={item as UserWordRow} />;
+          return (
+            <View>
+              {header ? (
+                <Text style={[styles.dateHeader, { color: c.textMuted }]}>{header}</Text>
+              ) : null}
+              {body}
+            </View>
+          );
         }}
         ItemSeparatorComponent={
           tab === "bookmarks" || tab === "reads"
@@ -186,13 +206,6 @@ export function DistillMyPageScreen() {
               >
                 <Settings size={22} color={c.textSecondary} />
               </Pressable>
-            </View>
-
-            {/* 통계 3 */}
-            <View style={styles.stats}>
-              <StatCard label="내 의견" value={opinions.length} />
-              <StatCard label="하이라이트" value={highlights.length} />
-              <StatCard label="단어" value={words.length} />
             </View>
 
             {/* 설정 바로가기 */}
@@ -249,17 +262,6 @@ export function DistillMyPageScreen() {
         }
       />
     </SafeAreaView>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: number }) {
-  const { theme } = useTheme();
-  const c = theme.colors;
-  return (
-    <View style={[styles.statCard, { backgroundColor: c.surfaceCard, borderColor: c.hairline }]}>
-      <Text style={[styles.statNum, { color: c.textPrimary }]}>{value}</Text>
-      <Text style={[styles.statLabel, { color: c.textMuted }]}>{label}</Text>
-    </View>
   );
 }
 
@@ -432,10 +434,7 @@ const styles = StyleSheet.create({
   role: { ...dtype.bodyS, marginTop: 2 },
   iconBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
 
-  stats: { flexDirection: "row", gap: 10, marginBottom: 16 },
-  statCard: { flex: 1, borderWidth: 1, borderRadius: 16, paddingVertical: 16, alignItems: "center", gap: 4 },
-  statNum: { ...dtype.display, fontSize: 22 },
-  statLabel: { ...dtype.meta },
+  dateHeader: { ...dtype.label, fontSize: 12.5, fontWeight: "800", marginTop: 10, marginBottom: 8 },
 
   menuRow: {
     flexDirection: "row",
