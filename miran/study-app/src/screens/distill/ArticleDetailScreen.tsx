@@ -45,7 +45,7 @@ export function ArticleDetailScreen({ route }: Props) {
   const nav = useRootNav();
   const q = useArticle(articleId);
   // ⚠️ 훅은 early return 앞에서 무조건 호출 (React 훅 규칙 — 렌더마다 개수 동일).
-  const [tab, setTab] = useState<"original" | "ai" | "opinions">("original");
+  const [tab, setTab] = useState<"original" | "opinions">("original");
   const liked = useLiked("article", articleId);
   const toggleLike = useToggleReaction("article", articleId);
   const bookmarked = useIsBookmarked(articleId);
@@ -167,10 +167,10 @@ export function ArticleDetailScreen({ route }: Props) {
             <ExternalLink size={16} color={c.textLink} />
           </Pressable>
 
-          {/* 원문 / AI 요약 / 의견 탭 */}
+          {/* 원문 / 의견 탭 */}
           <View style={[styles.tabs, { borderColor: c.hairline }]}>
-            {(["original", "ai", "opinions"] as const).map((t) => {
-              const label = t === "original" ? "원문" : t === "ai" ? "AI 요약" : "의견";
+            {(["original", "opinions"] as const).map((t) => {
+              const label = t === "original" ? "원문" : "의견";
               const on = tab === t;
               return (
                 <Pressable
@@ -185,18 +185,20 @@ export function ArticleDetailScreen({ route }: Props) {
           </View>
 
           {tab === "original" ? (
-            body.length > 0 ? (
-              <ArticleHighlightSection articleId={a.id} text={body} />
-            ) : (
-              <Text style={[styles.paragraph, { color: c.textMuted }]}>
-                본문이 없어요. 원문에서 읽어보세요.
-              </Text>
-            )
-          ) : tab === "ai" ? (
-            <AiSummaryPanel
-              articleId={a.id}
-              cached={a.ai_summaries as Record<string, string> | null | undefined}
-            />
+            <View style={styles.originalWrap}>
+              {/* AI 요약(3관점) — 원문 최상단 고정 */}
+              <AiSummaryPanel
+                articleId={a.id}
+                cached={a.ai_summaries as Record<string, string> | null | undefined}
+              />
+              {body.length > 0 ? (
+                <ArticleHighlightSection articleId={a.id} text={body} />
+              ) : (
+                <Text style={[styles.paragraph, { color: c.textMuted }]}>
+                  본문이 없어요. 원문에서 읽어보세요.
+                </Text>
+              )}
+            </View>
           ) : (
             <OpinionsSection articleId={a.id} />
           )}
@@ -406,6 +408,7 @@ const styles = StyleSheet.create({
   tab: { flex: 1, paddingVertical: 8, borderRadius: 9, alignItems: "center" },
   tabText: { ...dtype.cardTitle, fontSize: 14 },
 
+  originalWrap: { gap: 22 },
   ai: { gap: 14 },
   aiModes: { flexDirection: "row", gap: 8 },
   aiMode: { flex: 1, borderWidth: 1, borderRadius: 10, paddingVertical: 8, alignItems: "center" },
