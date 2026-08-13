@@ -56,20 +56,25 @@ export function DiscussScreen() {
       edges={["top", "left", "right"]}
     >
       <View style={styles.header}>
-        <Text style={[styles.title, { color: c.textPrimary }]}>토론</Text>
-        <View style={styles.sortSeg}>
-          {(["latest", "popular"] as const).map((s) => (
-            <Pressable key={s} onPress={() => setSort(s)} hitSlop={6}>
-              <Text
-                style={[
-                  styles.sortText,
-                  { color: sort === s ? c.primary : c.textMuted, fontWeight: sort === s ? "700" : "500" },
-                ]}
+        <View>
+          <Text style={[styles.title, { color: c.textPrimary }]}>토론</Text>
+          <Text style={[styles.sub, { color: c.textMuted }]}>독후감·인사이트 모아보기</Text>
+        </View>
+        <View style={[styles.sortSeg, { backgroundColor: c.surfaceSunken }]}>
+          {(["latest", "popular"] as const).map((s) => {
+            const on = sort === s;
+            return (
+              <Pressable
+                key={s}
+                onPress={() => setSort(s)}
+                style={[styles.sortBtn, on && { backgroundColor: c.surfaceCard }]}
               >
-                {s === "latest" ? "최신" : "인기"}
-              </Text>
-            </Pressable>
-          ))}
+                <Text style={[styles.sortBtnText, { color: on ? c.primary : c.textMuted }]}>
+                  {s === "latest" ? "최신순" : "인기순"}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
@@ -98,7 +103,12 @@ export function DiscussScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
           <Chip label="전체" active={topic === null} onPress={() => setTopic(null)} />
           {TOPIC_ORDER.map((t) => (
-            <Chip key={t} label={TOPIC_META[t].label} active={topic === t} onPress={() => setTopic(t)} />
+            <Chip
+              key={t}
+              label={TOPIC_META[t].label}
+              active={topic === t}
+              onPress={() => setTopic(topic === t ? null : t)}
+            />
           ))}
         </ScrollView>
       </View>
@@ -156,15 +166,17 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   header: {
     flexDirection: "row",
-    alignItems: "flex-end",
+    alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 8,
   },
   title: { ...dtype.display },
-  sortSeg: { flexDirection: "row", gap: 14, paddingBottom: 4 },
-  sortText: { ...dtype.cardTitle, fontSize: 14 },
+  sub: { ...dtype.bodyS, marginTop: 2 },
+  sortSeg: { flexDirection: "row", borderRadius: 10, padding: 3, gap: 2 },
+  sortBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  sortBtnText: { ...dtype.label, fontSize: 12.5, fontWeight: "700" },
 
   searchWrap: { paddingHorizontal: 16, paddingTop: 4 },
   search: {
