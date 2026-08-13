@@ -10,6 +10,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { qk } from "@/lib/queryKeys";
 import { topTags } from "@/lib/tags";
+import { useUid } from "@/auth/AuthProvider";
 import type { SummaryMode } from "@/lib/summary";
 import type { ArticleRow } from "@/types/tables";
 import type { Topic } from "@/types/database";
@@ -232,6 +233,29 @@ export function useFeaturedArticles(limit = 6) {
   return useQuery({
     queryKey: [...qk.articles(), "featured-list", limit] as const,
     queryFn: () => listFeaturedArticles(limit),
+  });
+}
+
+/** 추천 검색어 — 내가 읽은 글들의 태그를 집계(활동 없으면 빈 배열 → 화면에서 인기로 대체). */
+export async function listRecommendedKeywords(uid: string, limit = 10): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("article_reads")
+    .select("article:articles(tags)")
+    .eq("user_id", uid)
+    .limit(100);
+  if (error) throw error;
+  const lists = ((data ?? []) as unknown as { article: { tags: string[] } | null }[]).map(
+    (r) => r.article?.tags,
+  );
+  return topTags(lists, limit);
+}
+
+export function useRecommendedKeywords(limit = 10) {
+  const uid = useUid();
+  return useQuery({
+    queryKey: qk.recommendedKeywords(uid),
+    queryFn: () => listRecommendedKeywords(uid, limit),
+    enabled: Boolean(uid),
   });
 }
 

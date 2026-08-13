@@ -26,6 +26,7 @@ export const qk = {
   blogs: () => ["blogs"] as const,
   favoriteBlogs: (uid: string) => ["favorite-blogs", uid] as const,
   popularTags: () => ["popular-tags"] as const,
+  recommendedKeywords: (uid: string) => ["recommended-keywords", uid] as const,
   articles: () => ["articles"] as const,
   article: (articleId: string) => ["article", articleId] as const,
   articlesByBlog: (blogKey: string) => ["articles", "blog", blogKey] as const,
