@@ -8,19 +8,29 @@ import {
   Linking,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Bookmark, ChevronLeft, ExternalLink, Heart, MessageSquare } from "lucide-react-native";
+import {
+  Bookmark,
+  ChevronLeft,
+  CornerDownLeft,
+  ExternalLink,
+  Heart,
+  MessageSquare,
+  Share2,
+} from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav, type RootStackParamList } from "@/navigation/types";
 import { dtype } from "@/theme";
 import { cleanBody, readingMinutes } from "@/lib/text";
 import { splitInsightSections } from "@/lib/summary";
+import { useReadingFontScale, getReadPos, setReadPos, clearReadPos } from "@/lib/readingPrefs";
 import {
   useArticle,
   useOpinions,
@@ -53,6 +63,14 @@ export function ArticleDetailScreen({ route }: Props) {
   const toggleBookmark = useToggleBookmark(articleId);
   const markRead = useMarkArticleRead(articleId);
   const readMarked = useRef(false);
+  const { scale, step } = useReadingFontScale();
+  const scrollRef = useRef<ScrollView>(null);
+  const [resumeY, setResumeY] = useState(0);
+
+  // 이어읽기 — 이전에 읽던 위치 불러오기(자동 스크롤 대신 '이어읽기' 버튼으로 이동).
+  useEffect(() => {
+    getReadPos(articleId).then(setResumeY);
+  }, [articleId]);
 
   if (q.isLoading) {
     return (
@@ -76,6 +94,7 @@ export function ArticleDetailScreen({ route }: Props) {
   return (
     <View style={[styles.screen, { backgroundColor: c.surfacePage }]}>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={200}
@@ -88,8 +107,12 @@ export function ArticleDetailScreen({ route }: Props) {
           ) {
             readMarked.current = true;
             markRead.mutate();
+            clearReadPos(articleId); // 다 읽으면 이어읽기 위치 제거
+            setResumeY(0);
           }
         }}
+        onScrollEndDrag={(e) => setReadPos(articleId, e.nativeEvent.contentOffset.y)}
+        onMomentumScrollEnd={(e) => setReadPos(articleId, e.nativeEvent.contentOffset.y)}
       >
         {/* 히어로 */}
         <View style={[styles.hero, { backgroundColor: c.surfaceSunken }]}>
@@ -104,6 +127,13 @@ export function ArticleDetailScreen({ route }: Props) {
             {a.topic ? <TopicChip topic={a.topic} /> : null}
             {mins ? <Text style={[styles.readTime, { color: c.textMuted }]}>{mins}분 읽기</Text> : null}
             <View style={{ flex: 1 }} />
+            <Pressable
+              onPress={() => Share.share({ message: `${a.title}\n${a.url}` }).catch(() => undefined)}
+              hitSlop={8}
+              style={styles.bookmarkBtn}
+            >
+              <Share2 size={18} color={c.textMuted} />
+            </Pressable>
             <Pressable
               onPress={() => toggleBookmark.mutate(!(bookmarked.data ?? false))}
               disabled={toggleBookmark.isPending}
@@ -193,7 +223,26 @@ export function ArticleDetailScreen({ route }: Props) {
                 cached={a.ai_summaries as Record<string, string> | null | undefined}
               />
               {body.length > 0 ? (
-                <ArticleHighlightSection articleId={a.id} text={body} />
+                <View style={{ gap: 10 }}>
+                  {/* 글자 크기 조절 */}
+                  <View style={styles.fontRow}>
+                    <Pressable
+                      onPress={() => step(-1)}
+                      hitSlop={6}
+                      style={[styles.fontBtn, { borderColor: c.hairline }]}
+                    >
+                      <Text style={{ color: c.textSecondary, fontSize: 13, fontWeight: "700" }}>가</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => step(1)}
+                      hitSlop={6}
+                      style={[styles.fontBtn, { borderColor: c.hairline }]}
+                    >
+                      <Text style={{ color: c.textSecondary, fontSize: 18, fontWeight: "700" }}>가</Text>
+                    </Pressable>
+                  </View>
+                  <ArticleHighlightSection articleId={a.id} text={body} fontScale={scale} />
+                </View>
               ) : (
                 <Text style={[styles.paragraph, { color: c.textMuted }]}>
                   본문이 없어요. 원문에서 읽어보세요.
@@ -216,6 +265,22 @@ export function ArticleDetailScreen({ route }: Props) {
           <ChevronLeft size={22} color={c.textPrimary} />
         </Pressable>
       </SafeAreaView>
+
+      {/* 이어읽기 (이전에 읽던 위치가 있으면) */}
+      {tab === "original" && resumeY > 600 ? (
+        <View style={styles.resumeWrap} pointerEvents="box-none">
+          <Pressable
+            style={[styles.resumePill, { backgroundColor: c.textPrimary }]}
+            onPress={() => {
+              scrollRef.current?.scrollTo({ y: resumeY, animated: true });
+              setResumeY(0);
+            }}
+          >
+            <CornerDownLeft size={15} color={c.surfacePage} />
+            <Text style={[styles.resumeText, { color: c.surfacePage }]}>이어읽기</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {/* 하단 고정 CTA */}
       <SafeAreaView style={[styles.ctaWrap, { backgroundColor: c.surfaceCard, borderTopColor: c.hairline }]} edges={["bottom"]}>
@@ -394,6 +459,23 @@ const styles = StyleSheet.create({
   metaTop: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
   readTime: { ...dtype.meta },
   bookmarkBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  fontRow: { flexDirection: "row", justifyContent: "flex-end", gap: 8 },
+  fontBtn: { width: 38, height: 32, borderWidth: 1, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  resumeWrap: { position: "absolute", left: 0, right: 0, bottom: 92, alignItems: "center" },
+  resumePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 5,
+  },
+  resumeText: { ...dtype.cardTitle, fontSize: 14 },
   likeBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
   likeCount: { ...dtype.meta, fontWeight: "700" },
 

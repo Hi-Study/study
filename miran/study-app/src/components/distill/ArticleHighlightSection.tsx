@@ -28,9 +28,11 @@ import { WordPickerSheet } from "@/components/distill/WordPickerSheet";
 export function ArticleHighlightSection({
   articleId,
   text,
+  fontScale = 1,
 }: {
   articleId: string;
   text: string;
+  fontScale?: number;
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
@@ -57,6 +59,7 @@ export function ArticleHighlightSection({
         text={text}
         highlights={list}
         activeIndex={active?.index ?? null}
+        fontScale={fontScale}
         onTap={(index, quote) => setActive({ index, quote })}
         onLongPress={(quote) => setWordSentence(quote)}
       />
@@ -132,12 +135,14 @@ function HighlightableText({
   text,
   highlights,
   activeIndex,
+  fontScale,
   onTap,
   onLongPress,
 }: {
   text: string;
   highlights: ArticleHighlightRow[];
   activeIndex: number | null;
+  fontScale: number;
   onTap: (index: number, quote: string) => void;
   onLongPress: (quote: string) => void;
 }) {
@@ -179,12 +184,17 @@ function HighlightableText({
         // 이미지 마커 줄([[img:URL]])은 텍스트 대신 이미지로 렌더(하이라이트 대상 아님).
         const imgUrl = imageMarkerUrl(b.items.map((x) => x.seg).join(""));
         if (imgUrl) return <BodyImage key={bi} url={imgUrl} />;
+        const scaled =
+          b.kind === "heading"
+            ? { fontSize: 17 * fontScale, lineHeight: 25 * fontScale }
+            : { fontSize: 15.5 * fontScale, lineHeight: 27 * fontScale };
         return (
           <Text
             key={bi}
             style={[
               b.kind === "heading" ? styles.blockHeading : styles.blockPara,
               b.kind === "list" && styles.blockList,
+              scaled,
               { color: c.textPrimary },
             ]}
           >
