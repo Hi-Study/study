@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import {
   Alert,
   FlatList,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -11,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronRight, LogOut, MessageSquare, RotateCw, Settings, Trash2 } from "lucide-react-native";
+import { ChevronRight, LogOut, MessageSquare, RotateCw, Settings, Star, Trash2, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
@@ -24,6 +25,9 @@ import {
   useMyComments,
   useMyReads,
   useMyDrafts,
+  useBlogs,
+  useFavoriteBlogIds,
+  useToggleBlogFavorite,
   useDefineWord,
   useDeleteWord,
   type OpinionFeedItem,
@@ -38,7 +42,7 @@ import { highlightBg } from "@/lib/highlight";
 import { bucketHeaders } from "@/lib/dateBucket";
 import { Avatar } from "@/components/Avatar";
 import { OpinionCard } from "@/components/distill/OpinionCard";
-import { ArticleRow, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
+import { ArticleRow, ServiceLogo, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
 import { Loading, EmptyState } from "@/components";
 
 type MyTab =
@@ -73,6 +77,14 @@ export function DistillMyPageScreen() {
   const readsQ = useMyReads();
   const draftsQ = useMyDrafts();
   const wordsQ = useMyWords();
+
+  // 관심 기업(즐겨찾기) 관리 모달.
+  const [favOpen, setFavOpen] = useState(false);
+  const blogsQ = useBlogs();
+  const favsQ = useFavoriteBlogIds();
+  const toggleFav = useToggleBlogFavorite();
+  const favSet = new Set(favsQ.data ?? []);
+  const favCount = favsQ.data?.length ?? 0;
 
   const byTab = {
     opinions: opinionsQ,
@@ -208,6 +220,21 @@ export function DistillMyPageScreen() {
               </Pressable>
             </View>
 
+            {/* 관심 기업 관리 */}
+            <Pressable
+              style={[styles.menuRow, { borderColor: c.hairline }]}
+              onPress={() => setFavOpen(true)}
+            >
+              <View style={styles.menuLeft}>
+                <Star size={16} color={c.hot} fill={c.hot} />
+                <Text style={[styles.menuText, { color: c.textPrimary }]}>관심 기업</Text>
+              </View>
+              <View style={styles.menuRight}>
+                <Text style={[styles.menuCount, { color: c.textMuted }]}>{favCount}</Text>
+                <ChevronRight size={18} color={c.textMuted} />
+              </View>
+            </Pressable>
+
             {/* 설정 바로가기 */}
             <Pressable
               style={[styles.menuRow, { borderColor: c.hairline }]}
@@ -261,6 +288,39 @@ export function DistillMyPageScreen() {
           </View>
         }
       />
+
+      {/* 관심 기업 관리 모달 */}
+      <Modal visible={favOpen} transparent animationType="slide" onRequestClose={() => setFavOpen(false)}>
+        <Pressable style={styles.favBackdrop} onPress={() => setFavOpen(false)}>
+          <Pressable style={[styles.favSheet, { backgroundColor: c.surfaceCard }]} onPress={() => {}}>
+            <View style={styles.favHead}>
+              <Text style={[styles.favTitle, { color: c.textPrimary }]}>관심 기업</Text>
+              <Pressable onPress={() => setFavOpen(false)} hitSlop={8}>
+                <X size={20} color={c.textMuted} />
+              </Pressable>
+            </View>
+            <Text style={[styles.favHint, { color: c.textMuted }]}>
+              즐겨찾기하면 새 글 알림을 받고 홈에서 앞쪽에 보여요.
+            </Text>
+            <ScrollView style={{ maxHeight: 440 }} showsVerticalScrollIndicator={false}>
+              {(blogsQ.data ?? []).map((b) => {
+                const on = favSet.has(b.id);
+                return (
+                  <Pressable
+                    key={b.id}
+                    style={styles.favRow}
+                    onPress={() => toggleFav.mutate({ blogId: b.id, favorite: !on })}
+                  >
+                    <ServiceLogo name={b.name} brandColor={b.brand_color} homepage={b.homepage} size={32} />
+                    <Text style={[styles.favName, { color: c.textPrimary }]}>{b.name}</Text>
+                    <Star size={20} color={on ? c.hot : c.textMuted} fill={on ? c.hot : "transparent"} />
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -447,6 +507,17 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   menuText: { ...dtype.cardTitle },
+  menuLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  menuRight: { flexDirection: "row", alignItems: "center", gap: 4 },
+  menuCount: { ...dtype.cardTitle },
+
+  favBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
+  favSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 34, gap: 8 },
+  favHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  favTitle: { ...dtype.title, fontSize: 17 },
+  favHint: { ...dtype.bodyS, marginBottom: 6 },
+  favRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11 },
+  favName: { ...dtype.cardTitle, flex: 1 },
 
   segmentWrap: { marginBottom: 16 },
   segScroll: { gap: 8, paddingRight: 8 },
