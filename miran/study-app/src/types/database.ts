@@ -284,6 +284,13 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["opinion_drafts"]["Insert"]>;
         Relationships: [];
       };
+      // ---- distill: 검색어 로깅(급상승 검색어) ----
+      search_logs: {
+        Row: { id: string; term: string; user_id: string | null; created_at: string };
+        Insert: { id?: string; term: string; user_id?: string | null; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["search_logs"]["Insert"]>;
+        Relationships: [];
+      };
       // ---- distill: 좋아요(의견/토론) ----
       reactions: {
         Row: {
@@ -576,6 +583,10 @@ export interface Database {
       regenerate_invite_code: {
         Args: { _study: string };
         Returns: string; // 새 코드
+      };
+      trending_searches: {
+        Args: { lim?: number };
+        Returns: { term: string; cnt: number }[];
       };
     };
     Enums: Record<string, never>;

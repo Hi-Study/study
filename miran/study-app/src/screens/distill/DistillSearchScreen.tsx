@@ -6,7 +6,13 @@ import { Clock, Search, Sparkles, TrendingUp, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
-import { useArticlesFeed, usePopularTags, useRecommendedKeywords } from "@/data";
+import {
+  useArticlesFeed,
+  usePopularTags,
+  useRecommendedKeywords,
+  useTrendingSearches,
+  useLogSearch,
+} from "@/data";
 import { useRecentSearches } from "@/lib/recentSearches";
 import { dtype } from "@/theme";
 import { ArticleRow } from "@/components/distill/ArticleCards";
@@ -20,19 +26,28 @@ export function DistillSearchScreen() {
   const { recents, add, remove, clear } = useRecentSearches();
   const recommended = useRecommendedKeywords(10);
   const popular = usePopularTags();
+  const trendingQ = useTrendingSearches(10);
+  const logSearch = useLogSearch();
 
   const q = query.trim();
   const active = q.length > 0;
   const feed = useArticlesFeed(active ? { search: q } : {});
   const rows = feed.data?.pages.flatMap((p) => p.rows) ?? [];
 
+  const submit = (term: string) => {
+    const t = term.trim();
+    if (t.length < 2) return;
+    add(t);
+    logSearch.mutate(t); // 실제 급상승 집계용 로깅
+  };
   const runSearch = (term: string) => {
     setQuery(term);
-    add(term);
+    submit(term);
   };
 
   const rec = recommended.data ?? [];
-  const trending = (popular.data ?? []).slice(0, 10);
+  // 실제 급상승(검색 로그 기반) — 아직 로그가 없으면 인기 키워드로 대체.
+  const trending = (trendingQ.data?.length ? trendingQ.data : popular.data ?? []).slice(0, 10);
 
   return (
     <SafeAreaView
@@ -46,7 +61,7 @@ export function DistillSearchScreen() {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            onSubmitEditing={() => q && add(q)}
+            onSubmitEditing={() => submit(q)}
             placeholder="글 제목·주제·태그 검색"
             placeholderTextColor={c.textMuted}
             style={[styles.searchInput, { color: c.textPrimary }]}

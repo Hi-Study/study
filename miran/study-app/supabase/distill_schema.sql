@@ -495,3 +495,37 @@ alter table public.opinion_drafts enable row level security;
 drop policy if exists odrafts_all_own on public.opinion_drafts;
 create policy odrafts_all_own on public.opinion_drafts for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- ============================================================
+-- 18) 검색어 로깅 → 실제 급상승 검색어(최근 7일 빈도 Top N)
+--     · 사용자는 본인 검색만 insert. 집계는 RPC(trending_searches)로만 노출(원자료 비공개).
+-- ============================================================
+create table if not exists public.search_logs (
+  id         uuid primary key default gen_random_uuid(),
+  term       text not null,
+  user_id    uuid references public.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_search_logs_created on public.search_logs(created_at desc);
+
+alter table public.search_logs enable row level security;
+drop policy if exists searchlog_insert_own on public.search_logs;
+create policy searchlog_insert_own on public.search_logs for insert to authenticated
+  with check (user_id = auth.uid() or user_id is null);
+-- select 정책 없음 → 원자료는 사용자에게 비공개(집계는 아래 RPC로만).
+
+create or replace function public.trending_searches(lim int default 10)
+returns table(term text, cnt bigint)
+language sql
+security definer
+set search_path = public
+as $$
+  select lower(btrim(s.term)) as term, count(*) as cnt
+  from public.search_logs s
+  where s.created_at > now() - interval '7 days'
+    and length(btrim(s.term)) >= 2
+  group by lower(btrim(s.term))
+  order by cnt desc, term asc
+  limit lim;
+$$;
+grant execute on function public.trending_searches(int) to authenticated;

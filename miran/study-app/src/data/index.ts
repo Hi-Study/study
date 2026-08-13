@@ -22,3 +22,4 @@ export * from "./bookmarks";
 export * from "./appNotifications";
 export * from "./reads";
 export * from "./opinionDrafts";
+export * from "./search";
