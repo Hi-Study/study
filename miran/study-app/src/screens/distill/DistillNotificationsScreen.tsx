@@ -1,8 +1,8 @@
 // distill 알림 (회의록 §알림) — 즐겨찾기 기업 새 글 · 내 의견 댓글 · 대댓글. 진입 시 읽음 처리.
-import React, { useEffect } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { FlatList, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronLeft, CornerDownRight, MessageSquare, Newspaper } from "lucide-react-native";
+import { ChevronLeft, CornerDownRight, MessageSquare, Newspaper, Settings } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
@@ -12,9 +12,12 @@ import {
   type AppNotificationRow,
   type NotificationKind,
 } from "@/data";
+import { useNotifPrefs } from "@/lib/notifPrefs";
 import { dtype } from "@/theme";
 import { relativeDate } from "@/components/distill/ArticleCards";
 import { Loading, ErrorState, EmptyState } from "@/components";
+
+const KINDS: NotificationKind[] = ["new_article", "comment", "reply"];
 
 const KIND_LABEL: Record<NotificationKind, string> = {
   new_article: "즐겨찾기한 기업의 새 글",
@@ -34,7 +37,9 @@ export function DistillNotificationsScreen() {
   const nav = useRootNav();
   const q = useAppNotifications();
   const markAll = useMarkAllNotificationsRead();
-  const list = q.data ?? [];
+  const { prefs, toggle } = useNotifPrefs();
+  const [showSettings, setShowSettings] = useState(false);
+  const list = (q.data ?? []).filter((n) => prefs[n.kind]);
 
   // 진입 시 읽음 처리(회의록 §알림). 한 번만.
   useEffect(() => {
@@ -57,8 +62,28 @@ export function DistillNotificationsScreen() {
           <ChevronLeft size={24} color={c.textPrimary} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: c.textPrimary }]}>알림</Text>
-        <View style={{ width: 24 }} />
+        <Pressable onPress={() => setShowSettings((s) => !s)} hitSlop={8} style={styles.gearBtn}>
+          <Settings size={22} color={showSettings ? c.primary : c.textSecondary} />
+        </Pressable>
       </View>
+
+      {/* 알림 설정 */}
+      {showSettings ? (
+        <View style={[styles.settings, { backgroundColor: c.surfaceCard, borderColor: c.hairline }]}>
+          <Text style={[styles.settingsTitle, { color: c.textSecondary }]}>알림 받을 종류</Text>
+          {KINDS.map((k) => (
+            <View key={k} style={styles.settingRow}>
+              <Text style={[styles.settingLabel, { color: c.textPrimary }]}>{KIND_LABEL[k]}</Text>
+              <Switch
+                value={prefs[k]}
+                onValueChange={() => toggle(k)}
+                trackColor={{ true: c.primary, false: c.hairline }}
+                thumbColor="#fff"
+              />
+            </View>
+          ))}
+        </View>
+      ) : null}
 
       {q.isLoading ? (
         <Loading label="불러오는 중…" />
@@ -119,6 +144,12 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 24, alignItems: "flex-start" },
   headerTitle: { ...dtype.title },
+  gearBtn: { width: 24, alignItems: "flex-end" },
+
+  settings: { marginHorizontal: 16, marginBottom: 8, borderWidth: 1, borderRadius: 14, padding: 14, gap: 4 },
+  settingsTitle: { ...dtype.label, fontSize: 12, marginBottom: 4 },
+  settingRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4 },
+  settingLabel: { ...dtype.body },
 
   listContent: { padding: 16 },
   row: { flexDirection: "row", gap: 12, alignItems: "center", borderWidth: 1, borderRadius: 16, padding: 14 },
