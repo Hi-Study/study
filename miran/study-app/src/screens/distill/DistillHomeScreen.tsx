@@ -3,7 +3,7 @@
 import React, { useMemo } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Bell, ChevronRight, Plus, Search, Star } from "lucide-react-native";
+import { Bell, ChevronRight, Star } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
@@ -106,9 +106,6 @@ function HomeHeader({
             {blogs.length}개 블로그를 한곳에
           </Text>
         </View>
-        <Pressable hitSlop={8} style={styles.iconBtn}>
-          <Search size={22} color={c.textSecondary} />
-        </Pressable>
         <Pressable
           hitSlop={8}
           style={styles.iconBtn}
@@ -118,13 +115,6 @@ function HomeHeader({
           {unread > 0 ? (
             <View style={[styles.bellDot, { backgroundColor: c.hot, borderColor: c.surfacePage }]} />
           ) : null}
-        </Pressable>
-        <Pressable
-          hitSlop={8}
-          style={[styles.addBtn, { backgroundColor: c.primary }]}
-          onPress={() => nav.navigate("CreateArticle")}
-        >
-          <Plus size={20} color={c.actionOn} />
         </Pressable>
       </View>
 
@@ -242,7 +232,6 @@ const styles = StyleSheet.create({
   greetSub: { ...dtype.body, marginTop: 2 },
   iconBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   bellDot: { position: "absolute", top: 8, right: 9, width: 9, height: 9, borderRadius: 5, borderWidth: 1.5 },
-  addBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", marginLeft: 2 },
 
   featuredWrap: { paddingHorizontal: 16, marginTop: 12 },
 
