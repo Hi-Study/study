@@ -10,7 +10,8 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "recollect": "node scripts/recollect.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
