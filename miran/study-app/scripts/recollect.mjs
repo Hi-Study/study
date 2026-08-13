@@ -1,7 +1,10 @@
-// 로컬 재수집기 — 집 IP에서 RSS 본문(content:encoded)을 받아 이미지까지 살려 articles 를 갱신한다.
+// 로컬 재수집기 — 집 IP에서 본문을 이미지까지 살려 articles 를 갱신한다.
 //   목적: (1) 본문 이미지 표시  (2) 배달의민족(Cloudflare 가 서버 IP 차단 → 로컬에서만 수집 가능)
-//   대상: blogs.collect = 'rss_full' 인 활성 블로그(토스·배민·AWS·무신사·올리브영·네이버 D2/페이 등)
-//   RSS content:encoded 는 이미지가 든 완성 HTML → <img> 를 [[img:URL]] 마커로 보존해 저장한다.
+//   방식(blogs.collect 별):
+//     · rss_full          → RSS content:encoded(이미지 포함 HTML)에서 본문 추출 (신규+갱신)
+//     · rss_scrape/listscrape → 이미 저장된 글 URL을 다시 열어 Readability(페이지 파싱)로 본문·이미지 갱신
+//                              (카카오·오늘의집·당근·컬리 등 페이지형 — 신규 발견은 서버 collect가 담당)
+//   <img> 는 버리지 않고 [[img:URL]] 마커로 보존해 저장 → 앱이 이미지로 렌더.
 //
 // 준비: miran/study-app/.env 에 아래 한 줄 추가(이미 있는 EXPO_PUBLIC_* 아래).
 //   SUPABASE_SERVICE_ROLE_KEY=eyJ...   ← Supabase 대시보드 Settings > API > service_role(secret) 키
@@ -11,6 +14,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
+import { JSDOM } from "jsdom";
+import { Readability } from "@mozilla/readability";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -185,26 +190,72 @@ async function recollectBlog(blog) {
   return { updated: rows.length };
 }
 
+// 페이지 HTML → Readability 파싱 → 본문(+이미지 마커).
+function extractWithReadability(html, url) {
+  try {
+    const dom = new JSDOM(html, { url });
+    const article = new Readability(dom.window.document).parse();
+    dom.window.close();
+    if (!article?.content) return null;
+    const body = stripFooter(htmlToText(article.content));
+    return { body, image: firstImageUrl(body, html) };
+  } catch {
+    return null;
+  }
+}
+
+// 페이지형(rss_scrape/listscrape) — 이미 저장된 글 URL을 다시 열어 본문·이미지 갱신.
+async function recollectPages(blog) {
+  const { data: arts, error } = await supabase
+    .from("articles")
+    .select("id, url")
+    .eq("blog_id", blog.id)
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .limit(60);
+  if (error) return { updated: 0, skipped: `조회 실패(${error.message})` };
+  if (!arts?.length) return { updated: 0, skipped: "저장된 글 없음" };
+
+  let updated = 0;
+  for (const a of arts) {
+    let html = "";
+    try {
+      html = await fetchText(a.url, CRAWLER_UA).catch(() => fetchText(a.url, BROWSER_UA));
+    } catch {
+      continue;
+    }
+    const ex = extractWithReadability(html, a.url);
+    if (!ex || ex.body.length < 150) continue;
+    const patch = { body: ex.body };
+    if (ex.image) patch.og_image = ex.image; // 이미지 없으면 기존 값 보존
+    const { error: upErr } = await supabase.from("articles").update(patch).eq("id", a.id);
+    if (!upErr) updated++;
+  }
+  return { updated };
+}
+
 async function main() {
-  const only = process.argv[2]; // 예: npm run recollect -- woowahan
-  let q = supabase.from("blogs").select("id, key, name, rss_url, collect").eq("collect", "rss_full");
-  if (only) q = q.eq("key", only);
-  const { data: blogs, error } = await q;
+  const only = process.argv[2]; // 예: npm run recollect -- kakao
+  let query = supabase.from("blogs").select("id, key, name, rss_url, collect").eq("active", true);
+  if (only) query = query.eq("key", only);
+  const { data: blogs, error } = await query;
   if (error) {
     console.error("blogs 조회 실패:", error.message);
     process.exit(1);
   }
   if (!blogs?.length) {
-    console.error("대상 블로그가 없어요(collect=rss_full).", only ? `key=${only}` : "");
+    console.error("대상 블로그가 없어요.", only ? `key=${only}` : "");
     process.exit(1);
   }
 
-  console.log(`\n🔄 재수집 시작 — rss_full 블로그 ${blogs.length}개 (이미지 포함)\n`);
+  console.log(`\n🔄 재수집 시작 — 활성 블로그 ${blogs.length}개 (이미지 포함)\n`);
   let total = 0;
   for (const blog of blogs) {
-    const r = await recollectBlog(blog);
+    const r = blog.collect === "rss_full" ? await recollectBlog(blog) : await recollectPages(blog);
     total += r.updated;
-    console.log(`  ${r.updated ? "✅" : "⚠️ "} ${blog.name.padEnd(10)} ${r.updated}건 ${r.skipped ? `(${r.skipped})` : ""}`);
+    const via = blog.collect === "rss_full" ? "rss" : "page";
+    console.log(
+      `  ${r.updated ? "✅" : "⚠️ "} ${blog.name.padEnd(10)} [${via}] ${r.updated}건 ${r.skipped ? `(${r.skipped})` : ""}`,
+    );
   }
   console.log(`\n완료 — 총 ${total}건 갱신/추가.\n`);
 }
