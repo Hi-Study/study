@@ -89,6 +89,29 @@ export async function deleteWord(id: string): Promise<void> {
   if (error) throw error;
 }
 
+/** 단어(term) 한 개 조회 — 클릭 시 뜻풀이 표시용. */
+export async function getWordByTerm(uid: string, term: string): Promise<UserWordRow | null> {
+  const { data, error } = await supabase
+    .from("user_words")
+    .select(WORD_SELECT)
+    .eq("user_id", uid)
+    .eq("term", term)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as unknown as UserWordRow) ?? null;
+}
+
+/** 단어 뜻이 채워질 때까지 폴링(AI 뜻풀이는 비동기 생성). 뜻이 나오면 폴링 중단. */
+export function useWordByTerm(term: string | null) {
+  const uid = useUid();
+  return useQuery({
+    queryKey: [...qk.words(uid), "term", term ?? ""] as const,
+    queryFn: () => getWordByTerm(uid, term!),
+    enabled: Boolean(uid && term),
+    refetchInterval: (query) => (query.state.data?.definition ? false : 2500),
+  });
+}
+
 // ---- hooks ----
 export function useMyWords() {
   const uid = useUid();

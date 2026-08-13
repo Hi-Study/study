@@ -1,11 +1,19 @@
-// distill 단어 저장 시트 — 본문 문장을 길게 눌러 열고, 어려운 단어 칩을 눌러 마이 단어장에 담는다.
-//   저장은 즉시(칩에 ✓), AI 뜻풀이는 뒤이어 서버에서 채워져 마이 > 단어장에 표시된다.
+// distill 단어 저장 시트 — 본문 문장을 길게 눌러 열고, 어려운 단어 칩을 눌러 담는다.
+//   단어를 누르면 즉시 저장(✓)되고, 그 자리에서 AI 뜻풀이가 채워져 표시된다(마이 단어장에도 담김).
 import { useMemo, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { BookmarkPlus, Check, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
-import { useCreateWord } from "@/data";
+import { useCreateWord, useWordByTerm } from "@/data";
 import { tokenizeWords } from "@/lib/text";
 import { dtype } from "@/theme";
 
@@ -22,31 +30,40 @@ export function WordPickerSheet({
   const c = theme.colors;
   const create = useCreateWord();
   const [saved, setSaved] = useState<Set<string>>(new Set());
+  const [active, setActive] = useState<string | null>(null);
+  const wordQ = useWordByTerm(active);
 
   const words = useMemo(() => (sentence ? tokenizeWords(sentence) : []), [sentence]);
 
-  const save = (term: string) => {
-    if (saved.has(term)) return;
-    setSaved((p) => new Set(p).add(term));
-    create.mutate({ term, context: sentence, articleId });
+  const pick = (term: string) => {
+    setActive(term); // 누른 단어의 뜻을 보여줌
+    if (!saved.has(term)) {
+      setSaved((p) => new Set(p).add(term));
+      create.mutate({ term, context: sentence, articleId });
+    }
+  };
+
+  const close = () => {
+    setActive(null);
+    onClose();
   };
 
   return (
-    <Modal visible={!!sentence} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+    <Modal visible={!!sentence} transparent animationType="slide" onRequestClose={close}>
+      <Pressable style={styles.backdrop} onPress={close}>
         <Pressable style={[styles.sheet, { backgroundColor: c.surfaceCard }]} onPress={() => {}}>
           <View style={styles.head}>
             <View style={styles.headLeft}>
               <BookmarkPlus size={18} color={c.primary} />
               <Text style={[styles.title, { color: c.textPrimary }]}>단어 저장</Text>
             </View>
-            <Pressable onPress={onClose} hitSlop={8}>
+            <Pressable onPress={close} hitSlop={8}>
               <X size={20} color={c.textMuted} />
             </Pressable>
           </View>
 
           <Text style={[styles.hint, { color: c.textMuted }]}>
-            어렵거나 알아두면 좋은 단어를 눌러 담아두세요. AI가 뜻을 풀어 마이 · 단어장에 넣어드려요.
+            어렵거나 알아두면 좋은 단어를 눌러보세요. 담아두고 AI 뜻풀이를 바로 보여드려요.
           </Text>
 
           {sentence ? (
@@ -55,36 +72,55 @@ export function WordPickerSheet({
             </Text>
           ) : null}
 
-          <ScrollView style={{ maxHeight: 220 }} contentContainerStyle={styles.chips}>
+          <ScrollView style={{ maxHeight: 160 }} contentContainerStyle={styles.chips}>
             {words.length === 0 ? (
               <Text style={[styles.empty, { color: c.textMuted }]}>고를 만한 단어가 없어요.</Text>
             ) : (
               words.map((w) => {
                 const on = saved.has(w);
+                const isActive = active === w;
                 return (
                   <Pressable
                     key={w}
-                    onPress={() => save(w)}
+                    onPress={() => pick(w)}
                     style={[
                       styles.chip,
                       {
-                        borderColor: on ? c.primary : c.hairline,
-                        backgroundColor: on ? c.primaryTint : "transparent",
+                        borderColor: isActive || on ? c.primary : c.hairline,
+                        backgroundColor: isActive ? c.primary : on ? c.primaryTint : "transparent",
                       },
                     ]}
                   >
-                    {on ? <Check size={14} color={c.primary} /> : null}
-                    <Text style={[styles.chipText, { color: on ? c.primary : c.textPrimary }]}>{w}</Text>
+                    {on ? <Check size={14} color={isActive ? c.actionOn : c.primary} /> : null}
+                    <Text
+                      style={[
+                        styles.chipText,
+                        { color: isActive ? c.actionOn : on ? c.primary : c.textPrimary },
+                      ]}
+                    >
+                      {w}
+                    </Text>
                   </Pressable>
                 );
               })
             )}
           </ScrollView>
 
-          {saved.size > 0 ? (
-            <Text style={[styles.savedNote, { color: c.primary }]}>
-              {saved.size}개 담았어요 · 마이 · 단어장에서 뜻을 확인하세요
-            </Text>
+          {/* 누른 단어의 뜻풀이 */}
+          {active ? (
+            <View style={[styles.defPanel, { backgroundColor: c.surfaceSunken }]}>
+              <Text style={[styles.defTerm, { color: c.primary }]}>{active}</Text>
+              {wordQ.data?.definition ? (
+                <Text style={[styles.defText, { color: c.textPrimary }]}>{wordQ.data.definition}</Text>
+              ) : (
+                <View style={styles.defLoading}>
+                  <ActivityIndicator size="small" color={c.primary} />
+                  <Text style={[styles.defLoadingText, { color: c.textMuted }]}>
+                    AI가 뜻을 풀고 있어요…
+                  </Text>
+                </View>
+              )}
+            </View>
           ) : null}
         </Pressable>
       </Pressable>
@@ -112,5 +148,10 @@ const styles = StyleSheet.create({
   },
   chipText: { ...dtype.label, fontSize: 14 },
   empty: { ...dtype.bodyS, paddingVertical: 12 },
-  savedNote: { ...dtype.meta, fontWeight: "700" },
+
+  defPanel: { borderRadius: 12, padding: 14, gap: 6 },
+  defTerm: { ...dtype.cardTitle, fontSize: 15 },
+  defText: { ...dtype.body, lineHeight: 23 },
+  defLoading: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 2 },
+  defLoadingText: { ...dtype.bodyS },
 });
