@@ -2,6 +2,7 @@ import {
   classifyReadingBlock,
   domainOf,
   groupSentencesIntoBlocks,
+  imageMarkerUrl,
   looksLikeStaleArticle,
   splitSentences,
   stripArticleNoise,
@@ -135,6 +136,18 @@ describe("classifyReadingBlock", () => {
     expect(
       classifyReadingBlock("이 문단은 소제목이라기엔 충분히 길어서 문단으로 분류되어야 합니다"),
     ).toBe("para");
+  });
+});
+
+describe("imageMarkerUrl (본문 이미지 마커)", () => {
+  it("[[img:URL]] 에서 URL 을 뽑는다(앞뒤 공백 허용)", () => {
+    expect(imageMarkerUrl("[[img:https://a.com/x.png]]")).toBe("https://a.com/x.png");
+    expect(imageMarkerUrl("  [[img:https://a.com/y.jpg]]  ")).toBe("https://a.com/y.jpg");
+  });
+  it("마커가 아니거나 http URL 이 아니면 null", () => {
+    expect(imageMarkerUrl("그냥 문장입니다.")).toBeNull();
+    expect(imageMarkerUrl("[[img:not-a-url]]")).toBeNull();
+    expect(imageMarkerUrl("")).toBeNull();
   });
 });
 

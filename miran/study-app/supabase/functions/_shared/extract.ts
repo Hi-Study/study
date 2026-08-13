@@ -45,6 +45,12 @@ export function htmlToText(html: string): string {
   s = s
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/(p|div|h[1-6]|li|section|article|tr|blockquote)>/gi, "\n");
+  // <img> 는 버리지 말고 [[img:URL]] 마커로 보존(앱에서 이미지로 렌더). lazy-load(data-src) 우선, data: 제외.
+  s = s.replace(/<img\b[^>]*>/gi, (tag) => {
+    const m = tag.match(/\bdata-src=["']([^"']+)["']/i) ?? tag.match(/\bsrc=["']([^"']+)["']/i);
+    const url = m?.[1];
+    return url && /^https?:\/\//.test(url) ? `\n[[img:${url}]]\n` : " ";
+  });
   // 남은 태그 제거
   s = s.replace(/<[^>]+>/g, "");
   s = decodeEntities(s);

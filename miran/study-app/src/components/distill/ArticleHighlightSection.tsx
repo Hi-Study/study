@@ -1,6 +1,7 @@
 // distill 원문 문장 하이라이트 — 문장을 눌러 밑줄+메모(나만 보기, 비공개). article_highlights 기반.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -20,7 +21,7 @@ import {
   useDeleteArticleHighlight,
   type ArticleHighlightRow,
 } from "@/data";
-import { splitSentences, groupSentencesIntoBlocks } from "@/lib/text";
+import { splitSentences, groupSentencesIntoBlocks, imageMarkerUrl } from "@/lib/text";
 import { HIGHLIGHT_COLORS, HIGHLIGHT_TEXT, highlightBg } from "@/lib/highlight";
 import { WordPickerSheet } from "@/components/distill/WordPickerSheet";
 
@@ -174,19 +175,51 @@ function HighlightableText({
 
   return (
     <View style={styles.blocks}>
-      {blocks.map((b, bi) => (
-        <Text
-          key={bi}
-          style={[
-            b.kind === "heading" ? styles.blockHeading : styles.blockPara,
-            b.kind === "list" && styles.blockList,
-            { color: c.textPrimary },
-          ]}
-        >
-          {b.items.map(renderSentence)}
-        </Text>
-      ))}
+      {blocks.map((b, bi) => {
+        // 이미지 마커 줄([[img:URL]])은 텍스트 대신 이미지로 렌더(하이라이트 대상 아님).
+        const imgUrl = imageMarkerUrl(b.items.map((x) => x.seg).join(""));
+        if (imgUrl) return <BodyImage key={bi} url={imgUrl} />;
+        return (
+          <Text
+            key={bi}
+            style={[
+              b.kind === "heading" ? styles.blockHeading : styles.blockPara,
+              b.kind === "list" && styles.blockList,
+              { color: c.textPrimary },
+            ]}
+          >
+            {b.items.map(renderSentence)}
+          </Text>
+        );
+      })}
     </View>
+  );
+}
+
+// 본문 이미지 — 원본 비율을 측정해 폭 100%로 맞춘다.
+function BodyImage({ url }: { url: string }) {
+  const { theme } = useTheme();
+  const c = theme.colors;
+  const [ratio, setRatio] = useState(16 / 9);
+  useEffect(() => {
+    let ok = true;
+    Image.getSize(
+      url,
+      (w, h) => {
+        if (ok && w > 0 && h > 0) setRatio(w / h);
+      },
+      () => undefined,
+    );
+    return () => {
+      ok = false;
+    };
+  }, [url]);
+  return (
+    <Image
+      source={{ uri: url }}
+      style={[styles.bodyImage, { aspectRatio: ratio, backgroundColor: c.surfaceSunken }]}
+      resizeMode="cover"
+    />
   );
 }
 
@@ -284,6 +317,7 @@ const styles = StyleSheet.create({
   blockPara: { fontSize: 15.5, lineHeight: 27 },
   blockHeading: { fontSize: 17, lineHeight: 25, fontWeight: "800", marginTop: 4 },
   blockList: { paddingLeft: 10 },
+  bodyImage: { width: "100%", borderRadius: 10 },
 
   rollup: { marginTop: 14, paddingTop: 16, borderTopWidth: 1, gap: 12 },
   rollupHead: { flexDirection: "row", alignItems: "center", gap: 5 },

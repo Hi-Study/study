@@ -126,6 +126,17 @@ export function tokenizeWords(sentence: string): string[] {
   return out;
 }
 
+/**
+ * 본문 속 이미지 마커 `[[img:URL]]` 를 인식해 URL 만 돌려준다(아니면 null).
+ * 수집기가 `<img>` 를 이 마커로 보존하고, 렌더러는 이 줄을 이미지로 그린다.
+ * ⚠️ URL 안의 '.' 때문에 splitSentences 로 조각날 수 있어, "줄(블록) 전체"를 join 한 값으로 검사할 것.
+ */
+export function imageMarkerUrl(text: string | null | undefined): string | null {
+  if (!text) return null;
+  const m = text.trim().match(/^\[\[img:(https?:\/\/.+?)\]\]$/);
+  return m ? m[1] : null;
+}
+
 /** URL 에서 표시용 도메인만 뽑는다(www. 제거). 실패 시 원본 반환. */
 export function domainOf(url: string): string {
   try {
