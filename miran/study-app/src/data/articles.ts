@@ -216,6 +216,25 @@ export function usePopularTags() {
   return useQuery({ queryKey: qk.popularTags(), queryFn: () => listPopularTags() });
 }
 
+/** 홈 대표글 캐러셀 — 이미지 있는 최신 글 N개(좌우 슬라이드). */
+export async function listFeaturedArticles(limit = 6): Promise<ArticleWithBlog[]> {
+  const { data, error } = await supabase
+    .from("articles")
+    .select(SELECT_WITH_BLOG)
+    .not("og_image", "is", null)
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as unknown as ArticleWithBlog[];
+}
+
+export function useFeaturedArticles(limit = 6) {
+  return useQuery({
+    queryKey: [...qk.articles(), "featured-list", limit] as const,
+    queryFn: () => listFeaturedArticles(limit),
+  });
+}
+
 export async function requestArticleSummary(
   articleId: string,
   mode: SummaryMode,

@@ -1,6 +1,6 @@
 // distill 아티클 표현 컴포넌트 — 서비스 로고 · 주제칩 · 가로 캐러셀 카드 · 리스트 행 · 피처드.
 // DESIGN_GUIDE §6.5(아티클 카드)·§6.6(서비스 로고칩)·§6.7(주제칩) 기준.
-import React from "react";
+import React, { useMemo, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
@@ -23,16 +23,48 @@ export function relativeDate(iso: string | null): string {
   return `${Math.floor(days / 365)}년 전`;
 }
 
-// ---- 서비스 로고칩(브랜드색 사각 + 이니셜) ----
+// ---- 서비스 로고칩 — homepage 주면 실제 파비콘(기업 아이콘), 없거나 실패 시 브랜드색+이니셜 ----
+function domainOfUrl(u: string | null | undefined): string | null {
+  if (!u) return null;
+  try {
+    return new URL(u).host;
+  } catch {
+    return null;
+  }
+}
+
 export function ServiceLogo({
   name,
   brandColor,
   size = 44,
+  homepage,
 }: {
   name: string;
   brandColor?: string | null;
   size?: number;
+  homepage?: string | null;
 }) {
+  const [failed, setFailed] = useState(false);
+  const domain = useMemo(() => domainOfUrl(homepage), [homepage]);
+
+  if (domain && !failed) {
+    return (
+      <View
+        style={[
+          styles.favicon,
+          { width: size, height: size, borderRadius: size * 0.28 },
+        ]}
+      >
+        <Image
+          source={{ uri: `https://www.google.com/s2/favicons?sz=128&domain=${domain}` }}
+          style={{ width: size * 0.66, height: size * 0.66 }}
+          resizeMode="contain"
+          onError={() => setFailed(true)}
+        />
+      </View>
+    );
+  }
+
   const bg = brandColor ?? "#4F46E5";
   return (
     <View
@@ -178,6 +210,7 @@ export function FeaturedCard({
 const styles = StyleSheet.create({
   logo: { alignItems: "center", justifyContent: "center" },
   logoText: { color: "#fff", fontWeight: "800" },
+  favicon: { alignItems: "center", justifyContent: "center", backgroundColor: "#fff", borderWidth: 1, borderColor: "rgba(0,0,0,0.06)", overflow: "hidden" },
 
   topicChip: { alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   topicText: { ...dtype.label },

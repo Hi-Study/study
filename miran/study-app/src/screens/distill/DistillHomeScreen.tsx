@@ -1,24 +1,24 @@
-// distill 홈 — "발견" (DESIGN_GUIDE §7.1).
-//   [그리팅] · [피처드 대표글] · [서비스별 보기 로고 그리드] · [서비스별 아티클 가로 캐러셀]
-import React, { useMemo } from "react";
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+// distill 홈 — "발견" (회의록 §홈). [인사말+알림] · [맞춤 대표글 좌우 캐러셀] · [기업 필터 칩] · [필터된 글 목록].
+import React, { useState } from "react";
+import { Dimensions, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Bell, ChevronRight, Star } from "lucide-react-native";
+import { Bell } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
 import {
   useBlogs,
-  useFeaturedArticle,
-  useArticlesByBlog,
-  useFavoriteBlogIds,
-  useToggleBlogFavorite,
+  useFeaturedArticles,
+  useArticlesFeed,
   useUnreadNotificationCount,
 } from "@/data";
 import type { BlogRow } from "@/types/tables";
 import { dtype } from "@/theme";
-import { ArticleCardH, FeaturedCard, ServiceLogo } from "@/components/distill/ArticleCards";
-import { Loading, ErrorState } from "@/components";
+import { ArticleCardH, ArticleRow, ServiceLogo } from "@/components/distill/ArticleCards";
+import { Loading, ErrorState, EmptyState } from "@/components";
+
+const W = Dimensions.get("window").width;
+const CARD_W = Math.round(W * 0.82);
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -28,175 +28,50 @@ function greeting(): string {
   return "좋은 저녁이에요";
 }
 
-// 서비스별 가로 캐러셀 — 블로그 최신글이 있을 때만 렌더.
-function ServiceCarousel({
+// 기업 필터 칩 — 아이콘 + 이름. 선택 시 아래 글 목록을 그 기업으로 필터.
+function BlogChip({
   blog,
-  favorite,
-  onToggleFavorite,
+  active,
+  onPress,
 }: {
-  blog: BlogRow;
-  favorite: boolean;
-  onToggleFavorite: (blogId: string, next: boolean) => void;
+  blog?: BlogRow;
+  active: boolean;
+  onPress: () => void;
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
-  const nav = useRootNav();
-  const q = useArticlesByBlog(blog.id, 10);
-  const items = q.data ?? [];
-  if (items.length === 0) return null;
-
   return (
-    <View style={styles.section}>
-      <View style={styles.sectionHead}>
-        <Pressable
-          style={styles.sectionHeadMain}
-          onPress={() => nav.navigate("BlogArticles", { blogId: blog.id, blogName: blog.name })}
-        >
-          <ServiceLogo name={blog.name} brandColor={blog.brand_color} size={26} />
-          <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>{blog.name}</Text>
-          <ChevronRight size={18} color={c.textMuted} />
-        </Pressable>
-        <Pressable onPress={() => onToggleFavorite(blog.id, !favorite)} hitSlop={8} style={styles.starBtn}>
-          <Star
-            size={19}
-            color={favorite ? c.hot : c.textMuted}
-            fill={favorite ? c.hot : "transparent"}
-          />
-        </Pressable>
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.carousel}
-      >
-        {items.map((a) => (
-          <ArticleCardH
-            key={a.id}
-            article={a}
-            onPress={() => nav.navigate("ArticleDetail", { articleId: a.id })}
-          />
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
-function HomeHeader({
-  blogs,
-  favSet,
-  onToggleFavorite,
-}: {
-  blogs: BlogRow[];
-  favSet: Set<string>;
-  onToggleFavorite: (blogId: string, next: boolean) => void;
-}) {
-  const { theme } = useTheme();
-  const c = theme.colors;
-  const nav = useRootNav();
-  const featured = useFeaturedArticle();
-  const unread = useUnreadNotificationCount().data ?? 0;
-
-  return (
-    <View>
-      {/* 그리팅 헤더 */}
-      <View style={styles.greetRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.greetTitle, { color: c.textPrimary }]}>{greeting()}</Text>
-          <Text style={[styles.greetSub, { color: c.textMuted }]}>
-            {blogs.length}개 블로그를 한곳에
-          </Text>
-        </View>
-        <Pressable
-          hitSlop={8}
-          style={styles.iconBtn}
-          onPress={() => nav.navigate("DistillNotifications")}
-        >
-          <Bell size={22} color={c.textSecondary} />
-          {unread > 0 ? (
-            <View style={[styles.bellDot, { backgroundColor: c.hot, borderColor: c.surfacePage }]} />
-          ) : null}
-        </Pressable>
-      </View>
-
-      {/* 피처드 대표글 */}
-      {featured.data ? (
-        <View style={styles.featuredWrap}>
-          <FeaturedCard
-            article={featured.data}
-            onPress={() => nav.navigate("ArticleDetail", { articleId: featured.data!.id })}
-          />
-        </View>
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.blogChip,
+        { backgroundColor: active ? c.primaryTint : c.surfaceCard, borderColor: active ? c.primary : c.hairline },
+      ]}
+    >
+      {blog ? (
+        <ServiceLogo name={blog.name} brandColor={blog.brand_color} homepage={blog.homepage} size={20} />
       ) : null}
-
-      {/* 서비스별 보기 로고 그리드 */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionLabel, { color: c.textSecondary }]}>서비스별 보기</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.logoGrid}
-        >
-          {blogs.map((b) => {
-            const fav = favSet.has(b.id);
-            return (
-              <Pressable
-                key={b.id}
-                style={styles.logoItem}
-                onPress={() => nav.navigate("BlogArticles", { blogId: b.id, blogName: b.name })}
-              >
-                <View style={styles.logoWrap}>
-                  <ServiceLogo name={b.name} brandColor={b.brand_color} size={52} />
-                  <Pressable
-                    onPress={() => onToggleFavorite(b.id, !fav)}
-                    hitSlop={6}
-                    style={[styles.logoStar, { backgroundColor: c.surfaceCard, borderColor: c.hairline }]}
-                  >
-                    <Star size={11} color={fav ? c.hot : c.textMuted} fill={fav ? c.hot : "transparent"} />
-                  </Pressable>
-                </View>
-                <Text style={[styles.logoName, { color: c.textSecondary }]} numberOfLines={1}>
-                  {b.name}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </View>
-    </View>
+      <Text style={[styles.blogChipText, { color: active ? c.primary : c.textSecondary }]}>
+        {blog ? blog.name : "전체"}
+      </Text>
+    </Pressable>
   );
 }
 
 export function DistillHomeScreen() {
   const { theme } = useTheme();
   const c = theme.colors;
+  const nav = useRootNav();
+  const [blogId, setBlogId] = useState<string | null>(null);
+
   const blogsQ = useBlogs();
-  const favsQ = useFavoriteBlogIds();
-  const toggleFav = useToggleBlogFavorite();
+  const featuredQ = useFeaturedArticles(6);
+  const feedQ = useArticlesFeed(blogId ? { blogId } : {});
+  const unread = useUnreadNotificationCount().data ?? 0;
 
-  const favSet = useMemo(() => new Set(favsQ.data ?? []), [favsQ.data]);
-  const blogs = useMemo(() => {
-    const list = blogsQ.data ?? [];
-    // 즐겨찾기한 기업을 앞쪽으로(그 외 순서는 원본 유지).
-    return [...list].sort((a, b) => (favSet.has(b.id) ? 1 : 0) - (favSet.has(a.id) ? 1 : 0));
-  }, [blogsQ.data, favSet]);
-
-  const onToggleFav = (blogId: string, next: boolean) =>
-    toggleFav.mutate({ blogId, favorite: next });
-
-  if (blogsQ.isLoading) {
-    return (
-      <SafeAreaView style={[styles.screen, { backgroundColor: c.surfacePage }]}>
-        <Loading label="불러오는 중…" />
-      </SafeAreaView>
-    );
-  }
-  if (blogsQ.isError) {
-    return (
-      <SafeAreaView style={[styles.screen, { backgroundColor: c.surfacePage }]}>
-        <ErrorState onRetry={() => blogsQ.refetch()} />
-      </SafeAreaView>
-    );
-  }
+  const blogs = blogsQ.data ?? [];
+  const featured = featuredQ.data ?? [];
+  const rows = feedQ.data?.pages.flatMap((p) => p.rows) ?? [];
 
   return (
     <SafeAreaView
@@ -204,20 +79,91 @@ export function DistillHomeScreen() {
       edges={["top", "left", "right"]}
     >
       <FlatList
-        data={blogs}
-        keyExtractor={(b) => b.id}
+        data={rows}
+        keyExtractor={(a) => a.id}
         renderItem={({ item }) => (
-          <ServiceCarousel
-            blog={item}
-            favorite={favSet.has(item.id)}
-            onToggleFavorite={onToggleFav}
-          />
+          <ArticleRow article={item} onPress={() => nav.navigate("ArticleDetail", { articleId: item.id })} />
         )}
-        ListHeaderComponent={
-          <HomeHeader blogs={blogs} favSet={favSet} onToggleFavorite={onToggleFav} />
-        }
-        showsVerticalScrollIndicator={false}
+        ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: c.hairline }]} />}
         contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        onEndReachedThreshold={0.5}
+        onEndReached={() => {
+          if (feedQ.hasNextPage && !feedQ.isFetchingNextPage) feedQ.fetchNextPage();
+        }}
+        ListEmptyComponent={
+          feedQ.isLoading ? (
+            <Loading label="불러오는 중…" />
+          ) : feedQ.isError ? (
+            <ErrorState onRetry={() => feedQ.refetch()} />
+          ) : (
+            <EmptyState title="글이 없어요" hint="다른 기업을 골라보세요" />
+          )
+        }
+        ListHeaderComponent={
+          <View>
+            {/* 인사말 + 알림 */}
+            <View style={styles.greetRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.greetTitle, { color: c.textPrimary }]}>{greeting()}</Text>
+                <Text style={[styles.greetSub, { color: c.textMuted }]}>오늘의 테크 인사이트</Text>
+              </View>
+              <Pressable
+                hitSlop={8}
+                style={styles.iconBtn}
+                onPress={() => nav.navigate("DistillNotifications")}
+              >
+                <Bell size={22} color={c.textSecondary} />
+                {unread > 0 ? (
+                  <View style={[styles.bellDot, { backgroundColor: c.hot, borderColor: c.surfacePage }]} />
+                ) : null}
+              </Pressable>
+            </View>
+
+            {/* 대표글 좌우 캐러셀 */}
+            {featured.length > 0 ? (
+              <View style={styles.carousel}>
+                <FlatList
+                  data={featured}
+                  keyExtractor={(a) => a.id}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  snapToInterval={CARD_W + 12}
+                  decelerationRate="fast"
+                  contentContainerStyle={styles.carouselContent}
+                  renderItem={({ item }) => (
+                    <ArticleCardH
+                      article={item}
+                      width={CARD_W}
+                      onPress={() => nav.navigate("ArticleDetail", { articleId: item.id })}
+                    />
+                  )}
+                />
+              </View>
+            ) : null}
+
+            {/* 기업 필터 칩 */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chips}
+            >
+              <BlogChip active={blogId === null} onPress={() => setBlogId(null)} />
+              {blogs.map((b) => (
+                <BlogChip
+                  key={b.id}
+                  blog={b}
+                  active={blogId === b.id}
+                  onPress={() => setBlogId(blogId === b.id ? null : b.id)}
+                />
+              ))}
+            </ScrollView>
+
+            <Text style={[styles.listLabel, { color: c.textSecondary }]}>
+              {blogId ? blogs.find((b) => b.id === blogId)?.name ?? "글" : "최신 글"}
+            </Text>
+          </View>
+        }
       />
     </SafeAreaView>
   );
@@ -225,28 +171,30 @@ export function DistillHomeScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  listContent: { paddingBottom: 40 },
+  listContent: { paddingHorizontal: 16, paddingBottom: 40 },
 
-  greetRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, gap: 4 },
+  greetRow: { flexDirection: "row", alignItems: "center", paddingTop: 8, paddingBottom: 8, gap: 4 },
   greetTitle: { ...dtype.display },
   greetSub: { ...dtype.body, marginTop: 2 },
   iconBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   bellDot: { position: "absolute", top: 8, right: 9, width: 9, height: 9, borderRadius: 5, borderWidth: 1.5 },
 
-  featuredWrap: { paddingHorizontal: 16, marginTop: 12 },
+  carousel: { marginHorizontal: -16, marginTop: 4, marginBottom: 8 },
+  carouselContent: { paddingHorizontal: 16, gap: 12 },
 
-  section: { marginTop: 24 },
-  sectionLabel: { ...dtype.title, paddingHorizontal: 16, marginBottom: 12 },
-  sectionHead: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, marginBottom: 12 },
-  sectionHeadMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8 },
-  sectionTitle: { ...dtype.title, flex: 1 },
-  starBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
+  chips: { gap: 8, paddingVertical: 12 },
+  blogChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingLeft: 8,
+    paddingRight: 14,
+    paddingVertical: 6,
+  },
+  blogChipText: { ...dtype.label, fontSize: 13 },
 
-  logoGrid: { paddingHorizontal: 16, gap: 16 },
-  logoItem: { alignItems: "center", width: 60, gap: 6 },
-  logoWrap: { width: 52, height: 52 },
-  logoStar: { position: "absolute", top: -4, right: -6, width: 20, height: 20, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center" },
-  logoName: { ...dtype.meta, textAlign: "center" },
-
-  carousel: { paddingHorizontal: 16, gap: 12 },
+  listLabel: { ...dtype.title, marginTop: 4, marginBottom: 4 },
+  sep: { height: 1 },
 });
