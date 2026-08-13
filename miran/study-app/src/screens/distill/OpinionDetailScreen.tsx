@@ -137,14 +137,14 @@ export function OpinionDetailScreen({ route }: Props) {
             </Text>
           </Pressable>
 
-          {/* 구조화 인사이트 */}
+          {/* 독후감 항목 */}
           <InsightField label="인상적인 문장" value={o.insight.quote} />
           <InsightField label="내 해석" value={o.insight.interpretation} />
-          <InsightField label="바로 적용할 것" value={o.insight.apply} />
+          <InsightField label="접목하고 싶은 방법" value={o.insight.apply} />
           <InsightField label="비슷한 사례" value={o.insight.similar} />
           {o.insight.questions.length > 0 ? (
             <View style={styles.iField}>
-              <Text style={[styles.iLabel, { color: c.textMuted }]}>나눌 질문</Text>
+              <Text style={[styles.iLabel, { color: c.textMuted }]}>질문 · 토론</Text>
               {o.insight.questions.map((qv, i) => (
                 <Text key={i} style={[styles.iValue, { color: c.textPrimary }]}>
                   · {qv}

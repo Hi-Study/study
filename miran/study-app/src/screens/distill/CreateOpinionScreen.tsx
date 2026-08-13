@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ChevronLeft, Plus, X } from "lucide-react-native";
+import { ChevronLeft } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav, type RootStackParamList } from "@/navigation/types";
@@ -120,7 +120,7 @@ export function CreateOpinionScreen({ route }: Props) {
         <Pressable onPress={() => nav.goBack()} hitSlop={8} style={styles.hBtn}>
           <ChevronLeft size={24} color={c.textPrimary} />
         </Pressable>
-        <Text style={[styles.hTitle, { color: c.textPrimary }]}>의견 남기기</Text>
+        <Text style={[styles.hTitle, { color: c.textPrimary }]}>독후감 쓰기</Text>
         <Pressable
           onPress={saveDraft}
           disabled={!hasContent || upsertDraft.isPending}
@@ -145,72 +145,26 @@ export function CreateOpinionScreen({ route }: Props) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {/* 독후감 3항목 (회의록 §글 등록) */}
           <Field
-            label="핵심 인사이트"
+            label="인상 깊은 부분"
             required
             value={insight.core}
             onChangeText={(t) => set({ core: t })}
-            placeholder="이 글에서 가장 중요하게 느낀 한 가지"
+            placeholder="이 글에서 가장 인상 깊었던 점"
           />
           <Field
-            label="인상적인 문장"
-            value={insight.quote}
-            onChangeText={(t) => set({ quote: t })}
-            placeholder="기억하고 싶은 문장(인용)"
-          />
-          <Field
-            label="내 해석"
-            value={insight.interpretation}
-            onChangeText={(t) => set({ interpretation: t })}
-            placeholder="이 인사이트를 어떻게 이해했는지"
-          />
-          <Field
-            label="바로 적용할 것"
+            label="접목하고 싶은 방법"
             value={insight.apply}
             onChangeText={(t) => set({ apply: t })}
-            placeholder="내 업무/기획에 적용할 점"
+            placeholder="내 업무·기획에 어떻게 접목할지"
           />
           <Field
-            label="비슷한 사례"
-            value={insight.similar}
-            onChangeText={(t) => set({ similar: t })}
-            placeholder="떠오르는 유사 사례"
+            label="질문 · 토론하고 싶은 것"
+            value={insight.questions[0] ?? ""}
+            onChangeText={(t) => set({ questions: t ? [t] : [] })}
+            placeholder="인사이터들과 나누고 싶은 질문"
           />
-
-          {/* 질문 리스트 */}
-          <View style={styles.field}>
-            <Text style={[styles.label, { color: c.textSecondary }]}>나눌 질문</Text>
-            {insight.questions.map((qv, i) => (
-              <View key={i} style={styles.qRow}>
-                <TextInput
-                  value={qv}
-                  onChangeText={(t) =>
-                    set({ questions: insight.questions.map((x, j) => (j === i ? t : x)) })
-                  }
-                  placeholder={`질문 ${i + 1}`}
-                  placeholderTextColor={c.textMuted}
-                  style={[
-                    styles.input,
-                    { flex: 1, color: c.textPrimary, borderColor: c.hairline, backgroundColor: c.surfaceCard },
-                  ]}
-                />
-                <Pressable
-                  onPress={() => set({ questions: insight.questions.filter((_, j) => j !== i) })}
-                  hitSlop={8}
-                  style={styles.qDel}
-                >
-                  <X size={18} color={c.textMuted} />
-                </Pressable>
-              </View>
-            ))}
-            <Pressable
-              onPress={() => set({ questions: [...insight.questions, ""] })}
-              style={[styles.addQ, { borderColor: c.hairline }]}
-            >
-              <Plus size={16} color={c.primary} />
-              <Text style={[styles.addQText, { color: c.primary }]}>질문 추가</Text>
-            </Pressable>
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

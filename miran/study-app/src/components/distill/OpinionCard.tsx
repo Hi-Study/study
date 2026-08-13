@@ -54,7 +54,7 @@ export function OpinionCard({
       </Text>
       {opinion.insight.apply ? (
         <Text style={[styles.apply, { color: c.textSecondary }]} numberOfLines={2}>
-          바로 적용 · {opinion.insight.apply}
+          접목 · {opinion.insight.apply}
         </Text>
       ) : null}
 

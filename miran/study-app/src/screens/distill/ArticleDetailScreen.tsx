@@ -359,7 +359,7 @@ function OpinionsSection({ articleId }: { articleId: string }) {
             </Text>
             {o.insight.apply ? (
               <Text style={[styles.opinionField, { color: c.textSecondary }]} numberOfLines={isOpen ? undefined : 2}>
-                바로 적용 · {o.insight.apply}
+                접목 · {o.insight.apply}
               </Text>
             ) : null}
 
