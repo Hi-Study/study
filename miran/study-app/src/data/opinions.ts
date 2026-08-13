@@ -153,3 +153,23 @@ export function useMyOpinions() {
     enabled: Boolean(uid),
   });
 }
+
+/** 특정 인사이터가 쓴 의견(프로필 페이지). */
+export async function listOpinionsByAuthor(userId: string): Promise<OpinionFeedItem[]> {
+  const { data, error } = await supabase
+    .from("opinions")
+    .select(OPINION_SELECT)
+    .eq("author_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return (data ?? []) as unknown as OpinionFeedItem[];
+}
+
+export function useOpinionsByAuthor(userId: string) {
+  return useQuery({
+    queryKey: qk.opinionsByAuthor(userId),
+    queryFn: () => listOpinionsByAuthor(userId),
+    enabled: Boolean(userId),
+  });
+}

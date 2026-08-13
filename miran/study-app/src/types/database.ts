@@ -236,7 +236,7 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
-          kind: "new_article" | "comment" | "reply";
+          kind: "new_article" | "comment" | "reply" | "follow_opinion";
           actor_id: string | null;
           article_id: string | null;
           opinion_id: string | null;
@@ -247,7 +247,7 @@ export interface Database {
         Insert: {
           id?: string;
           user_id: string;
-          kind: "new_article" | "comment" | "reply";
+          kind: "new_article" | "comment" | "reply" | "follow_opinion";
           actor_id?: string | null;
           article_id?: string | null;
           opinion_id?: string | null;
@@ -282,6 +282,13 @@ export interface Database {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["opinion_drafts"]["Insert"]>;
+        Relationships: [];
+      };
+      // ---- distill: 팔로우 ----
+      user_follows: {
+        Row: { follower_id: string; following_id: string; created_at: string };
+        Insert: { follower_id: string; following_id: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["user_follows"]["Insert"]>;
         Relationships: [];
       };
       // ---- distill: 검색어 로깅(급상승 검색어) ----

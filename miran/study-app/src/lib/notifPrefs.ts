@@ -12,6 +12,7 @@ export const DEFAULT_NOTIF_PREFS: NotifPrefs = {
   new_article: true,
   comment: true,
   reply: true,
+  follow_opinion: true,
 };
 
 export async function getNotifPrefs(): Promise<NotifPrefs> {
@@ -23,6 +24,7 @@ export async function getNotifPrefs(): Promise<NotifPrefs> {
       new_article: p.new_article !== false,
       comment: p.comment !== false,
       reply: p.reply !== false,
+      follow_opinion: p.follow_opinion !== false,
     };
   } catch {
     return { ...DEFAULT_NOTIF_PREFS };

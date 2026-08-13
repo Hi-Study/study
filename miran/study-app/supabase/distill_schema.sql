@@ -529,3 +529,44 @@ as $$
   limit lim;
 $$;
 grant execute on function public.trending_searches(int) to authenticated;
+
+-- ============================================================
+-- 19) 팔로우 — 인사이터 팔로우 + 팔로우한 사람의 새 의견(독후감) 알림
+-- ============================================================
+create table if not exists public.user_follows (
+  follower_id  uuid not null references public.users(id) on delete cascade,
+  following_id uuid not null references public.users(id) on delete cascade,
+  created_at   timestamptz not null default now(),
+  primary key (follower_id, following_id),
+  check (follower_id <> following_id)
+);
+create index if not exists idx_user_follows_following on public.user_follows(following_id);
+
+alter table public.user_follows enable row level security;
+drop policy if exists ufollows_read on public.user_follows;
+create policy ufollows_read on public.user_follows for select to authenticated using (true);
+drop policy if exists ufollows_write_own on public.user_follows;
+create policy ufollows_write_own on public.user_follows for all to authenticated
+  using (follower_id = auth.uid()) with check (follower_id = auth.uid());
+
+-- 알림 종류에 'follow_opinion' 추가.
+alter table public.app_notifications drop constraint if exists app_notifications_kind_check;
+alter table public.app_notifications add constraint app_notifications_kind_check
+  check (kind in ('new_article','comment','reply','follow_opinion'));
+
+-- 팔로우한 사람이 새 의견 남기면 팔로워에게 알림.
+create or replace function public.notify_new_opinion()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.author_id is not null then
+    insert into public.app_notifications (user_id, kind, actor_id, opinion_id, title)
+    select f.follower_id, 'follow_opinion', new.author_id, new.id,
+           left(coalesce(new.insight->>'core', ''), 80)
+    from public.user_follows f
+    where f.following_id = new.author_id;
+  end if;
+  return null;
+end; $$;
+drop trigger if exists trg_notify_new_opinion on public.opinions;
+create trigger trg_notify_new_opinion after insert on public.opinions
+  for each row execute function public.notify_new_opinion();

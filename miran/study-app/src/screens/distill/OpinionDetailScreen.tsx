@@ -102,8 +102,12 @@ export function OpinionDetailScreen({ route }: Props) {
 
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {/* 작성자 */}
-          <View style={styles.author}>
+          {/* 작성자 (탭하면 인사이터 프로필) */}
+          <Pressable
+            style={styles.author}
+            onPress={() => o.author_id && nav.navigate("InsighterProfile", { userId: o.author_id })}
+            disabled={!o.author_id}
+          >
             <Avatar name={o.author?.name ?? "게스트"} size={40} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.who, { color: c.textPrimary }]}>{o.author?.name ?? "게스트"}</Text>
@@ -112,7 +116,7 @@ export function OpinionDetailScreen({ route }: Props) {
                 {relativeDate(o.created_at)}
               </Text>
             </View>
-          </View>
+          </Pressable>
 
           {/* 핵심 인사이트(크게) */}
           <Text style={[styles.core, { color: c.textPrimary }]}>{o.insight.core}</Text>

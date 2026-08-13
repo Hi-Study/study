@@ -2,7 +2,14 @@
 import React, { useEffect, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronLeft, CornerDownRight, MessageSquare, Newspaper, Settings } from "lucide-react-native";
+import {
+  ChevronLeft,
+  CornerDownRight,
+  MessageSquare,
+  Newspaper,
+  Settings,
+  UserPlus,
+} from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
@@ -17,17 +24,19 @@ import { dtype } from "@/theme";
 import { relativeDate } from "@/components/distill/ArticleCards";
 import { Loading, ErrorState, EmptyState } from "@/components";
 
-const KINDS: NotificationKind[] = ["new_article", "comment", "reply"];
+const KINDS: NotificationKind[] = ["new_article", "comment", "reply", "follow_opinion"];
 
 const KIND_LABEL: Record<NotificationKind, string> = {
   new_article: "즐겨찾기한 기업의 새 글",
   comment: "내 의견에 댓글이 달렸어요",
   reply: "내 댓글에 답글이 달렸어요",
+  follow_opinion: "팔로우한 인사이터의 새 독후감",
 };
 
 function KindIcon({ kind, color }: { kind: NotificationKind; color: string }) {
   if (kind === "new_article") return <Newspaper size={18} color={color} />;
   if (kind === "reply") return <CornerDownRight size={18} color={color} />;
+  if (kind === "follow_opinion") return <UserPlus size={18} color={color} />;
   return <MessageSquare size={18} color={color} />;
 }
 

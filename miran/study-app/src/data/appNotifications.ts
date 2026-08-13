@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { qk } from "@/lib/queryKeys";
 import { useUid } from "@/auth/AuthProvider";
 
-export type NotificationKind = "new_article" | "comment" | "reply";
+export type NotificationKind = "new_article" | "comment" | "reply" | "follow_opinion";
 
 export interface AppNotificationRow {
   id: string;

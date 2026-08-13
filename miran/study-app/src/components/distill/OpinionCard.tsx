@@ -12,9 +12,11 @@ import type { OpinionFeedItem } from "@/data/opinions";
 export function OpinionCard({
   opinion,
   onPress,
+  onAuthorPress,
 }: {
   opinion: OpinionFeedItem;
   onPress: () => void;
+  onAuthorPress?: () => void;
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
@@ -28,17 +30,24 @@ export function OpinionCard({
         { backgroundColor: c.surfaceCard, borderColor: c.hairline, opacity: pressed ? 0.95 : 1 },
       ]}
     >
-      {/* 작성자 */}
+      {/* 작성자(탭하면 인사이터 프로필) + 메타 */}
       <View style={styles.head}>
-        <Avatar name={opinion.author?.name ?? "게스트"} size={36} />
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.who, { color: c.textPrimary }]}>
-            {opinion.author?.name ?? "게스트"}
-          </Text>
-          {opinion.author?.role_title ? (
-            <Text style={[styles.role, { color: c.textMuted }]}>{opinion.author.role_title}</Text>
-          ) : null}
-        </View>
+        <Pressable
+          style={styles.headAuthor}
+          onPress={onAuthorPress}
+          disabled={!onAuthorPress}
+          hitSlop={4}
+        >
+          <Avatar name={opinion.author?.name ?? "게스트"} size={36} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.who, { color: c.textPrimary }]}>
+              {opinion.author?.name ?? "게스트"}
+            </Text>
+            {opinion.author?.role_title ? (
+              <Text style={[styles.role, { color: c.textMuted }]}>{opinion.author.role_title}</Text>
+            ) : null}
+          </View>
+        </Pressable>
         <View style={styles.headRight}>
           <Text style={[styles.date, { color: c.textMuted }]}>{relativeDate(opinion.created_at)}</Text>
           <View style={styles.likeMeta}>
@@ -82,6 +91,7 @@ export function OpinionCard({
 const styles = StyleSheet.create({
   card: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 10 },
   head: { flexDirection: "row", alignItems: "center", gap: 10 },
+  headAuthor: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
   who: { ...dtype.cardTitle },
   role: { ...dtype.meta },
   headRight: { alignItems: "flex-end", gap: 3 },

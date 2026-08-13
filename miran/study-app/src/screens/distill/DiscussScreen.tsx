@@ -132,6 +132,11 @@ export function DiscussScreen() {
             <OpinionCard
               opinion={item}
               onPress={() => nav.navigate("OpinionDetail", { opinionId: item.id })}
+              onAuthorPress={
+                item.author_id
+                  ? () => nav.navigate("InsighterProfile", { userId: item.author_id! })
+                  : undefined
+              }
             />
           )}
           contentContainerStyle={styles.listContent}

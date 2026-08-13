@@ -34,6 +34,7 @@ import { CreateOpinionScreen } from "@/screens/distill/CreateOpinionScreen";
 import { OpinionDetailScreen } from "@/screens/distill/OpinionDetailScreen";
 import { CreateArticleScreen } from "@/screens/distill/CreateArticleScreen";
 import { DistillNotificationsScreen } from "@/screens/distill/DistillNotificationsScreen";
+import { InsighterProfileScreen } from "@/screens/distill/InsighterProfileScreen";
 import type { RootStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -90,6 +91,7 @@ function Gate() {
         <Stack.Screen name="OpinionDetail" component={OpinionDetailScreen} />
         <Stack.Screen name="CreateArticle" component={CreateArticleScreen} />
         <Stack.Screen name="DistillNotifications" component={DistillNotificationsScreen} />
+        <Stack.Screen name="InsighterProfile" component={InsighterProfileScreen} />
 
         <Stack.Screen name="MyStudies" component={MyStudiesScreen} />
         <Stack.Screen name="CreateStudy" component={CreateStudyScreen} />
