@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { Bookmark, ChevronLeft, ExternalLink, Heart } from "lucide-react-native";
+import { Bookmark, ChevronLeft, ExternalLink, Heart, MessageSquare } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav, type RootStackParamList } from "@/navigation/types";
@@ -33,6 +33,7 @@ import {
 } from "@/data";
 import { ServiceLogo, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
 import { ArticleHighlightSection } from "@/components/distill/ArticleHighlightSection";
+import { OpinionThread } from "@/components/distill/OpinionThread";
 import { Avatar } from "@/components/Avatar";
 import { Loading, ErrorState } from "@/components";
 
@@ -320,9 +321,9 @@ function AiSummaryPanel({
 function OpinionsSection({ articleId }: { articleId: string }) {
   const { theme } = useTheme();
   const c = theme.colors;
-  const nav = useRootNav();
   const q = useOpinions(articleId);
   const list = q.data ?? [];
+  const [open, setOpen] = useState<Record<string, boolean>>({});
 
   if (list.length === 0) {
     return (
@@ -337,31 +338,47 @@ function OpinionsSection({ articleId }: { articleId: string }) {
   return (
     <View style={styles.opinions}>
       <Text style={[styles.opinionsTitle, { color: c.textPrimary }]}>의견 {list.length}</Text>
-      {list.map((o) => (
-        <Pressable
-          key={o.id}
-          onPress={() => nav.navigate("OpinionDetail", { opinionId: o.id })}
-          style={({ pressed }) => [
-            styles.opinionCard,
-            { backgroundColor: c.surfaceCard, borderColor: c.hairline, opacity: pressed ? 0.95 : 1 },
-          ]}
-        >
-          <View style={styles.opinionHead}>
-            <Avatar name={o.author?.name ?? "게스트"} size={28} />
-            <Text style={[styles.opinionWho, { color: c.textPrimary }]}>
-              {o.author?.name ?? "게스트"}
+      {list.map((o) => {
+        const isOpen = !!open[o.id];
+        return (
+          <View
+            key={o.id}
+            style={[styles.opinionCard, { backgroundColor: c.surfaceCard, borderColor: c.hairline }]}
+          >
+            <View style={styles.opinionHead}>
+              <Avatar name={o.author?.name ?? "게스트"} size={28} />
+              <Text style={[styles.opinionWho, { color: c.textPrimary }]}>
+                {o.author?.name ?? "게스트"}
+              </Text>
+            </View>
+            <Text
+              style={[styles.opinionCore, { color: c.textPrimary }]}
+              numberOfLines={isOpen ? undefined : 4}
+            >
+              {o.insight.core}
             </Text>
+            {o.insight.apply ? (
+              <Text style={[styles.opinionField, { color: c.textSecondary }]} numberOfLines={isOpen ? undefined : 2}>
+                바로 적용 · {o.insight.apply}
+              </Text>
+            ) : null}
+
+            <Pressable
+              onPress={() => setOpen((p) => ({ ...p, [o.id]: !p[o.id] }))}
+              style={styles.opinionExpand}
+              hitSlop={6}
+            >
+              <MessageSquare size={14} color={c.primary} />
+              <Text style={[styles.opinionExpandText, { color: c.primary }]}>
+                {isOpen ? "댓글 접기" : "댓글 · 좋아요"}
+              </Text>
+            </Pressable>
+
+            {/* 이동 없이 인라인으로 좋아요·댓글·대댓글 */}
+            {isOpen ? <OpinionThread opinionId={o.id} /> : null}
           </View>
-          <Text style={[styles.opinionCore, { color: c.textPrimary }]} numberOfLines={4}>
-            {o.insight.core}
-          </Text>
-          {o.insight.apply ? (
-            <Text style={[styles.opinionField, { color: c.textSecondary }]} numberOfLines={2}>
-              바로 적용 · {o.insight.apply}
-            </Text>
-          ) : null}
-        </Pressable>
-      ))}
+        );
+      })}
     </View>
   );
 }
@@ -436,6 +453,8 @@ const styles = StyleSheet.create({
   opinionCore: { ...dtype.body, fontWeight: "600" },
   opinionField: { ...dtype.bodyS },
   opinionMore: { ...dtype.cardTitle, paddingVertical: 6 },
+  opinionExpand: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 4, alignSelf: "flex-start" },
+  opinionExpandText: { ...dtype.label, fontSize: 13 },
   opinionsEmpty: { paddingVertical: 40, alignItems: "center" },
   opinionsEmptyText: { ...dtype.body, textAlign: "center", lineHeight: 23 },
 
