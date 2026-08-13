@@ -35,6 +35,8 @@ export function CommentItem({
   const c = theme.colors;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(comment.text);
+  const liked = useLiked("comment", comment.id);
+  const toggleLike = useToggleReaction("comment", comment.id);
 
   return (
     <View style={[styles.comment, comment.parent_id ? styles.reply : null]}>
@@ -85,16 +87,35 @@ export function CommentItem({
           <Text style={[styles.cmText, { color: c.textSecondary }]}>{comment.text}</Text>
         )}
 
-        {isMine && !editing ? (
+        {!editing ? (
           <View style={styles.cmActions}>
-            <Pressable onPress={() => setEditing(true)} hitSlop={6} style={styles.cmAction}>
-              <Pencil size={13} color={c.textMuted} />
-              <Text style={[styles.cmActionText, { color: c.textMuted }]}>수정</Text>
+            <Pressable
+              onPress={() => toggleLike.mutate(liked.data ?? false)}
+              disabled={toggleLike.isPending}
+              hitSlop={6}
+              style={styles.cmAction}
+            >
+              <Heart
+                size={13}
+                color={liked.data ? c.danger : c.textMuted}
+                fill={liked.data ? c.danger : "transparent"}
+              />
+              <Text style={[styles.cmActionText, { color: liked.data ? c.danger : c.textMuted }]}>
+                좋아요
+              </Text>
             </Pressable>
-            <Pressable onPress={onDelete} hitSlop={6} style={styles.cmAction}>
-              <Trash2 size={13} color={c.textMuted} />
-              <Text style={[styles.cmActionText, { color: c.textMuted }]}>삭제</Text>
-            </Pressable>
+            {isMine ? (
+              <>
+                <Pressable onPress={() => setEditing(true)} hitSlop={6} style={styles.cmAction}>
+                  <Pencil size={13} color={c.textMuted} />
+                  <Text style={[styles.cmActionText, { color: c.textMuted }]}>수정</Text>
+                </Pressable>
+                <Pressable onPress={onDelete} hitSlop={6} style={styles.cmAction}>
+                  <Trash2 size={13} color={c.textMuted} />
+                  <Text style={[styles.cmActionText, { color: c.textMuted }]}>삭제</Text>
+                </Pressable>
+              </>
+            ) : null}
           </View>
         ) : null}
       </View>
