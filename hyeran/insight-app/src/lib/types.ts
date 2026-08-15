@@ -56,3 +56,27 @@ export const CAT_COLOR: Record<Category, string> = {
 };
 
 export const CATEGORIES: Category[] = ["프로덕트", "디자인", "기술", "AI"];
+
+// 카테고리 → 영문 라벨 (혼용: 카테고리·로고는 영문)
+export const CAT_EN: Record<Category, string> = {
+  프로덕트: "Product",
+  디자인: "Design",
+  기술: "Tech",
+  AI: "AI",
+};
+
+// 본문(body[])의 첫 이미지 마커(::img::URL)를 커버 이미지로 추출
+export function coverImage(post: Post): string | null {
+  const img = post.body?.find((s) => s.startsWith("::img::"));
+  return img ? img.slice("::img::".length) : null;
+}
+
+// 배경색 명도에 따라 가독 텍스트색 (밝은 브랜드색엔 검정, 어두우면 흰색)
+export function readableText(hex?: string): string {
+  if (!hex) return "#fff";
+  const h = hex.replace("#", "");
+  if (h.length < 6) return "#fff";
+  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+  const L = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return L > 0.62 ? "#141414" : "#fff";
+}

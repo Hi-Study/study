@@ -17,6 +17,9 @@
 *.pem
 npm-debug.log*
 
+# local tooling (browser preview 등)
+.claude/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
