@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { submitReview } from "./actions";
+import { submitReview } from "@/app/posts/[id]/actions";
 
 const QS = [
   "인상 깊은 부분이 무엇이었나요",

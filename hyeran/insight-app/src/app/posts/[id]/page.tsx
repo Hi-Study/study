@@ -6,7 +6,7 @@ import { CompanyLogo } from "@/components/PostCard";
 import Icon from "@/components/Icon";
 import BackButton from "@/components/BackButton";
 import BookmarkButton from "@/components/BookmarkButton";
-import ReviewSheet from "./review-sheet";
+import ReviewSheet from "@/components/ReviewSheet";
 import ReviewList from "@/components/ReviewList";
 import PostOwnerMenu from "@/components/PostOwnerMenu";
 import ReadTracker from "@/components/ReadTracker";

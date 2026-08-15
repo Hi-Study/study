@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Icon from "@/components/Icon";
-import ReviewSheet from "@/app/posts/[id]/review-sheet";
+import ReviewSheet from "@/components/ReviewSheet";
 import type { Review } from "@/lib/types";
 import type { ThreadComment } from "@/lib/queries";
 
