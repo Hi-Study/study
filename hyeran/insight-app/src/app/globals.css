@@ -203,6 +203,32 @@ svg.i.lg{ width:26px; height:26px; }
 .fcard-body h3{ margin:0; font-size:16px; font-weight:700; line-height:1.4; letter-spacing:-.3px; color:var(--text); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .fcard-meta{ display:flex; align-items:center; gap:6px; margin-top:10px; font-size:12px; color:var(--text-sub); }
 .fcard-views{ display:inline-flex; align-items:center; gap:4px; }
+/* 북마크 토글 (커버 위 / 흰 목록용) */
+.fcard-bm-wrap{ position:absolute; top:8px; right:8px; }
+.card-bm{ width:32px; height:32px; border:none; border-radius:50%; background:transparent; color:currentColor; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.card-bm svg{ width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linejoin:round; }
+.card-bm.cover{ background:rgba(0,0,0,.5); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); color:#fff; }
+.card-bm.cover[data-on="true"]{ background:var(--coral); }
+.card-bm.cover[data-on="true"] svg{ fill:#fff; }
+.card-bm.plain{ width:30px; height:30px; color:var(--steel-text); }
+.card-bm.plain[data-on="true"]{ color:var(--coral); }
+.card-bm.plain[data-on="true"] svg{ fill:var(--coral); }
+/* 리스트 로우 (검색·마이 · 지난 노트 스타일) */
+.lrow{ display:flex; gap:12px; align-items:flex-start; padding:12px 2px; border-bottom:1px solid var(--hairline); }
+.lrow:active{ background:var(--surface); }
+.lrow-thumb{ flex:0 0 auto; width:56px; height:56px; border-radius:var(--r-lg); background-color:var(--surface); background-size:cover; background-position:center; overflow:hidden; }
+.lrow-thumb.ph{ display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg, var(--cc), color-mix(in srgb, var(--cc) 50%, #000)); }
+.lrow-ph-logo{ transform:scale(.8); }
+.lrow-body{ flex:1; min-width:0; }
+.lrow-body h3{ margin:0; font-size:15px; font-weight:600; line-height:1.4; letter-spacing:-.3px; color:var(--text); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.lrow .cmeta{ margin-top:6px; }
+.lrow-bm{ flex:0 0 auto; margin:-4px -4px 0 0; }
+/* 통일 카드 메타 라인 (커버 카드·리스트 로우 공통) */
+.cmeta{ display:flex; align-items:center; gap:8px; margin-top:10px; font-size:12px; color:var(--text-sub); flex-wrap:wrap; }
+.cmeta .cm-who{ font-weight:600; color:var(--charcoal); }
+.cmeta .cm-n{ display:inline-flex; align-items:center; gap:3px; font-variant-numeric:tabular-nums; }
+.cmeta .cm-n svg{ width:14px; height:14px; opacity:.75; }
+.cmeta .cm-date{ margin-left:auto; font-variant-numeric:tabular-nums; opacity:.85; }
 
 /* ===== swipe (home) ===== */
 .swipe{ display:flex; gap:9px; overflow-x:auto; margin:0 -15px; padding:2px 15px 4px; }

@@ -18,14 +18,57 @@ async function attachReviewCounts(sb: Awaited<ReturnType<typeof createClient>>, 
   return posts.map((p) => ({ ...p, review_count: counts.get(p.id) ?? 0 }));
 }
 
-// 피드: 전체 최신순
+// 글별 읽음(완독) 수 붙이기 — 뷰수 대체 (통일 카드 메타)
+async function attachReadCounts(sb: Awaited<ReturnType<typeof createClient>>, posts: Post[]): Promise<Post[]> {
+  if (!posts.length) return posts;
+  const ids = posts.map((p) => p.id);
+  const { data } = await sb.from("reads").select("post_id").in("post_id", ids);
+  const counts = new Map<string, number>();
+  (data ?? []).forEach((r: { post_id: string }) => counts.set(r.post_id, (counts.get(r.post_id) ?? 0) + 1));
+  return posts.map((p) => ({ ...p, read_count: counts.get(p.id) ?? 0 }));
+}
+
+// 피드: 전체 최신순 (인사이트 수 + 읽음 수 포함)
 export async function getFeedPosts(): Promise<Post[]> {
   const sb = await createClient();
   const { data } = await sb
     .from("posts")
     .select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)")
     .order("published_at", { ascending: false });
-  return attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
+  const withReviews = await attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
+  return attachReadCounts(sb, withReviews);
+}
+
+// 오늘의 글: 최근 7일 글 중 (읽음 수 + 인사이트 수) 1위 1개. 최근 글이 없으면 전체에서 선정
+export function pickTodayHero(posts: Post[]): Post | null {
+  const cutoff = Date.now() - 7 * 86_400_000;
+  const recent = posts.filter((p) => new Date(p.published_at).getTime() >= cutoff);
+  const pool = recent.length ? recent : posts;
+  const score = (p: Post) => (p.read_count ?? 0) + (p.review_count ?? 0);
+  return [...pool].sort((a, b) =>
+    score(b) - score(a) ||
+    new Date(b.published_at).getTime() - new Date(a.published_at).getTime())[0] ?? null;
+}
+
+// 인기 글: 인사이트 많은 순 → 동률 최신 (오늘의 글 제외)
+export function pickPopular(posts: Post[], limit = 10, excludeId?: string): Post[] {
+  return [...posts]
+    .filter((p) => p.id !== excludeId)
+    .sort((a, b) =>
+      (b.review_count ?? 0) - (a.review_count ?? 0) ||
+      new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
+    .slice(0, limit);
+}
+
+// 유저가 북마크한 글 목록 (Post[])
+export async function getBookmarkedPosts(userId: string): Promise<Post[]> {
+  const sb = await createClient();
+  const { data: bms } = await sb.from("bookmarks").select("post_id").eq("user_id", userId);
+  const ids = [...new Set((bms ?? []).map((b: { post_id: string }) => b.post_id))];
+  if (!ids.length) return [];
+  const { data } = await sb.from("posts").select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)").in("id", ids);
+  const withReviews = await attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
+  return attachReadCounts(sb, withReviews);
 }
 
 // 홈: 기업별 그룹 (기업 → 최신 글들)

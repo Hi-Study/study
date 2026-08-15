@@ -30,7 +30,9 @@ export interface Post {
   company?: Company | null;
   author?: { name: string; initial: string } | null; // 직접 등록 글 작성자
   review_count?: number;
+  read_count?: number; // 글별 읽음(완독) 수 — 뷰수 대체 (통일 카드 메타)
   read?: boolean; // 내가 다 읽은 글 (카드 배지용)
+  bookmarked?: boolean; // 내가 북마크한 글 (카드 토글 초기값)
 }
 
 export interface Review {
