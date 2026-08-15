@@ -302,15 +302,24 @@ svg.i.lg{ width:26px; height:26px; }
 .ai-q:last-child{ margin-bottom:0; }
 .ai-q .q{ font-size:12px; font-weight:600; color:var(--text-sub); margin-bottom:4px; }
 .ai-q .a{ font-size:14px; color:var(--text); line-height:1.6; }
-.article p{ font-size:16px; line-height:1.75; color:var(--charcoal); margin:0 0 8px; }
-/* ===== reader: highlight + memo ===== */
-.reader-hint{ font-size:11px; color:var(--text-sub); margin:0 0 12px; font-family:var(--mono); }
-.article p.sent{ cursor:pointer; border-radius:4px; transition:background .12s; display:flex; align-items:flex-start; gap:6px; }
-.article p.sent > span{ flex:1; }
-.article p.sent:active{ background:var(--surface); }
-.article p.sent.hl{ box-shadow:inset 0 -0.55em 0 rgba(255,74,40,.18); }
+.article p{ font-size:16px; line-height:1.78; color:var(--charcoal); margin:0 0 15px; }
+/* ===== reader: 구조형 블록 + 문단 하이라이트 ===== */
+.reader-hint{ font-size:11px; color:var(--text-sub); margin:0 0 14px; font-family:var(--mono); }
+.artblk{ cursor:pointer; border-radius:2px; transition:background .12s; display:flex; align-items:flex-start; gap:6px; }
+.artblk > span{ flex:1; min-width:0; }
+.artblk:active{ background:var(--surface); }
+.artblk.hl{ box-shadow:inset 0 -0.5em 0 rgba(255,74,40,.16); }
+/* 블록 타입별 타이포 (원문 구조 보존) */
+.art-p{ font-size:16px; line-height:1.78; color:var(--charcoal); margin:0 0 15px; }
+.art-h2{ font-size:20px; font-weight:700; line-height:1.35; letter-spacing:-.4px; color:var(--text); margin:26px 0 12px; }
+.art-h3{ font-size:17px; font-weight:700; line-height:1.4; letter-spacing:-.3px; color:var(--text); margin:20px 0 10px; }
+.art-li{ font-size:16px; line-height:1.7; color:var(--charcoal); margin:0 0 8px; padding-left:1.15em; position:relative; }
+.art-li::before{ content:"•"; position:absolute; left:2px; top:0; color:var(--coral); }
+.art-quote{ font-size:16px; line-height:1.7; color:var(--text-sub); font-style:italic; margin:0 0 15px; padding-left:14px; border-left:3px solid var(--hairline); }
+.art-code{ font-family:var(--mono); font-size:13px; line-height:1.6; color:var(--text); background:var(--surface); padding:12px 14px; margin:0 0 15px; overflow-x:auto; white-space:pre-wrap; word-break:break-word; }
+.art-cap{ font-size:12px; color:var(--text-sub); text-align:center; margin:-8px 0 16px; }
 .memo-ico{ flex:0 0 auto; width:22px; height:22px; margin-top:3px; border:none; border-radius:50%; background:var(--coral); color:#fff; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
-.reader-img{ display:block; max-width:100%; height:auto; border-radius:12px; margin:6px 0 14px; }
+.reader-img{ display:block; max-width:100%; height:auto; border-radius:0; margin:6px 0 16px; }
 .sent-actions{ display:flex; gap:8px; align-items:center; margin:2px 0 12px; }
 .sa{ background:var(--surface); border:none; border-radius:var(--r-full); padding:6px 12px; font-size:12px; font-weight:600; color:var(--text-sub); cursor:pointer; font-family:var(--font); }
 .sa.on{ background:var(--ink); color:var(--on-ink); }

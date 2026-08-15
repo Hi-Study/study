@@ -38,21 +38,34 @@ function imgSrc(n) {
   }
   return src && !src.startsWith("data:") ? src : "";
 }
-// 본문 HTML 문자열 → 문장 + 이미지(::img::URL) 문서 순서대로 (리더 뷰용)
+// 블록 타입: 헤딩/문단/목록/인용/코드/캡션
+function blockType(tag) {
+  if (tag === "h1" || tag === "h2") return "h2";
+  if (tag === "h3" || tag === "h4" || tag === "h5" || tag === "h6") return "h3";
+  if (tag === "li") return "li";
+  if (tag === "blockquote") return "quote";
+  if (tag === "pre") return "code";
+  if (tag === "figcaption") return "cap";
+  return "p";
+}
+// 본문 HTML → 구조형 블록 배열 (::타입::내용). 문단·헤딩 구조 보존 (리더 뷰용)
 function bodyFromHtmlContent(contentHtml, baseUrl) {
   if (!contentHtml) return [];
   const doc = new JSDOM(`<body>${contentHtml}</body>`, { url: baseUrl }).window.document;
   const out = [];
-  doc.querySelectorAll("p, h1, h2, h3, h4, li, figcaption, img, source").forEach((n) => {
-    if (out.length >= 90) return;
+  const push = (v) => { if (out.length < 140 && out[out.length - 1] !== v) out.push(v); };
+  doc.querySelectorAll("h1,h2,h3,h4,h5,h6,p,li,blockquote,pre,figcaption,img,source").forEach((n) => {
     const tag = n.tagName.toLowerCase();
     if (tag === "img" || tag === "source") {
       const src = imgSrc(n);
-      if (src) { try { const u = "::img::" + new URL(src, baseUrl).href; if (out[out.length - 1] !== u) out.push(u); } catch {} }
-    } else {
-      const txt = (n.textContent || "").replace(/\s+/g, " ").trim();
-      if (txt) toSentences(txt).forEach((s) => out.push(s));
+      if (src) { try { push("::img::" + new URL(src, baseUrl).href); } catch {} }
+      return;
     }
+    // 중복 방지: blockquote/pre 안의 p, li 안의 p 는 상위에서 이미 담김
+    if (tag === "p" && n.closest("blockquote, pre, li")) return;
+    const txt = (n.textContent || "").replace(/\s+/g, " ").trim();
+    if (txt.length < 2) return;
+    push(`::${blockType(tag)}::${txt}`);
   });
   return out;
 }

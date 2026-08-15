@@ -10,11 +10,21 @@ function toSentences(text: string): string[] {
   return text.replace(/\r/g, "").split(/\n+|(?<=[.!?。？！])\s+/)
     .map((s) => s.replace(/\s+/g, " ").trim()).filter((s) => s.length > 12).slice(0, 40);
 }
-// Readability 본문(HTML)에서 문장 + 이미지(::img::URL)를 문서 순서대로 (리더 뷰용)
+function blockType(tag: string): string {
+  if (tag === "h1" || tag === "h2") return "h2";
+  if (tag === "h3" || tag === "h4" || tag === "h5" || tag === "h6") return "h3";
+  if (tag === "li") return "li";
+  if (tag === "blockquote") return "quote";
+  if (tag === "pre") return "code";
+  if (tag === "figcaption") return "cap";
+  return "p";
+}
+// Readability 본문(HTML) → 구조형 블록 배열(::타입::내용). 문단·헤딩 구조 보존 (리더 뷰용)
 function bodyFromArticle(content: string | null | undefined, textContent: string, baseUrl: string, JSDOMCtor: typeof import("jsdom").JSDOM): string[] {
   if (!content) return toSentences(textContent);
   const doc = new JSDOMCtor(`<body>${content}</body>`, { url: baseUrl }).window.document;
   const out: string[] = [];
+  const push = (v: string) => { if (out.length < 140 && out[out.length - 1] !== v) out.push(v); };
   const imgSrc = (n: Element) => {
     let src = n.getAttribute("src") || n.getAttribute("data-src") || n.getAttribute("data-lazy-src") || n.getAttribute("data-original") || "";
     if (!src || src.startsWith("data:")) {
@@ -23,16 +33,17 @@ function bodyFromArticle(content: string | null | undefined, textContent: string
     }
     return src && !src.startsWith("data:") ? src : "";
   };
-  doc.querySelectorAll("p, h1, h2, h3, h4, li, figcaption, img, source").forEach((n) => {
-    if (out.length >= 90) return;
+  doc.querySelectorAll("h1,h2,h3,h4,h5,h6,p,li,blockquote,pre,figcaption,img,source").forEach((n) => {
     const tag = n.tagName.toLowerCase();
     if (tag === "img" || tag === "source") {
       const src = imgSrc(n);
-      if (src) { try { const u = "::img::" + new URL(src, baseUrl).href; if (out[out.length - 1] !== u) out.push(u); } catch {} }
-    } else {
-      const txt = (n.textContent || "").replace(/\s+/g, " ").trim();
-      if (txt) toSentences(txt).forEach((s) => out.push(s));
+      if (src) { try { push("::img::" + new URL(src, baseUrl).href); } catch {} }
+      return;
     }
+    if (tag === "p" && n.closest("blockquote, pre, li")) return;
+    const txt = (n.textContent || "").replace(/\s+/g, " ").trim();
+    if (txt.length < 2) return;
+    push(`::${blockType(tag)}::${txt}`);
   });
   return out.length ? out : toSentences(textContent);
 }
