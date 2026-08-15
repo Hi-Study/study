@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Icon from "@/components/Icon";
-import { type Category, type Post } from "@/lib/types";
+import { coverImage, type Category, type Post } from "@/lib/types";
 
 // ===== 카테고리 아이브로우 색 (DESIGN.md) =====
 const CAT_UI: Record<Category, { bg: string; fg: string }> = {
@@ -58,20 +58,27 @@ export function CompanyLogo({ company }: { company?: { name: string; color: stri
   );
 }
 
-// ===== 에디터 픽 히어로 카드 (홈 추천 최상단 1장) =====
+// ===== 오늘의 글 매거진 히어로 (홈 최상단 1장, 큰 이미지) =====
 export function FeatureCard({ post }: { post: Post }) {
-  const label = post.source === "direct"
-    ? `${post.company?.name ?? "직접 등록"}${post.author?.name ? ` · ${post.author.name}` : ""}`
-    : post.company?.name ?? "";
+  const cover = coverImage(post);
+  const cc = post.company?.color ?? "#161616";
+  const label = post.source === "direct" ? post.author?.name ?? "직접 등록" : post.company?.name ?? "";
+  const scrim = "linear-gradient(to top, rgba(0,0,0,.86) 0%, rgba(0,0,0,.15) 52%, rgba(0,0,0,.30) 100%)";
   return (
-    <Link className="feature" href={`/posts/${post.id}`}>
-      <span className="feat-arrow"><Icon name="ext" size="sm" /></span>
+    <Link
+      className={`feature${cover ? "" : " ph"}`}
+      href={`/posts/${post.id}`}
+      style={{ ["--cc" as string]: cc, ...(cover ? { backgroundImage: `${scrim}, url("${cover}")` } : {}) }}
+    >
       <span className="feat-eyebrow"><Icon name="sparkle" size="sm" />오늘의 글</span>
-      <div className="feat-title">{post.title}</div>
-      {post.ai_summary?.problem && <p className="feat-sub">{post.ai_summary.problem}</p>}
-      <div className="feat-foot">
-        <span>{label}</span>
-        <span className="fcnt">인사이트 {post.review_count ?? 0}</span>
+      {!cover && <span className="feat-phlogo"><CompanyLogo company={post.company} /></span>}
+      <div className="feat-bottom">
+        <h2 className="feat-title">{post.title}</h2>
+        <div className="feat-foot">
+          <span className="feat-src">{label}</span>
+          <span className="feat-cnt"><Icon name="eye" size="sm" />{post.read_count ?? 0}</span>
+          <span className="feat-cnt"><Icon name="review" size="sm" />{post.review_count ?? 0}</span>
+        </div>
       </div>
     </Link>
   );

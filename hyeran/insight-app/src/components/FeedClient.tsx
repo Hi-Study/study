@@ -57,7 +57,6 @@ export default function FeedClient({
               style={sel ? { background: c.color, color: readableText(c.color), borderColor: "transparent" } : undefined}
               onClick={() => setCompany(sel ? "all" : c.id)}
             >
-              {!sel && <span className="cchip-dot" style={{ background: c.color }} />}
               {favSet.has(c.id) && <span className="cchip-star" style={{ color: sel ? readableText(c.color) : c.color }}>★</span>}
               {c.name}
             </button>
