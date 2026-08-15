@@ -10,7 +10,7 @@ const QS = [
   "인사이터들에게 하고 싶은 질문이 있다면",
 ];
 
-export default function ReviewSheet({ postId, initial }: { postId: string; initial: [string, string, string] }) {
+export default function ReviewSheet({ postId, initial, trigger }: { postId: string; initial: [string, string, string]; trigger?: React.ReactNode }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [ans, setAns] = useState<[string, string, string]>(initial);
@@ -34,9 +34,13 @@ export default function ReviewSheet({ postId, initial }: { postId: string; initi
 
   return (
     <>
-      <button className="btn btn-outline" style={{ marginBottom: 10 }} onClick={() => setOpen(true)}>
-        {hasReview ? "인사이트 수정" : "인사이트 쓰기"}
-      </button>
+      {trigger ? (
+        <span onClick={() => setOpen(true)} style={{ display: "inline-flex", cursor: "pointer" }}>{trigger}</span>
+      ) : (
+        <button className="btn btn-outline" style={{ marginBottom: 10 }} onClick={() => setOpen(true)}>
+          {hasReview ? "인사이트 수정" : "인사이트 쓰기"}
+        </button>
+      )}
 
       {open && <div className={`scrim show`} onClick={close} />}
       <div className={`drawer ${open ? "show" : ""}`}>

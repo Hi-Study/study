@@ -1,23 +1,22 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getReviewsForPost } from "@/lib/queries";
+import { getReviewsForPost, getCommentsForReviews } from "@/lib/queries";
 import { CAT_COLOR, type Post } from "@/lib/types";
 import { CompanyLogo } from "@/components/PostCard";
 import Icon from "@/components/Icon";
 import BackButton from "@/components/BackButton";
 import BookmarkButton from "@/components/BookmarkButton";
 import ReviewSheet from "./review-sheet";
-import CommentSheet from "@/components/CommentSheet";
+import ReviewList from "@/components/ReviewList";
 import PostOwnerMenu from "@/components/PostOwnerMenu";
 import ReadTracker from "@/components/ReadTracker";
 import ArticleReader from "@/components/ArticleReader";
 
 export const dynamic = "force-dynamic";
 
-const RQ = ["인상 깊은 부분", "업무 적용", "인사이터에게 질문"] as const;
-
-export default async function PostDetail({ params }: { params: Promise<{ id: string }> }) {
+export default async function PostDetail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ insight?: string }> }) {
   const { id } = await params;
+  const focusReviewId = (await searchParams).insight ?? null;
   const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
 
@@ -37,6 +36,8 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
   const initial: [string, string, string] = [mine?.q1 ?? "", mine?.q2 ?? "", mine?.q3 ?? ""];
   const isOwner = post.source === "direct" && post.author_id === user!.id;
   const highlights = (hlRes.data ?? []) as { sentence_idx: number; memo: string | null }[];
+  const comments = await getCommentsForReviews(reviews.map((r) => r.id), user!.id);
+  const hasMyReview = initial.some((x) => x.trim());
 
   return (
     <div style={{ paddingBottom: 40 }}>
@@ -105,33 +106,16 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
         )}
 
         <div className="sec-title">인사이트 {reviews.length}</div>
-        <ReviewSheet postId={post.id} initial={initial} />
+        {!hasMyReview && <ReviewSheet postId={post.id} initial={initial} />}
         {reviews.length ? (
-          reviews.map((r) => (
-            <div key={r.id} className="review">
-              <div className="who">
-                <span className="avatar">{r.author?.initial ?? "?"}</span>
-                <span style={{ fontSize: 13, fontWeight: 500 }}>{r.author?.name ?? "인사이터"}</span>
-                <span className="meta mono" style={{ marginLeft: "auto" }}>
-                  {new Date(r.created_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}
-                </span>
-              </div>
-              {[r.q1, r.q2, r.q3].map((a, i) => (
-                <div className="rq" key={i}>
-                  <div className="q">{RQ[i]}</div>
-                  {a?.trim()
-                    ? <div className="a">{a}</div>
-                    : <div className="a" style={{ color: "var(--text-sub)", opacity: 0.6 }}>미작성</div>}
-                </div>
-              ))}
-              <CommentSheet
-                reviewId={r.id}
-                reviewAuthorId={r.author_id}
-                count={r.comment_count ?? 0}
-                preview={{ name: r.author?.name ?? "인사이터", initial: r.author?.initial ?? "?", text: [r.q1, r.q2, r.q3].find((x) => x?.trim()) ?? "" }}
-              />
-            </div>
-          ))
+          <ReviewList
+            postId={post.id}
+            reviews={reviews}
+            comments={comments}
+            userId={user!.id}
+            myInitial={initial}
+            focusReviewId={focusReviewId}
+          />
         ) : (
           <div className="empty"><div className="art" /><div className="msg">첫 번째 인사이트를 남겨보세요</div></div>
         )}

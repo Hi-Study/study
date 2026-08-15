@@ -19,6 +19,8 @@ const PATHS: Record<string, string> = {
   trash: '<path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a1 1 0 01-1 1H7a1 1 0 01-1-1L5 6"/>',
   memo: '<path d="M4 4h16v12H8l-4 4z"/><path d="M8 9h8M8 12.5h5"/>',
   eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+  dots: '<circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>',
+  heart: '<path d="M12 20s-6.5-4.2-9-8C1.3 9.3 2.6 5.8 6 5.8c2 0 3.2 1.3 4 2.5.8-1.2 2-2.5 4-2.5 3.4 0 4.7 3.5 3 6.2-2.5 3.8-9 8-9 8z"/>',
 };
 
 export default function Icon({ name, size = "" }: { name: string; size?: "sm" | "lg" | "" }) {

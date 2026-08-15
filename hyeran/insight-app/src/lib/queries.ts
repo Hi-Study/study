@@ -201,6 +201,36 @@ export async function getBookmarkedInsightFeed(userId: string): Promise<Review[]
   return reviews.map((r) => ({ ...r, comment_count: counts.get(r.id) ?? 0 }));
 }
 
+// 상세 페이지 인라인 댓글 스레드: 해당 글 인사이트들의 댓글 + 좋아요 수/내가 눌렀는지
+export type ThreadComment = {
+  id: string; review_id: string; parent_id: string | null; author_id: string;
+  body: string; created_at: string; author?: { name: string; initial: string } | null;
+  like_count: number; liked: boolean;
+};
+export async function getCommentsForReviews(reviewIds: string[], userId: string): Promise<ThreadComment[]> {
+  if (!reviewIds.length) return [];
+  const sb = await createClient();
+  const { data } = await sb
+    .from("comments")
+    .select("id, review_id, parent_id, author_id, body, created_at, author:profiles(name, initial)")
+    .in("review_id", reviewIds)
+    .order("created_at", { ascending: true });
+  const comments = (data as unknown as ThreadComment[]) ?? [];
+  if (!comments.length) return [];
+  const ids = comments.map((c) => c.id);
+  const likeCounts = new Map<string, number>();
+  const myLikes = new Set<string>();
+  // comment_likes 테이블 미적용 환경에서도 안전하게
+  const { data: likes, error } = await sb.from("comment_likes").select("comment_id, user_id").in("comment_id", ids);
+  if (!error) {
+    (likes ?? []).forEach((l: { comment_id: string; user_id: string }) => {
+      likeCounts.set(l.comment_id, (likeCounts.get(l.comment_id) ?? 0) + 1);
+      if (l.user_id === userId) myLikes.add(l.comment_id);
+    });
+  }
+  return comments.map((c) => ({ ...c, like_count: likeCounts.get(c.id) ?? 0, liked: myLikes.has(c.id) }));
+}
+
 // 즐겨찾기한 기업 slug 집합
 export async function getFavoriteCompanyIds(userId: string): Promise<Set<string>> {
   const sb = await createClient();

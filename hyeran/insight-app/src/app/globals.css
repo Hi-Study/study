@@ -254,6 +254,14 @@ svg.i.lg{ width:26px; height:26px; }
 .irow-date{ font-size:11px; color:var(--text-sub); margin-left:auto; font-variant-numeric:tabular-nums; }
 .irow-post{ font-size:12px; color:var(--text-sub); margin:5px 0 4px; }
 .irow-insight{ font-size:14px; line-height:1.55; color:var(--text); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+/* 인사이트 카드: Q&A 전체 + 더보기 */
+.ins-card{ display:block; }
+.ins-qa{ margin-top:10px; }
+.ins-qa.clamp{ max-height:128px; overflow:hidden; -webkit-mask-image:linear-gradient(#000 68%, transparent); mask-image:linear-gradient(#000 68%, transparent); }
+.ins-foot{ display:flex; align-items:center; gap:14px; margin-top:8px; }
+.ins-more{ background:none; border:none; color:var(--blue); font-size:12px; font-weight:600; padding:0; cursor:pointer; font-family:var(--font); }
+.ins-cmt{ margin-left:auto; display:inline-flex; align-items:center; gap:4px; font-size:12px; color:var(--text-sub); }
+.ins-cmt svg{ width:14px; height:14px; }
 /* 통일 카드 메타 라인 (커버 카드·리스트 로우 공통) */
 .cmeta{ display:flex; align-items:center; gap:8px; margin-top:10px; font-size:12px; color:var(--text-sub); flex-wrap:wrap; }
 .cmeta .cm-who{ font-weight:600; color:var(--charcoal); }
@@ -336,6 +344,35 @@ svg.i.lg{ width:26px; height:26px; }
 .rq .q{ font-size:11px; color:var(--text-sub); margin-bottom:3px; }
 .rq .a{ font-size:14px; line-height:1.6; }
 .review .foot{ display:flex; align-items:center; gap:12px; margin-top:6px; font-family:var(--mono); font-size:11px; color:var(--text-sub); }
+.avatar.sm{ width:26px; height:26px; font-size:11px; }
+/* 인사이트 수정 점 메뉴 */
+.kebab{ width:28px; height:28px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; color:var(--text-sub); margin-left:6px; }
+.kebab svg{ width:18px; height:18px; fill:currentColor; stroke:none; }
+.rv-focus{ animation:rvpulse 2.2s ease-out; }
+@keyframes rvpulse{ 0%{ box-shadow:0 0 0 2px var(--coral); } 100%{ box-shadow:0 0 0 2px transparent; } }
+/* 인라인 댓글 및 토론 (첨부 형식) */
+.cmt-sec{ margin-top:14px; padding-top:13px; border-top:1px solid var(--hairline); }
+.cmt-title{ font-size:13px; font-weight:700; margin-bottom:10px; }
+.cmt-input{ display:flex; gap:8px; margin-bottom:14px; }
+.cmt-input input{ flex:1; min-width:0; border:1px solid var(--hairline); border-radius:var(--r-input); padding:10px 12px; font-size:13px; font-family:var(--font); background:var(--canvas); color:var(--text); outline:none; }
+.cmt-input input:focus{ border-color:var(--ink); }
+.cmt-send{ flex:0 0 auto; border:none; border-radius:var(--r-full); background:var(--ink); color:var(--on-ink); font-size:13px; font-weight:600; padding:0 16px; cursor:pointer; }
+.cmt-send:disabled{ opacity:.5; }
+.cmt-replybar{ display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sub); margin:-4px 0 12px; }
+.reply-cancel{ margin-left:auto; color:var(--blue); background:none; border:none; cursor:pointer; font-size:12px; }
+.cmt{ display:flex; gap:9px; margin-bottom:14px; }
+.cmt.reply{ margin-left:34px; }
+.cmt-body{ flex:1; min-width:0; }
+.cmt-head{ display:flex; align-items:center; gap:6px; font-size:12.5px; }
+.cmt-head b{ font-weight:700; }
+.cmt-badge{ font-size:10px; font-weight:600; color:var(--coral); border:1px solid var(--coral); border-radius:var(--r-full); padding:1px 6px; }
+.cmt-time{ color:var(--text-sub); font-size:11px; margin-left:auto; }
+.cmt-text{ font-size:13.5px; line-height:1.55; color:var(--charcoal); margin:3px 0 5px; white-space:pre-wrap; word-break:break-word; }
+.cmt-acts{ display:flex; align-items:center; gap:14px; }
+.cmt-acts button{ background:none; border:none; padding:0; font-size:12px; color:var(--text-sub); cursor:pointer; font-family:var(--font); display:inline-flex; align-items:center; gap:4px; }
+.cmt-like svg{ width:14px; height:14px; }
+.cmt-like.on{ color:var(--coral); }
+.cmt-like.on svg{ fill:var(--coral); }
 .foot-btn{ display:inline-flex; align-items:center; gap:5px; margin-top:6px; background:none; border:none; padding:0; font-family:var(--mono); font-size:11px; color:var(--text-sub); cursor:pointer; }
 .reply-btn{ margin-top:5px; background:none; border:none; padding:0; font-size:11px; color:var(--text-sub); cursor:pointer; font-family:var(--font); }
 .reply-bar{ display:flex; align-items:center; gap:6px; padding:8px 15px; margin:0; font-size:12px; color:var(--text-sub); background:var(--surface); border-top:1px solid var(--hairline); }
