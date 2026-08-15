@@ -84,8 +84,8 @@ svg.i.lg{ width:26px; height:26px; }
 
 .sec-title{ font-size:13px; font-weight:600; color:var(--text-sub); margin:22px 0 11px; letter-spacing:-.2px; }
 /* 홈 섹션 (큰 제목 + 설명 + 넉넉한 간격으로 구분) */
-.hsec{ margin-top:40px; }
-.hsec:first-of-type{ margin-top:22px; }
+.hsec{ margin-top:56px; }
+.hsec:first-of-type{ margin-top:24px; }
 .hsec-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:15px; }
 .hsec-title{ font-size:21px; font-weight:700; letter-spacing:-.5px; line-height:1.25; color:var(--text); }
 .hsec-sub{ font-size:12.5px; color:var(--text-sub); margin-top:4px; }
@@ -99,7 +99,7 @@ svg.i.lg{ width:26px; height:26px; }
 .src-link{ display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:600; color:var(--blue); white-space:nowrap; }
 .src-link svg{ width:14px; height:14px; }
 /* 인기 글 2열 그리드 */
-.pop-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.pop-grid{ display:grid; grid-template-columns:1fr 1fr; column-gap:14px; row-gap:26px; }
 .pop-grid .fcard{ margin-bottom:0; }
 /* 스와이프 로우 안의 커버 카드 */
 .swipe .fcard{ flex:0 0 76%; margin-bottom:0; }
@@ -282,7 +282,7 @@ svg.i.lg{ width:26px; height:26px; }
 .cmeta .cm-date{ margin-left:auto; font-variant-numeric:tabular-nums; opacity:.85; }
 
 /* ===== swipe (home) ===== */
-.swipe{ display:flex; gap:9px; overflow-x:auto; margin:0 -15px; padding:2px 15px 4px; }
+.swipe{ display:flex; gap:14px; overflow-x:auto; margin:0 -15px; padding:2px 15px 6px; }
 .swipe::-webkit-scrollbar{height:0;}
 .scard{ flex:0 0 76%; display:block; background:color-mix(in srgb, var(--cc, transparent) 7%, var(--card)); border:1px solid color-mix(in srgb, var(--cc, var(--hairline)) 26%, var(--hairline)); border-radius:var(--r-card); padding:13px 14px; }
 .scard:active{ background:color-mix(in srgb, var(--cc, transparent) 13%, var(--surface)); }

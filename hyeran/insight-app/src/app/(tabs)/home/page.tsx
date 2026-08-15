@@ -26,7 +26,7 @@ export default async function HomePage() {
   const mark = <T extends { id: string }>(p: T) => ({ ...p, read: readIds.has(p.id), bookmarked: bmIds.has(p.id) });
 
   const hero = pickTodayHero(posts);
-  const popular = pickPopular(posts, 10, hero?.id).map(mark);
+  const popular = pickPopular(posts, 8, hero?.id).map(mark);
   const bookmarks = bookmarkPosts.map(mark);
   const byCompany = companies
     .map((c) => ({ company: c, posts: posts.filter((p) => p.company_id === c.id).slice(0, 8).map(mark) }))
