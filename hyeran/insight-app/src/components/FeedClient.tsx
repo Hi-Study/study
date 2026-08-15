@@ -7,12 +7,13 @@ import { CATEGORIES, CAT_EN, readableText, type Category, type Company, type Pos
 type CompanyMode = "all" | "follow" | string; // string = company_id
 
 export default function FeedClient({
-  posts, companies, bookmarked, readIds, favorites,
+  posts, companies, bookmarked, readIds, favorites, initialTab = "all", initialCompany = "all",
 }: {
   posts: Post[]; companies: Company[]; bookmarked: string[]; readIds: string[]; favorites: string[];
+  initialTab?: "all" | "bookmark"; initialCompany?: CompanyMode;
 }) {
-  const [tab, setTab] = useState<"all" | "bookmark">("all");
-  const [company, setCompany] = useState<CompanyMode>("all");
+  const [tab, setTab] = useState<"all" | "bookmark">(initialTab);
+  const [company, setCompany] = useState<CompanyMode>(initialCompany);
   const [cats, setCats] = useState<Set<Category>>(new Set());
   const bmSet = useMemo(() => new Set(bookmarked), [bookmarked]);
   const readSet = useMemo(() => new Set(readIds), [readIds]);

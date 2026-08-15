@@ -1,30 +1,42 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getPostsByCompany, getFavoriteCompanyIds, getRecommendedPosts, getReadPostIds } from "@/lib/queries";
-import { SwipeCard, CompanyLogo } from "@/components/PostCard";
-import RankCarousel from "@/components/RankCarousel";
+import {
+  getFeedPosts, getCompanies, getFavoriteCompanyIds, getReadPostIds,
+  getBookmarkedPostIds, getBookmarkedPosts, pickTodayHero, pickPopular,
+} from "@/lib/queries";
+import { FeatureCard, CompanyLogo } from "@/components/PostCard";
+import FeedCard from "@/components/FeedCard";
 import FavoriteToggle from "@/components/FavoriteToggle";
 import Icon from "@/components/Icon";
+import type { Post } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  const [groups, favs, recommended, readIds] = await Promise.all([
-    getPostsByCompany(),
+  const sb = await createClient();
+  const { data: { user } } = await sb.auth.getUser();
+  const [posts, companies, favs, readIds, bmIds, bookmarkPosts] = await Promise.all([
+    getFeedPosts(),
+    getCompanies(),
     user ? getFavoriteCompanyIds(user.id) : Promise.resolve(new Set<string>()),
-    getRecommendedPosts(),
     user ? getReadPostIds(user.id) : Promise.resolve(new Set<string>()),
+    user ? getBookmarkedPostIds(user.id) : Promise.resolve(new Set<string>()),
+    user ? getBookmarkedPosts(user.id) : Promise.resolve([] as Post[]),
   ]);
-  // 즐겨찾기 기업을 앞으로 정렬
-  groups.sort((a, b) => Number(favs.has(b.company.id)) - Number(favs.has(a.company.id)));
-  const mark = <T extends { id: string }>(p: T) => ({ ...p, read: readIds.has(p.id) });
+  const mark = <T extends { id: string }>(p: T) => ({ ...p, read: readIds.has(p.id), bookmarked: bmIds.has(p.id) });
+
+  const hero = pickTodayHero(posts);
+  const popular = pickPopular(posts, 10, hero?.id).map(mark);
+  const bookmarks = bookmarkPosts.map(mark);
+  const byCompany = companies
+    .map((c) => ({ company: c, posts: posts.filter((p) => p.company_id === c.id).slice(0, 8).map(mark) }))
+    .filter((g) => g.posts.length > 0)
+    .sort((a, b) => Number(favs.has(b.company.id)) - Number(favs.has(a.company.id)));
 
   return (
     <>
       <div className="appbar">
-        <span className="logo"><span className="name">insight</span><span className="dot">.</span></span>
+        <span className="logo"><span className="name">INSIGHT</span><span className="dot">.</span></span>
         <span className="spacer" />
         <Link href="/notifications" className="iconbtn" aria-label="알림"><Icon name="bell" /></Link>
       </div>
@@ -33,28 +45,57 @@ export default async function HomePage() {
           <Icon name="search" /><span className="ph">글 제목·기업·태그 검색</span>
         </Link>
 
-        {recommended.length > 0 && (
+        {/* 1. 오늘의 글 */}
+        {hero && (
           <>
-            <div className="sec-title">추천 글</div>
-            <RankCarousel posts={recommended.map(mark)} />
+            <div className="sec-title">오늘의 글</div>
+            <FeatureCard post={mark(hero)} />
           </>
         )}
 
-        {recommended.length > 0 && <hr className="section-divider" />}
-        <div className="sec-title">기술 블로그 모아보기</div>
-        {groups.map(({ company, posts }) => (
+        {/* 2. 인기 글 */}
+        {popular.length > 0 && (
+          <>
+            <hr className="section-divider" />
+            <div className="sec-title">인기 글</div>
+            <div className="pop-grid">
+              {popular.map((p) => <FeedCard key={p.id} post={p} />)}
+            </div>
+          </>
+        )}
+
+        {/* 3. 북마크 글 */}
+        <hr className="section-divider" />
+        <div className="sec-head">
+          <span className="sec-title">북마크 글</span>
+          {bookmarks.length > 0 && <Link href="/feed?tab=bookmark" className="see-all">전체보기</Link>}
+        </div>
+        {bookmarks.length > 0 ? (
+          <div className="swipe">{bookmarks.map((p) => <FeedCard key={p.id} post={p} />)}</div>
+        ) : (
+          <div className="empty sm">
+            <div className="msg">북마크한 글이 여기 모여요</div>
+            <div className="sub">마음에 드는 글에 북마크를 눌러보세요</div>
+            <Link href="/feed" className="btn btn-outline seeall-btn">피드 둘러보기</Link>
+          </div>
+        )}
+
+        {/* 4. 기업별 글 */}
+        <hr className="section-divider" />
+        <div className="sec-title">기업별 글</div>
+        {byCompany.map(({ company, posts }) => (
           <div key={company.id}>
             <div className="comprow">
               <CompanyLogo company={company} />
               <span className="cname">{company.name}</span>
+              <span style={{ flex: 1 }} />
+              <Link href={`/feed?company=${company.id}`} className="see-all">전체보기</Link>
               <FavoriteToggle companyId={company.id} initial={favs.has(company.id)} />
             </div>
-            <div className="swipe">
-              {posts.map((p) => <SwipeCard key={p.id} post={mark(p)} />)}
-            </div>
+            <div className="swipe">{posts.map((p) => <FeedCard key={p.id} post={p} />)}</div>
           </div>
         ))}
-        {groups.length === 0 && (
+        {byCompany.length === 0 && (
           <div className="empty"><div className="art" /><div className="msg">아직 수집된 글이 없어요</div></div>
         )}
       </div>

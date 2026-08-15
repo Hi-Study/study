@@ -6,7 +6,8 @@ import Icon from "@/components/Icon";
 
 export const dynamic = "force-dynamic";
 
-export default async function FeedPage() {
+export default async function FeedPage({ searchParams }: { searchParams: Promise<{ tab?: string; company?: string }> }) {
+  const sp = await searchParams;
   const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   const [posts, companies, bookmarked, readIds, favorites] = await Promise.all([
@@ -30,6 +31,8 @@ export default async function FeedPage() {
           bookmarked={[...bookmarked]}
           readIds={[...readIds]}
           favorites={[...favorites]}
+          initialTab={sp.tab === "bookmark" ? "bookmark" : "all"}
+          initialCompany={sp.company ?? "all"}
         />
       </div>
     </>

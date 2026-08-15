@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import PostCard from "@/components/PostCard";
+import PostRow from "@/components/PostRow";
 import type { Post } from "@/lib/types";
 
 type Tab = "insight" | "comment" | "highlight";
@@ -29,7 +29,7 @@ export default function MyPostsClient({
         ))}
       </div>
       {cur.list.length ? (
-        cur.list.map((p) => <PostCard key={p.id} post={p} />)
+        cur.list.map((p) => <PostRow key={p.id} post={p} />)
       ) : (
         <div className="empty"><div className="art" /><div className="msg">{cur.empty}</div></div>
       )}

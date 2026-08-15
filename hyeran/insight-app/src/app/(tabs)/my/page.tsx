@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getCommentedPosts, getReadPostIds, getHighlightedPosts } from "@/lib/queries";
+import { getCommentedPosts, getReadPostIds, getHighlightedPosts, getPostsByIds, getBookmarkedPostIds } from "@/lib/queries";
 import MyPostsClient from "@/components/MyPostsClient";
 import LogoutButton from "@/components/LogoutButton";
 import type { Post } from "@/lib/types";
@@ -14,19 +14,16 @@ export default async function MyPage() {
   // 내가 인사이트 남긴 글
   const { data: myReviews } = await sb.from("reviews").select("post_id").eq("author_id", user!.id).eq("is_draft", false);
   const postIds = [...new Set((myReviews ?? []).map((r: { post_id: string }) => r.post_id))];
-  let insights: Post[] = [];
-  if (postIds.length) {
-    const { data } = await sb.from("posts").select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)").in("id", postIds);
-    insights = (data as unknown as Post[]) ?? [];
-  }
 
-  const [comments, highlights, readIds] = await Promise.all([
+  const [insights, comments, highlights, readIds, bmIds] = await Promise.all([
+    getPostsByIds(postIds),
     getCommentedPosts(user!.id),
     getHighlightedPosts(user!.id),
     getReadPostIds(user!.id),
+    getBookmarkedPostIds(user!.id),
   ]);
 
-  const mark = (p: Post) => ({ ...p, read: readIds.has(p.id) });
+  const mark = (p: Post) => ({ ...p, read: readIds.has(p.id), bookmarked: bmIds.has(p.id) });
 
   return (
     <>

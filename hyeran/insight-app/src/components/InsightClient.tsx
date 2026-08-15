@@ -3,26 +3,29 @@
 import { useState } from "react";
 import Link from "next/link";
 import CommentSheet from "@/components/CommentSheet";
+import { CompanyLogo } from "@/components/PostCard";
 import type { Review } from "@/lib/types";
 
 const firstAnswer = (r: { q1: string; q2: string; q3: string }) =>
   r.q1?.trim() || r.q2?.trim() || r.q3?.trim() || "";
 
+// 인사이트 카드(예외) — 좌: 글 썸네일 / 우: 작성자·글제목·감상. 통일 카드 아님(감상 피드)
 function ReviewCard({ r }: { r: Review }) {
   return (
     <div className="review">
-      <Link href={`/posts/${r.post_id}`} style={{ display: "block" }}>
-        <div className="who">
-          <span className="avatar md">{r.author?.initial ?? "?"}</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 500 }}>{r.author?.name ?? "인사이터"}</div>
-            <div className="meta mono">
+      <Link href={`/posts/${r.post_id}`} className="irow">
+        <span className="irow-thumb"><CompanyLogo company={r.post?.company} /></span>
+        <div className="irow-body">
+          <div className="irow-head">
+            <span className="avatar sm">{r.author?.initial ?? "?"}</span>
+            <span className="irow-name">{r.author?.name ?? "인사이터"}</span>
+            <span className="irow-date">
               {new Date(r.created_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}
-            </div>
+            </span>
           </div>
+          <div className="irow-post">{r.post?.title}</div>
+          <div className="irow-insight">{firstAnswer(r)}</div>
         </div>
-        <div style={{ fontSize: 12, color: "var(--text-sub)", margin: "2px 0 8px" }}>{r.post?.title}</div>
-        <div className="rq"><div className="a">{firstAnswer(r)}</div></div>
       </Link>
       <CommentSheet
         reviewId={r.id}

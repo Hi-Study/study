@@ -39,6 +39,15 @@ export async function getFeedPosts(): Promise<Post[]> {
   return attachReadCounts(sb, withReviews);
 }
 
+// id 목록 → 글(작성자·인사이트 수·읽음 수 포함) — 마이·북마크·하이라이트 공통
+export async function getPostsByIds(ids: string[]): Promise<Post[]> {
+  if (!ids.length) return [];
+  const sb = await createClient();
+  const { data } = await sb.from("posts").select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)").in("id", ids);
+  const withReviews = await attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
+  return attachReadCounts(sb, withReviews);
+}
+
 // 오늘의 글: 최근 7일 글 중 (읽음 수 + 인사이트 수) 1위 1개. 최근 글이 없으면 전체에서 선정
 export function pickTodayHero(posts: Post[]): Post | null {
   const cutoff = Date.now() - 7 * 86_400_000;
@@ -65,10 +74,7 @@ export async function getBookmarkedPosts(userId: string): Promise<Post[]> {
   const sb = await createClient();
   const { data: bms } = await sb.from("bookmarks").select("post_id").eq("user_id", userId);
   const ids = [...new Set((bms ?? []).map((b: { post_id: string }) => b.post_id))];
-  if (!ids.length) return [];
-  const { data } = await sb.from("posts").select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)").in("id", ids);
-  const withReviews = await attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
-  return attachReadCounts(sb, withReviews);
+  return getPostsByIds(ids);
 }
 
 // 홈: 기업별 그룹 (기업 → 최신 글들)
@@ -87,9 +93,7 @@ export async function getHighlightedPosts(userId: string): Promise<Post[]> {
   const sb = await createClient();
   const { data: hs } = await sb.from("highlights").select("post_id").eq("user_id", userId);
   const postIds = [...new Set((hs ?? []).map((h: { post_id: string }) => h.post_id))];
-  if (!postIds.length) return [];
-  const { data } = await sb.from("posts").select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)").in("id", postIds);
-  return attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
+  return getPostsByIds(postIds);
 }
 
 // 홈 추천 글: 인사이트 많은 순 → 동률이면 최신순 (상위 N)
@@ -124,9 +128,7 @@ export async function getCommentedPosts(userId: string): Promise<Post[]> {
   if (!reviewIds.length) return [];
   const { data: rs } = await sb.from("reviews").select("post_id").in("id", reviewIds);
   const postIds = [...new Set((rs ?? []).map((r: { post_id: string }) => r.post_id))];
-  if (!postIds.length) return [];
-  const { data } = await sb.from("posts").select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)").in("id", postIds);
-  return attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
+  return getPostsByIds(postIds);
 }
 
 // 글 상세

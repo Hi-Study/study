@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import PostCard from "@/components/PostCard";
+import PostRow from "@/components/PostRow";
 import Icon from "@/components/Icon";
 import type { Company, Post } from "@/lib/types";
 
@@ -16,10 +16,11 @@ const SUGGEST: { label: string; q: string }[] = [
 ];
 const KEY = "recent-searches";
 
-export default function SearchClient({ posts, companies, readIds }: { posts: Post[]; companies: Company[]; readIds: string[] }) {
+export default function SearchClient({ posts, companies, readIds, bookmarked }: { posts: Post[]; companies: Company[]; readIds: string[]; bookmarked: string[] }) {
   const [q, setQ] = useState("");
   const [recent, setRecent] = useState<string[]>([]);
   const readSet = new Set(readIds);
+  const bmSet = new Set(bookmarked);
 
   useEffect(() => {
     try { setRecent(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch {}
@@ -60,7 +61,7 @@ export default function SearchClient({ posts, companies, readIds }: { posts: Pos
       {query ? (
         <>
           <div className="sec-title">검색 결과 {results.length}</div>
-          {results.length ? results.map((p) => <PostCard key={p.id} post={{ ...p, read: readSet.has(p.id) }} />)
+          {results.length ? results.map((p) => <PostRow key={p.id} post={{ ...p, read: readSet.has(p.id), bookmarked: bmSet.has(p.id) }} />)
             : <div className="empty"><div className="art" /><div className="msg">결과가 없어요</div></div>}
         </>
       ) : (
