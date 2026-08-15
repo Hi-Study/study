@@ -88,9 +88,9 @@ export default async function HomePage() {
             <div className="comprow">
               <CompanyLogo company={company} />
               <span className="cname">{company.name}</span>
+              <FavoriteToggle companyId={company.id} initial={favs.has(company.id)} />
               <span style={{ flex: 1 }} />
               <Link href={`/feed?company=${company.id}`} className="see-all">전체보기</Link>
-              <FavoriteToggle companyId={company.id} initial={favs.has(company.id)} />
             </div>
             <div className="swipe">{posts.map((p) => <FeedCard key={p.id} post={p} />)}</div>
           </div>

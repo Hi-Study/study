@@ -74,7 +74,9 @@ export default function FeedClient({
       </div>
 
       {list.length ? (
-        list.map((p) => <FeedCard key={p.id} post={{ ...p, read: readSet.has(p.id), bookmarked: bmSet.has(p.id) }} />)
+        <div className="pop-grid">
+          {list.map((p) => <FeedCard key={p.id} post={{ ...p, read: readSet.has(p.id), bookmarked: bmSet.has(p.id) }} />)}
+        </div>
       ) : (
         <div className="empty"><div className="art" /><div className="msg">{empty}</div></div>
       )}

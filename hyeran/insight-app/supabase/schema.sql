@@ -159,6 +159,15 @@ create table if not exists public.comments (
 create index if not exists comments_review_idx on public.comments (review_id);
 create index if not exists comments_parent_idx on public.comments (parent_id);
 
+-- 댓글 좋아요
+create table if not exists public.comment_likes (
+  comment_id uuid not null references public.comments(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (comment_id, user_id)
+);
+create index if not exists comment_likes_comment_idx on public.comment_likes (comment_id);
+
 -- ============================================================
 -- 6) 유저별 상태: 북마크 / 기업 즐겨찾기 / 하이라이트 / 다읽음
 -- ============================================================
@@ -222,6 +231,7 @@ alter table public.companies     enable row level security;
 alter table public.posts         enable row level security;
 alter table public.reviews       enable row level security;
 alter table public.comments      enable row level security;
+alter table public.comment_likes enable row level security;
 alter table public.bookmarks     enable row level security;
 alter table public.favorites     enable row level security;
 alter table public.highlights    enable row level security;
@@ -252,6 +262,11 @@ create policy "reviews delete own" on public.reviews for delete to authenticated
 create policy "comments insert own" on public.comments for insert to authenticated with check (author_id = auth.uid());
 create policy "comments update own" on public.comments for update to authenticated using (author_id = auth.uid());
 create policy "comments delete own" on public.comments for delete to authenticated using (author_id = auth.uid());
+
+-- 댓글 좋아요: 읽기 공통, 쓰기/삭제는 본인 것만
+create policy "comment_likes read"       on public.comment_likes for select to authenticated using (true);
+create policy "comment_likes insert own" on public.comment_likes for insert to authenticated with check (user_id = auth.uid());
+create policy "comment_likes delete own" on public.comment_likes for delete to authenticated using (user_id = auth.uid());
 
 -- 북마크 / 즐겨찾기 / 다읽음: 본인 것만 (읽기·쓰기 모두)
 create policy "bookmarks own" on public.bookmarks for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());

@@ -46,9 +46,9 @@ export default function InsightClient({ all, bookmarked }: { all: Review[]; book
 
   return (
     <>
-      <div className="seg">
-        <button className={tab === "all" ? "on" : ""} onClick={() => setTab("all")}>전체</button>
-        <button className={tab === "bookmark" ? "on" : ""} onClick={() => setTab("bookmark")}>북마크</button>
+      <div className="utabs">
+        <button className={`utab ${tab === "all" ? "on" : ""}`} onClick={() => setTab("all")}>전체</button>
+        <button className={`utab ${tab === "bookmark" ? "on" : ""}`} onClick={() => setTab("bookmark")}>북마크</button>
       </div>
       {list.length ? (
         list.map((r) => <ReviewCard key={r.id} r={r} />)

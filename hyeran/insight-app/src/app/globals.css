@@ -21,7 +21,7 @@
   --cat-product:#0D9488; --cat-product-bg:#E6F6F2;
   --cat-ai:#FF4A28; --cat-ai-bg:#FFF0EC;
   /* radius */
-  --r-card:16px; --r-hero:22px; --r-input:10px; --r-sheet:20px;
+  --r-card:0px; --r-hero:0px; --r-input:10px; --r-sheet:20px;  /* 롱블랙식: 카드·이미지 각짐. 버튼/칩/탭/배지는 --r-full 알약 유지 */
   --r-badge:999px; --r-chip:999px; --r-full:999px;
   /* type — 단일 서체 Pretendard (뱃지·메타 포함 전부). --mono는 호환용 별칭이며 실제도 Pretendard 렌더 */
   --font:"Pretendard","Pretendard Variable",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
@@ -87,6 +87,8 @@ svg.i.lg{ width:26px; height:26px; }
 .sec-head .sec-title{ margin:0; }
 .see-all{ font-size:12px; font-weight:600; color:var(--steel-text); white-space:nowrap; }
 .see-all::after{ content:" ›"; }
+.src-link{ display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:600; color:var(--blue); white-space:nowrap; }
+.src-link svg{ width:14px; height:14px; }
 /* 인기 글 2열 그리드 */
 .pop-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 .pop-grid .fcard{ margin-bottom:0; }
@@ -194,8 +196,8 @@ svg.i.lg{ width:26px; height:26px; }
 .cchips::-webkit-scrollbar{ height:0; }
 .cchip{ flex:0 0 auto; height:32px; display:inline-flex; align-items:center; gap:5px; padding:0 14px; border-radius:var(--r-full); font-size:12.5px; font-weight:600; border:1px solid var(--hairline); background:var(--canvas); color:var(--text-sub); cursor:pointer; white-space:nowrap; font-family:var(--font); }
 .cchip.on{ background:var(--ink); color:var(--on-ink); border-color:var(--ink); }
-.cchip.brand{ border:none; }
-.cchip.brand.sel{ box-shadow:0 0 0 2px var(--ink); }
+.cchip.brand{ border:none; opacity:.5; }
+.cchip.brand.sel{ opacity:1; font-weight:700; box-shadow:0 0 0 2px var(--canvas), 0 0 0 4px var(--ink); }
 .cchip-star{ font-size:11px; line-height:1; }
 
 /* 카테고리 필터 칩 (영문, 아웃라인) */
@@ -205,16 +207,20 @@ svg.i.lg{ width:26px; height:26px; }
 .katchip.on{ background:var(--ink); color:var(--on-ink); border-color:var(--ink); }
 
 /* 피드 카드 */
-.fcard{ display:block; background:var(--card); border:1px solid var(--hairline); border-radius:var(--r-card); overflow:hidden; margin-bottom:16px; box-shadow:0 1px 2px rgba(0,0,0,.05); animation:rise .22s ease-out both; }
-.fcard:active{ background:var(--surface); }
+/* 커버 카드 — 완전 플랫(테두리·그림자 없음). 이미지가 카드를 정의 (롱블랙 톤) */
+.fcard{ display:block; background:transparent; border-radius:var(--r-card); overflow:hidden; margin-bottom:18px; animation:rise .22s ease-out both; }
+.fcard:active{ opacity:.72; }
 .fcard-cover{ position:relative; aspect-ratio:16/9; background-color:var(--surface); background-size:cover; background-position:center; }
 .fcard-cover.ph{ display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg, var(--cc), color-mix(in srgb, var(--cc) 50%, #000)); }
 .fcard-ph-logo{ transform:scale(1.7); opacity:.95; filter:drop-shadow(0 4px 14px rgba(0,0,0,.28)); }
 .fcard-date{ position:absolute; top:10px; right:10px; background:rgba(0,0,0,.55); color:#fff; font-size:11px; font-weight:600; padding:4px 9px; border-radius:var(--r-full); backdrop-filter:blur(4px); font-variant-numeric:tabular-nums; }
 .fcard-read{ position:absolute; top:10px; left:10px; background:rgba(0,0,0,.55); color:#fff; font-size:11px; font-weight:600; padding:4px 9px; border-radius:var(--r-full); }
 .fcard-co{ position:absolute; left:10px; bottom:10px; font-size:12px; font-weight:700; padding:4px 11px; border-radius:var(--r-full); box-shadow:0 2px 8px rgba(0,0,0,.28); }
-.fcard-body{ padding:13px 14px 15px; }
-.fcard-body h3{ margin:0; font-size:16px; font-weight:700; line-height:1.4; letter-spacing:-.3px; color:var(--text); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.fcard-body{ padding:11px 2px 2px; }
+.fcard-body h3{ margin:0; font-size:17px; font-weight:700; line-height:1.34; letter-spacing:-.4px; color:var(--text); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+/* 인기 2열 그리드: 좁으니 제목 축소 */
+.pop-grid .fcard-body{ padding-top:9px; }
+.pop-grid .fcard-body h3{ font-size:15px; line-height:1.32; }
 .fcard-meta{ display:flex; align-items:center; gap:6px; margin-top:10px; font-size:12px; color:var(--text-sub); }
 .fcard-views{ display:inline-flex; align-items:center; gap:4px; }
 /* 북마크 토글 (커버 위 / 흰 목록용) */
@@ -234,7 +240,7 @@ svg.i.lg{ width:26px; height:26px; }
 .lrow-thumb.ph{ display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg, var(--cc), color-mix(in srgb, var(--cc) 50%, #000)); }
 .lrow-ph-logo{ transform:scale(.8); }
 .lrow-body{ flex:1; min-width:0; }
-.lrow-body h3{ margin:0; font-size:15px; font-weight:600; line-height:1.4; letter-spacing:-.3px; color:var(--text); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.lrow-body h3{ margin:0; font-size:15px; font-weight:700; line-height:1.35; letter-spacing:-.3px; color:var(--text); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .lrow .cmeta{ margin-top:6px; }
 .lrow-bm{ flex:0 0 auto; margin:-4px -4px 0 0; }
 /* 인사이트 카드 (예외 · 감상 피드) — 좌 썸네일 + 우 감상 */
