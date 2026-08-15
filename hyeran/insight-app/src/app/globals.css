@@ -83,6 +83,15 @@ svg.i.lg{ width:26px; height:26px; }
 .badge-dot{ position:absolute; top:7px; right:8px; width:7px; height:7px; border-radius:50%; background:var(--coral); }
 
 .sec-title{ font-size:13px; font-weight:600; color:var(--text-sub); margin:22px 0 11px; letter-spacing:-.2px; }
+/* 홈 섹션 (큰 제목 + 설명 + 넉넉한 간격으로 구분) */
+.hsec{ margin-top:40px; }
+.hsec:first-of-type{ margin-top:22px; }
+.hsec-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:15px; }
+.hsec-title{ font-size:21px; font-weight:700; letter-spacing:-.5px; line-height:1.25; color:var(--text); }
+.hsec-sub{ font-size:12.5px; color:var(--text-sub); margin-top:4px; }
+.hsec-head .see-all{ padding-bottom:2px; }
+.co-block{ margin-top:20px; }
+.co-block:first-of-type{ margin-top:4px; }
 .sec-head{ display:flex; align-items:baseline; justify-content:space-between; margin:22px 0 11px; }
 .sec-head .sec-title{ margin:0; }
 .see-all{ font-size:12px; font-weight:600; color:var(--steel-text); white-space:nowrap; }
@@ -192,12 +201,12 @@ svg.i.lg{ width:26px; height:26px; }
 .utab.on::after{ content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--ink); border-radius:2px; }
 
 /* 기업 필터 칩 (브랜드색) */
-.cchips{ display:flex; gap:8px; overflow-x:auto; padding:2px 0 4px; }
-.cchips::-webkit-scrollbar{ height:0; }
-.cchip{ flex:0 0 auto; height:32px; display:inline-flex; align-items:center; gap:5px; padding:0 14px; border-radius:var(--r-full); font-size:12.5px; font-weight:600; border:1px solid var(--hairline); background:var(--canvas); color:var(--text-sub); cursor:pointer; white-space:nowrap; font-family:var(--font); }
+.cchips{ display:flex; gap:8px; flex-wrap:wrap; padding:2px 0 4px; }
+.cchip{ flex:0 0 auto; height:32px; display:inline-flex; align-items:center; gap:6px; padding:0 13px; border-radius:var(--r-full); font-size:12.5px; font-weight:600; border:1px solid var(--hairline); background:var(--canvas); color:var(--text); cursor:pointer; white-space:nowrap; font-family:var(--font); transition:background .12s, border-color .12s; }
 .cchip.on{ background:var(--ink); color:var(--on-ink); border-color:var(--ink); }
-.cchip.brand{ border:none; opacity:.5; }
-.cchip.brand.sel{ opacity:1; font-weight:700; box-shadow:0 0 0 2px var(--canvas), 0 0 0 4px var(--ink); }
+.cchip.brand.sel{ font-weight:700; }
+.cchip-dot{ width:8px; height:8px; border-radius:50%; flex:0 0 auto; }
+.cchip.more{ color:var(--text-sub); border-style:dashed; }
 .cchip-star{ font-size:11px; line-height:1; }
 
 /* 카테고리 필터 칩 (영문, 아웃라인) */

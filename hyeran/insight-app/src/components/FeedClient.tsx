@@ -14,6 +14,7 @@ export default function FeedClient({
 }) {
   const [tab, setTab] = useState<"all" | "bookmark">(initialTab);
   const [company, setCompany] = useState<CompanyMode>(initialCompany);
+  const [showAllCos, setShowAllCos] = useState(false);
   const [cats, setCats] = useState<Set<Category>>(new Set());
   const bmSet = useMemo(() => new Set(bookmarked), [bookmarked]);
   const readSet = useMemo(() => new Set(readIds), [readIds]);
@@ -43,25 +44,28 @@ export default function FeedClient({
         <button className={`utab ${tab === "bookmark" ? "on" : ""}`} onClick={() => setTab("bookmark")}>북마크</button>
       </div>
 
-      {/* 기업 필터 칩 (브랜드색) */}
+      {/* 기업 필터 칩 — 선택 시 브랜드색 채움, 비선택은 색 점 */}
       <div className="cchips">
         <button className={`cchip ${company === "all" ? "on" : ""}`} onClick={() => setCompany("all")}>All</button>
         <button className={`cchip ${company === "follow" ? "on" : ""}`} onClick={() => setCompany("follow")}>팔로우 중</button>
-        {companies.map((c) => {
+        {(showAllCos ? companies : companies.slice(0, 6)).map((c) => {
           const sel = company === c.id;
-          const txt = readableText(c.color);
           return (
             <button
               key={c.id}
               className={`cchip brand ${sel ? "sel" : ""}`}
-              style={{ background: c.color, color: txt }}
+              style={sel ? { background: c.color, color: readableText(c.color), borderColor: "transparent" } : undefined}
               onClick={() => setCompany(sel ? "all" : c.id)}
             >
-              {favSet.has(c.id) && <span className="cchip-star" style={{ color: txt }}>★</span>}
+              {!sel && <span className="cchip-dot" style={{ background: c.color }} />}
+              {favSet.has(c.id) && <span className="cchip-star" style={{ color: sel ? readableText(c.color) : c.color }}>★</span>}
               {c.name}
             </button>
           );
         })}
+        {!showAllCos && companies.length > 6 && (
+          <button className="cchip more" onClick={() => setShowAllCos(true)}>더보기 +{companies.length - 6}</button>
+        )}
       </div>
 
       {/* 카테고리 필터 칩 (영문, 아웃라인) */}
