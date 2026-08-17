@@ -21,6 +21,8 @@ const PATHS: Record<string, string> = {
   eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
   dots: '<circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>',
   heart: '<path d="M12 20s-6.5-4.2-9-8C1.3 9.3 2.6 5.8 6 5.8c2 0 3.2 1.3 4 2.5.8-1.2 2-2.5 4-2.5 3.4 0 4.7 3.5 3 6.2-2.5 3.8-9 8-9 8z"/>',
+  chevron: '<path d="M6 9l6 6 6-6"/>',
+  check: '<path d="M20 6L9 17l-5-5"/>',
 };
 
 export default function Icon({ name, size = "" }: { name: string; size?: "sm" | "lg" | "" }) {

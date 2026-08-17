@@ -232,7 +232,15 @@ svg.i.lg{ width:26px; height:26px; }
 .cchip.brand.sel{ font-weight:700; }
 .cchip-dot{ width:8px; height:8px; border-radius:50%; flex:0 0 auto; }
 .cchip.more{ color:var(--text-sub); border-style:dashed; }
+.cchip.sel-btn{ gap:3px; }
+.cchip.sel-btn svg{ width:14px; height:14px; }
 .cchip-star{ font-size:11px; line-height:1; }
+/* 선택 시트 행 */
+.sheet-row{ display:flex; align-items:center; gap:10px; width:100%; padding:13px 2px; background:none; border:none; border-bottom:1px solid var(--hairline); font-family:var(--font); font-size:15px; color:var(--text); cursor:pointer; text-align:left; }
+.sheet-row .sr-tap{ display:flex; align-items:center; gap:10px; flex:1; cursor:pointer; }
+.sheet-row .sr-name{ flex:1; font-weight:500; }
+.sheet-row > svg.i{ color:var(--coral); flex:0 0 auto; }
+.sheet-row .clogo{ width:30px; height:30px; flex:0 0 auto; }
 
 /* 카테고리 필터 칩 (영문, 아웃라인) */
 .katchips{ display:flex; gap:8px; overflow-x:auto; padding:2px 0; margin:8px 0 16px; }
