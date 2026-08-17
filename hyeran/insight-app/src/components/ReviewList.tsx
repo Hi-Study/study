@@ -9,7 +9,7 @@ import type { Review } from "@/lib/types";
 import type { ThreadComment } from "@/lib/queries";
 
 const RQ = ["인상 깊은 부분", "업무 적용", "인사이터에게 질문"] as const;
-const SELECT = "id, review_id, parent_id, author_id, body, created_at, author:profiles(name, initial)";
+const SELECT = "id, review_id, parent_id, author_id, body, created_at, author:profiles!comments_author_id_fkey(name, initial)";
 
 type ReplyTo = { id: string; name: string; authorId: string };
 

@@ -10,8 +10,8 @@ type Comment = {
 };
 type ReplyTo = { id: string; name: string; authorId: string };
 
-const SELECT = "id, body, created_at, parent_id, author_id, author:profiles(name, initial)";
-const SELECT_BASE = "id, body, created_at, author_id, author:profiles(name, initial)"; // parent_id 컬럼 없을 때 폴백
+const SELECT = "id, body, created_at, parent_id, author_id, author:profiles!comments_author_id_fkey(name, initial)";
+const SELECT_BASE = "id, body, created_at, author_id, author:profiles!comments_author_id_fkey(name, initial)"; // parent_id 컬럼 없을 때 폴백
 
 export default function CommentSheet({
   reviewId, reviewAuthorId, count: initialCount, preview,

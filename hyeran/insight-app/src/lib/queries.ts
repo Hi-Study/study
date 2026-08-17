@@ -169,7 +169,7 @@ export async function getReviewsForPost(postId: string, userId: string): Promise
   const sb = await createClient();
   const { data } = await sb
     .from("reviews")
-    .select("*, author:profiles(name, initial)")
+    .select("*, author:profiles!reviews_author_id_fkey(name, initial)")
     .eq("post_id", postId)
     .eq("is_draft", false)
     .order("created_at", { ascending: false });
@@ -303,7 +303,7 @@ export async function getCommentsForReviews(reviewIds: string[], userId: string)
   const sb = await createClient();
   const { data } = await sb
     .from("comments")
-    .select("id, review_id, parent_id, author_id, body, created_at, author:profiles(name, initial)")
+    .select("id, review_id, parent_id, author_id, body, created_at, author:profiles!comments_author_id_fkey(name, initial)")
     .in("review_id", reviewIds)
     .order("created_at", { ascending: true });
   const comments = (data as unknown as ThreadComment[]) ?? [];
