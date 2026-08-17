@@ -236,16 +236,24 @@ export async function getHomeData(userId: string): Promise<HomeData> {
   posts.filter((p) => days(p, 14)).forEach((p) => (p.tags ?? []).forEach((t) => freq.set(t, (freq.get(t) ?? 0) + 1)));
   const keywords = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t]) => t);
 
-  // ③ 인기 글 (최근 30일 참여도=인사이트 수 + 읽음 수 상위, 부족하면 최신 폴백)
+  const feed = await getInsightFeed(userId); // 최근 인사이트, 최신순 (③④ 폴백에 재사용)
   const recent30 = posts.filter((p) => days(p, 30));
   const engage = (p: Post) => (p.review_count ?? 0) * 2 + (p.read_count ?? 0);
-  const engaged = recent30.filter((p) => engage(p) > 0).sort((a, b) => engage(b) - engage(a) || recentCmp(a, b));
-  let popularFallback = engaged.length < 4;
-  let popular = take(engaged, 10);
-  if (popularFallback) popular = take([...recent30].sort(recentCmp), 10);
 
-  // ④ 인기 인사이트 (좋아요 상위, 없으면 최신 폴백) — 인사이트 단위(글 중복 허용)
-  const feed = await getInsightFeed(userId);
+  // ③ 인기 글: 인사이트 2개+ 글 상위. 부족하면 → "최근 인사이트가 올라온 글"
+  const strong = recent30.filter((p) => (p.review_count ?? 0) >= 2).sort((a, b) => engage(b) - engage(a) || recentCmp(a, b));
+  const popularFallback = strong.length < 4;
+  let popular: Post[];
+  if (!popularFallback) {
+    popular = take(strong, 10);
+  } else {
+    const pset = new Set<string>();
+    const arr: Post[] = [];
+    for (const r of feed) { if (pset.has(r.post_id)) continue; pset.add(r.post_id); const p = posts.find((x) => x.id === r.post_id); if (p) arr.push(p); }
+    popular = take(arr, 10);
+  }
+
+  // ④ 인기 인사이트: 좋아요 상위, 없으면 → "최근 올라온 인사이트 최신순"
   const liked = [...feed].filter((r) => (r.like_count ?? 0) >= 1).sort((a, b) => (b.like_count ?? 0) - (a.like_count ?? 0) || (b.comment_count ?? 0) - (a.comment_count ?? 0));
   const popularInsightsFallback = liked.length < 3;
   const popularInsights = (popularInsightsFallback ? feed : liked).slice(0, 10);

@@ -32,6 +32,7 @@ export default async function HomePage() {
   ]);
   const mark = (p: Post) => ({ ...p, read: readIds.has(p.id), bookmarked: bmIds.has(p.id) });
   const swipe = (list: Post[]) => <div className="swipe">{list.map((p) => <FeedCard key={p.id} post={mark(p)} />)}</div>;
+  const grid = (list: Post[]) => <div className="pop-grid">{list.slice(0, 4).map((p) => <FeedCard key={p.id} post={mark(p)} />)}</div>;
 
   return (
     <>
@@ -64,7 +65,10 @@ export default async function HomePage() {
         {/* ③ 인기 글 */}
         {home.popular.length > 0 && (
           <section className="hsec">
-            <SecHead title={home.popularFallback ? "막 이야기가 시작됐어요" : "요즘 많이 보고 인사이트를 남긴 글"} />
+            <SecHead
+              title={home.popularFallback ? "막 이야기가 시작됐어요" : "요즘 많이 보고 인사이트를 남긴 글"}
+              sub={home.popularFallback ? "사람들이 인사이트를 남기고 있어요" : undefined}
+            />
             {swipe(home.popular)}
           </section>
         )}
@@ -72,7 +76,10 @@ export default async function HomePage() {
         {/* ④ 인기 인사이트 */}
         {home.popularInsights.length > 0 && (
           <section className="hsec">
-            <SecHead title={home.popularInsightsFallback ? "먼저 읽은 사람들의 생각은?" : "이 생각에 공감을 많이 했어요"} />
+            <SecHead
+              title={home.popularInsightsFallback ? "먼저 읽은 사람들의 생각은?" : "이 생각에 공감을 많이 했어요"}
+              sub={home.popularInsightsFallback ? "다양한 인사이트를 함께 확인해보세요" : undefined}
+            />
             <div className="swipe">
               {home.popularInsights.map((r) => (
                 <Link key={r.id} href={`/posts/${r.post_id}?insight=${r.id}`} className="ins-mini">
@@ -97,7 +104,7 @@ export default async function HomePage() {
         {home.unfinished.length > 0 && (
           <section className="hsec zone">
             <SecHead title="마저 끝내볼까요?" sub="다 읽고 인사이트도 남겨보세요" href="/my" />
-            {swipe(home.unfinished)}
+            {grid(home.unfinished)}
           </section>
         )}
 
@@ -123,7 +130,7 @@ export default async function HomePage() {
           ) : home.favNew.length > 0 ? (
             <>
               <SecHead title="관심 기업에 새 글이 올라왔어요" href="/feed" />
-              {swipe(home.favNew)}
+              {grid(home.favNew)}
             </>
           ) : null}
         </section>
