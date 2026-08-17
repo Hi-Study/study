@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Icon from "@/components/Icon";
 import ReviewSheet from "@/components/ReviewSheet";
@@ -37,8 +37,6 @@ export default function ReviewList({
   const [busy, setBusy] = useState(false);
   const [showOthers, setShowOthers] = useState(false);
   const [justPosted, setJustPosted] = useState(false);
-  const [ctaVisible, setCtaVisible] = useState(true);
-  const ctaRef = useRef<HTMLDivElement>(null);
   const sb = createClient();
 
   // 게시 직후 자동 펼침
@@ -64,14 +62,6 @@ export default function ReviewList({
     const t = setTimeout(() => el.classList.remove("rv-focus"), 2200);
     return () => clearTimeout(t);
   }, [focusReviewId, showOthers]);
-
-  // 인라인 CTA가 화면 밖으로 나가면 하단 고정 바
-  useEffect(() => {
-    if (mine || !ctaRef.current) return;
-    const ob = new IntersectionObserver(([e]) => setCtaVisible(e.isIntersecting), { threshold: 0 });
-    ob.observe(ctaRef.current);
-    return () => ob.disconnect();
-  }, [mine]);
 
   const rootsOf = (rid: string) => comments.filter((c) => c.review_id === rid && !c.parent_id);
   const repliesOf = (id: string) => comments.filter((c) => c.parent_id === id);
@@ -153,9 +143,7 @@ export default function ReviewList({
       {mine ? (
         <ReviewCard r={mine} isMine />
       ) : (
-        <div ref={ctaRef}>
-          <ReviewSheet postId={postId} initial={myInitial} trigger={<div className="cta-primary">이 글에서 무엇을 느끼셨어요?</div>} />
-        </div>
+        <ReviewSheet postId={postId} initial={myInitial} trigger={<div className="cta-primary">내 생각도 남겨볼까요?</div>} />
       )}
 
       {/* 다른 인사이터의 인사이트 — 기본 접힘 */}
@@ -178,12 +166,6 @@ export default function ReviewList({
         )
       )}
 
-      {/* 하단 고정 CTA */}
-      {!mine && !ctaVisible && (
-        <div className="cta-sticky">
-          <ReviewSheet postId={postId} initial={myInitial} trigger={<div className="cta-primary">이 글에서 무엇을 느끼셨어요?</div>} />
-        </div>
-      )}
     </>
   );
 }

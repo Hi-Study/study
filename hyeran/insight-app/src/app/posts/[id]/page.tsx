@@ -57,10 +57,11 @@ export default async function PostDetail({ params, searchParams }: { params: Pro
         <h1 className="d-title">{post.title}</h1>
         <div className="comprow" style={{ marginTop: 0 }}>
           <CompanyLogo company={post.company} />
-          <span className="cname">{post.company?.name}</span>
+          <span className="cname">{post.company?.name ?? (post.source === "direct" ? post.author?.name : "")}</span>
           <span className="meta mono" style={{ marginLeft: 8 }}>
             {new Date(post.published_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}
           </span>
+          <a href="#insights" className="ins-jump"><Icon name="review" size="sm" />인사이트 {reviews.length}</a>
         </div>
         {post.tags.length > 0 && (
           <div className="tagrow">{post.tags.map((t) => <span className="tag" key={t}>{t}</span>)}</div>
@@ -103,6 +104,7 @@ export default async function PostDetail({ params, searchParams }: { params: Pro
           </a>
         )}
 
+        <div id="insights" className="ins-anchor" />
         <ReviewList
           postId={post.id}
           reviews={reviews}

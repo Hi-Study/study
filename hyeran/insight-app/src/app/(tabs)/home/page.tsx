@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getHomeData, getReadPostIds, getBookmarkedPostIds } from "@/lib/queries";
 import { FeatureCard } from "@/components/PostCard";
 import FeedCard from "@/components/FeedCard";
-import PostRow from "@/components/PostRow";
 import Icon from "@/components/Icon";
 import type { Post, Review } from "@/lib/types";
 
@@ -106,7 +105,7 @@ export default async function HomePage() {
         {home.recommended.length > 0 && (
           <section className="hsec">
             <SecHead title="이 글도 관심이 있을 것 같아요" />
-            <div>{home.recommended.map((p) => <PostRow key={p.id} post={mark(p)} />)}</div>
+            {swipe(home.recommended)}
           </section>
         )}
 

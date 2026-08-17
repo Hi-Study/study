@@ -36,7 +36,7 @@ export default function ReviewSheet({ postId, initial, trigger }: { postId: stri
   return (
     <>
       {trigger ? (
-        <span onClick={() => setOpen(true)} style={{ display: "inline-flex", cursor: "pointer" }}>{trigger}</span>
+        <span onClick={() => setOpen(true)} style={{ display: "contents", cursor: "pointer" }}>{trigger}</span>
       ) : (
         <button className="btn btn-outline" style={{ marginBottom: 10 }} onClick={() => setOpen(true)}>
           {hasReview ? "인사이트 수정" : "인사이트 쓰기"}
