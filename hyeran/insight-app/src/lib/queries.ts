@@ -182,7 +182,7 @@ export async function getInsightFeed(userId: string): Promise<Review[]> {
   const sb = await createClient();
   const { data } = await sb
     .from("reviews")
-    .select("*, author:profiles(name, initial), post:posts(title, company:companies(*))")
+    .select("*, author:profiles!reviews_author_id_fkey(name, initial), post:posts(title, company:companies(*))")
     .eq("is_draft", false)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -198,7 +198,7 @@ export async function getBookmarkedInsightFeed(userId: string): Promise<Review[]
   if (!postIds.length) return [];
   const { data } = await sb
     .from("reviews")
-    .select("*, author:profiles(name, initial), post:posts(title, company:companies(*))")
+    .select("*, author:profiles!reviews_author_id_fkey(name, initial), post:posts(title, company:companies(*))")
     .in("post_id", postIds)
     .eq("is_draft", false)
     .order("created_at", { ascending: false })
