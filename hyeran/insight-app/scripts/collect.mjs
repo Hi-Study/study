@@ -12,7 +12,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const env = fs.readFileSync(path.join(__dirname, "..", ".env.local"), "utf8");
 const get = (k) => { const m = env.match(new RegExp("^" + k + "=(.*)$", "m")); return m ? m[1].trim() : null; };
 
-const PER_COMPANY = Number(process.env.PER_COMPANY || 3); // 기업당 최신 글 수
+const PER_COMPANY = Number(process.env.PER_COMPANY || 60); // 기업당 최대 글 수(캡)
+const FROM = new Date(process.env.FROM || "2026-02-01"); // 이 날짜 이후 글만 수집
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -112,7 +113,10 @@ const CATS = ["프로덕트", "UIUX", "디자인", "AI", "비즈니스", "데이
     try {
       const res = await fetch(c.rss_url, { headers: { "User-Agent": UA }, redirect: "follow" });
       const feed = await parser.parseString(await res.text());
-      items = (feed.items || []).slice(0, PER_COMPANY);
+      // FROM 이후 글만 (날짜 없으면 포함), 최대 PER_COMPANY
+      items = (feed.items || [])
+        .filter((it) => { const d = new Date(it.isoDate || it.pubDate); return isNaN(+d) ? true : d >= FROM; })
+        .slice(0, PER_COMPANY);
     } catch (e) { console.log(`✗ ${c.name} 피드 실패: ${e.message}`); continue; }
 
     for (const it of items) {
