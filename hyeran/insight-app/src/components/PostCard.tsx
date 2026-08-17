@@ -1,19 +1,11 @@
 import Link from "next/link";
 import Icon from "@/components/Icon";
-import { coverImage, type Category, type Post } from "@/lib/types";
+import { coverImage, catFg, type Category, type Post } from "@/lib/types";
 
-// ===== 카테고리 아이브로우 색 (DESIGN.md) =====
-const CAT_UI: Record<Category, { bg: string; fg: string }> = {
-  기술: { bg: "var(--cat-tech-bg)", fg: "var(--cat-tech)" },
-  디자인: { bg: "var(--cat-design-bg)", fg: "var(--cat-design)" },
-  프로덕트: { bg: "var(--cat-product-bg)", fg: "var(--cat-product)" },
-  AI: { bg: "var(--cat-ai-bg)", fg: "var(--cat-ai)" },
-};
-
+// ===== 카테고리 배지 (11개 → 4계열 글자색) =====
 function CatBadge({ category }: { category: Category }) {
-  const c = CAT_UI[category] ?? { bg: "var(--surface)", fg: "var(--text-sub)" };
   return (
-    <span className="qc-cat" style={{ ["--catbg" as string]: c.bg, ["--catfg" as string]: c.fg }}>
+    <span className="qc-cat" style={{ ["--catbg" as string]: "var(--surface)", ["--catfg" as string]: catFg(category) }}>
       {category}
     </span>
   );

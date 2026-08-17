@@ -84,7 +84,8 @@ async function summarize(title, text) {
   const prompt = `다음 기술 블로그 글을 분석해서 JSON으로만 답해.
 규칙:
 - problem/solution/learning: 각각 한 문장, 한국어, 마침표 없이 (problem=무슨 문제를 다뤘나, solution=어떻게 해결했나, learning=기획 관점에서 무엇을 배울 수 있나)
-- category: "프로덕트" | "디자인" | "기술" | "AI" 중 하나
+- category: 다음 11개 중 정확히 하나 — "프로덕트" | "UIUX" | "디자인" | "AI" | "비즈니스" | "데이터 분석" | "프론트엔드" | "백엔드" | "데이터베이스" | "보안" | "모바일"
+  (UIUX=화면·플로우·사용성·인터랙션 / 디자인=비주얼·브랜드·디자인시스템 / 프로덕트=기획·그로스·의사결정 / 비즈니스=사업·전략·조직)
 - tags: 핵심 키워드 2~4개 (한국어 문자열 배열)
 출력: {"problem":"...","solution":"...","learning":"...","category":"...","tags":["...","..."]}
 
@@ -95,7 +96,7 @@ ${text.slice(0, 8000)}`;
   return JSON.parse(result.response.text());
 }
 
-const CATS = ["프로덕트", "디자인", "기술", "AI"];
+const CATS = ["프로덕트", "UIUX", "디자인", "AI", "비즈니스", "데이터 분석", "프론트엔드", "백엔드", "데이터베이스", "보안", "모바일"];
 
 (async () => {
   // 기존 URL (중복 제거용)
@@ -139,7 +140,7 @@ const CATS = ["프로덕트", "디자인", "기술", "AI"];
 
         // AI 요약
         const s = await summarize(it.title, text);
-        const category = CATS.includes(s.category) ? s.category : "기술";
+        const category = CATS.includes(s.category) ? s.category : "프론트엔드";
         const tags = Array.isArray(s.tags) ? s.tags.slice(0, 4).map(String) : [];
         const publishedAt = it.isoDate || it.pubDate || new Date().toISOString();
 

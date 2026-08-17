@@ -109,7 +109,8 @@ async function summarize(title: string, text: string) {
   const prompt = `다음 기술 블로그 글을 분석해서 JSON으로만 답해.
 규칙:
 - problem/solution/learning: 각각 한 문장, 한국어, 마침표 없이
-- category: "프로덕트" | "디자인" | "기술" | "AI" 중 하나
+- category: 다음 11개 중 정확히 하나 — "프로덕트" | "UIUX" | "디자인" | "AI" | "비즈니스" | "데이터 분석" | "프론트엔드" | "백엔드" | "데이터베이스" | "보안" | "모바일"
+  (UIUX=화면·플로우·사용성·인터랙션 / 디자인=비주얼·브랜드·디자인시스템 / 프로덕트=기획·그로스·의사결정 / 비즈니스=사업·전략·조직)
 - tags: 핵심 키워드 2~4개 (한국어 문자열 배열)
 출력: {"problem":"...","solution":"...","learning":"...","category":"...","tags":["...","..."]}
 제목: ${title}
@@ -152,7 +153,7 @@ export async function registerPost(url: string, q1: string, q2: string, q3: stri
   } catch {
     return { error: "AI 요약 생성에 실패했어요. 잠시 후 다시 시도해주세요" };
   }
-  const category: Category = CATEGORIES.includes(s.category as Category) ? (s.category as Category) : "기술";
+  const category: Category = CATEGORIES.includes(s.category as Category) ? (s.category as Category) : "프론트엔드";
   const tags = Array.isArray(s.tags) ? s.tags.slice(0, 4).map(String) : [];
 
   // 기업 매칭 (도메인)

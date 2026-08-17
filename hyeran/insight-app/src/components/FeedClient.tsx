@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import FeedCard from "@/components/FeedCard";
 import { CompanyLogo } from "@/components/PostCard";
 import Icon from "@/components/Icon";
-import { CATEGORIES, CAT_EN, readableText, type Category, type Company, type Post } from "@/lib/types";
+import { CATEGORIES, readableText, type Category, type Company, type Post } from "@/lib/types";
 
 // source: "all" | "favorites" | "direct" | companyId
 export default function FeedClient({
@@ -80,7 +80,7 @@ export default function FeedClient({
       <div className="cchips" style={{ marginTop: 8 }}>
         <button className="cchip sel-btn" onClick={() => setCatSheet(true)}>All <Icon name="chevron" size="sm" /></button>
         {[...cats].map((c) => (
-          <button key={c} className="cchip on" onClick={() => toggleCat(c)}>{CAT_EN[c] ?? c} ✕</button>
+          <button key={c} className="cchip on" onClick={() => toggleCat(c)}>{c} ✕</button>
         ))}
       </div>
 

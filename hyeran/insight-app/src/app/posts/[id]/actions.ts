@@ -32,7 +32,7 @@ export async function updatePost(
   if (!user) return { error: "로그인이 필요해요" };
   const title = fields.title.trim();
   if (!title) return { error: "제목을 입력해주세요" };
-  const category: Category = CATEGORIES.includes(fields.category as Category) ? (fields.category as Category) : "기술";
+  const category: Category = CATEGORIES.includes(fields.category as Category) ? (fields.category as Category) : "프론트엔드";
   const tags = fields.tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 6);
 
   const { error } = await sb.from("posts").update({

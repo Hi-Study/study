@@ -103,7 +103,7 @@ create table if not exists public.posts (
   company_id uuid references public.companies(id) on delete set null,
   title text not null,
   url text,
-  category text not null default '기술' check (category in ('프로덕트','디자인','기술','AI')),
+  category text not null default '프론트엔드' check (category in ('프로덕트','UIUX','디자인','AI','비즈니스','데이터 분석','프론트엔드','백엔드','데이터베이스','보안','모바일')),
   tags text[] not null default '{}',
   source text not null default 'crawl' check (source in ('crawl','direct')),
   author_id uuid references public.profiles(id) on delete set null, -- 직접 등록자 (자동수집이면 null)

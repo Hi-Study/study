@@ -45,12 +45,18 @@
 - **Steel** (`{colors.steel-text}` = `#6B7280`): 보조·메타·비활성 탭·라벨.
 - **Stone** (`{colors.stone-text}` = `#9AA0AB`): 뮤트 캡션.
 
-### Category 아이브로우 (프로덕트/디자인/기술/AI)
-카테고리는 파스텔 배경 + 진한 글자 **알약 라벨**로 표시(Pretendard). 필터 칩·라벨은 **영문**(`CAT_EN`: Product/Design/Tech/AI), 본문 제목은 한글(혼용 원칙).
-- **기술** — bg `{colors.cat-tech-bg}` `#EEF4FF` / fg `{colors.cat-tech-fg}` `#2563EB`
-- **디자인** — bg `{colors.cat-design-bg}` `#F3EDFF` / fg `{colors.cat-design-fg}` `#7C3AED`
-- **프로덕트** — bg `{colors.cat-product-bg}` `#E6F6F2` / fg `{colors.cat-product-fg}` `#0D9488`
-- **AI** — bg `{colors.cat-ai-bg}` `#FFF0EC` / fg `{colors.cat-ai-fg}` `#FF4A28`
+### Category — **11개**, 색은 **4계열** (v2.4)
+카테고리 칩·라벨은 **한글 11개**. 하지만 11색은 식별 불가하므로 **좌측 3px 바·배지 색은 4계열 그룹**으로만 부여한다(`catGroup`/`catFg` in `types.ts`).
+
+| 계열 | 카테고리 | 바 색 | 배지 글자색 |
+|---|---|---|---|
+| 프로덕트 | 프로덕트 · 비즈니스 | `--blue` | `#2563EB` |
+| 디자인 | UIUX · 디자인 | `--orange` | `#C2410C` |
+| 개발 | 프론트엔드 · 백엔드 · 데이터베이스 · 보안 · 모바일 | `--lime` | `#3F7A00` |
+| 데이터·AI | AI · 데이터 분석 | `--sky` | `#0E7490` |
+
+- 좌측 바 = 계열 원색(`CAT_COLOR`), 배지(`qc-cat`) = surface 배경 + 계열 글자색.
+- 색은 "정확히 어떤 카테고리인지"가 아니라 "대략 어느 갈래인지"를 알려주는 장치.
 
 ### Semantic
 - **Success** — bg `{colors.success-bg}` `#E7F6EC` / text `{colors.success-text}` `#127A3E` (읽음 등)
