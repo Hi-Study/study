@@ -158,30 +158,48 @@ function toIso(pubDate) {
   return isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-async function recollectBlog(blog) {
+async function recollectBlog(blog, since) {
   if (!blog.rss_url) return { updated: 0, skipped: "rss 없음" };
-  let xml;
-  try {
-    // RSS 는 크롤러 UA 우선(배민 Cloudflare 우회), 실패 시 브라우저 UA.
-    xml = await fetchText(blog.rss_url, CRAWLER_UA).catch(() => fetchText(blog.rss_url, BROWSER_UA));
-  } catch (e) {
-    return { updated: 0, skipped: `RSS 실패(${e.message})` };
+  const rows = [];
+  const seen = new Set();
+  const maxPages = since ? 20 : 1; // since 백필이면 ?paged=N 으로 과거까지 순회(배민 등)
+  let reachedOld = false;
+
+  for (let page = 1; page <= maxPages && !reachedOld; page++) {
+    const sep = blog.rss_url.includes("?") ? "&" : "?";
+    const url = page === 1 ? blog.rss_url : `${blog.rss_url}${sep}paged=${page}`;
+    let xml;
+    try {
+      // 크롤러 UA 우선(배민 Cloudflare 우회), 실패 시 브라우저 UA.
+      xml = await fetchText(url, CRAWLER_UA).catch(() => fetchText(url, BROWSER_UA));
+    } catch {
+      break;
+    }
+    const items = parseRssItems(xml).filter((it) => it.url && it.contentHtml);
+    let fresh = 0;
+    for (const it of items) {
+      if (seen.has(it.url)) continue;
+      seen.add(it.url);
+      fresh++;
+      const iso = toIso(it.pubDate);
+      if (since && iso && iso < since) {
+        reachedOld = true; // since 이전 글에 도달 → 백필 종료
+        continue;
+      }
+      const body = stripFooter(htmlToText(it.contentHtml));
+      if (body.length < 100) continue; // 본문 너무 짧으면 스킵
+      rows.push({
+        blog_id: blog.id,
+        url: it.url,
+        title: it.title || it.url,
+        body,
+        og_image: firstImageUrl(body, it.contentHtml),
+        published_at: iso,
+      });
+    }
+    if (fresh === 0) break; // 더 이상 새 항목 없음(페이지네이션 미지원 피드)
   }
 
-  const items = parseRssItems(xml).filter((it) => it.url && it.contentHtml);
-  const rows = [];
-  for (const it of items) {
-    const body = stripFooter(htmlToText(it.contentHtml));
-    if (body.length < 100) continue; // 본문 너무 짧으면 스킵
-    rows.push({
-      blog_id: blog.id,
-      url: it.url,
-      title: it.title || it.url,
-      body,
-      og_image: firstImageUrl(body, it.contentHtml),
-      published_at: toIso(it.pubDate),
-    });
-  }
   if (rows.length === 0) return { updated: 0, skipped: "본문 있는 항목 없음" };
 
   // url 충돌 시 UPDATE(body·og_image 갱신). topic·tags·ai_summaries 는 건드리지 않음(부분 upsert).
@@ -234,7 +252,9 @@ async function recollectPages(blog) {
 }
 
 async function main() {
-  const only = process.argv[2]; // 예: npm run recollect -- kakao
+  const only = process.argv[2]; // 예: npm run recollect -- woowahan 2025-07-01
+  const sinceArg = process.argv[3]; // 백필 기준일(YYYY-MM-DD). 있으면 과거 페이지까지 순회.
+  const since = sinceArg ? new Date(sinceArg).toISOString() : null;
   let query = supabase.from("blogs").select("id, key, name, rss_url, collect").eq("active", true);
   if (only) query = query.eq("key", only);
   const { data: blogs, error } = await query;
@@ -247,10 +267,12 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`\n🔄 재수집 시작 — 활성 블로그 ${blogs.length}개 (이미지 포함)\n`);
+  console.log(
+    `\n🔄 재수집 시작 — 활성 블로그 ${blogs.length}개 (이미지 포함)${since ? ` · ${sinceArg} 이후 백필` : ""}\n`,
+  );
   let total = 0;
   for (const blog of blogs) {
-    const r = blog.collect === "rss_full" ? await recollectBlog(blog) : await recollectPages(blog);
+    const r = blog.collect === "rss_full" ? await recollectBlog(blog, since) : await recollectPages(blog);
     total += r.updated;
     const via = blog.collect === "rss_full" ? "rss" : "page";
     console.log(
