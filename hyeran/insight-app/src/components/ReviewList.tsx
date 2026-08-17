@@ -90,10 +90,11 @@ export default function ReviewList({
     else await sb.from("comment_likes").delete().eq("comment_id", c.id).eq("user_id", userId);
   };
 
-  const CommentRow = ({ c, reviewAuthorId, reviewId, reply }: { c: ThreadComment; reviewAuthorId: string; reviewId: string; reply?: boolean }) => {
+  // 컴포넌트가 아니라 렌더 함수로 호출 → 리렌더 시 리마운트 안 됨(입력창 포커스 유지)
+  const commentRow = (c: ThreadComment, reviewAuthorId: string, reviewId: string, reply?: boolean) => {
     const name = c.author?.name ?? "인사이터";
     return (
-      <div className={`cmt${reply ? " reply" : ""}`}>
+      <div key={c.id} className={`cmt${reply ? " reply" : ""}`}>
         <span className="avatar sm">{c.author?.initial ?? "?"}</span>
         <div className="cmt-body">
           <div className="cmt-head"><b>{name}</b>{c.author_id === reviewAuthorId && <span className="cmt-badge">작성자</span>}<span className="cmt-time">{rel(c.created_at)}</span></div>
@@ -107,10 +108,10 @@ export default function ReviewList({
     );
   };
 
-  const ReviewCard = ({ r, isMine }: { r: Review; isMine: boolean }) => {
+  const reviewCard = (r: Review, isMine: boolean) => {
     const rt = replyTo[r.id];
     return (
-      <div id={`rv-${r.id}`} className={`review${isMine ? " mine" : ""}`}>
+      <div key={r.id} id={`rv-${r.id}`} className={`review${isMine ? " mine" : ""}`}>
         <div className="who">
           <span className="avatar">{r.author?.initial ?? "?"}</span>
           <span style={{ fontSize: 13, fontWeight: 600 }}>{r.author?.name ?? "인사이터"}</span>
@@ -130,7 +131,7 @@ export default function ReviewList({
           </div>
           {rt && <div className="cmt-replybar">↳ {rt.name}님에게 답글<button className="reply-cancel" onClick={() => setReplyTo((x) => ({ ...x, [r.id]: null }))}>취소</button></div>}
           {rootsOf(r.id).map((c) => (
-            <div key={c.id}><CommentRow c={c} reviewAuthorId={r.author_id} reviewId={r.id} />{repliesOf(c.id).map((rc) => <CommentRow key={rc.id} c={rc} reviewAuthorId={r.author_id} reviewId={r.id} reply />)}</div>
+            <div key={c.id}>{commentRow(c, r.author_id, r.id, false)}{repliesOf(c.id).map((rc) => commentRow(rc, r.author_id, r.id, true))}</div>
           ))}
         </div>
       </div>
@@ -140,9 +141,7 @@ export default function ReviewList({
   return (
     <>
       {/* 최상위 CTA / 내 인사이트 */}
-      {mine ? (
-        <ReviewCard r={mine} isMine />
-      ) : (
+      {mine ? reviewCard(mine, true) : (
         <ReviewSheet postId={postId} initial={myInitial} trigger={<div className="cta-primary">내 생각도 남겨볼까요?</div>} />
       )}
 
@@ -155,7 +154,7 @@ export default function ReviewList({
         ) : (
           <>
             {justPosted && <div className="posted-hint">이제 다른 인사이터들의 생각을 볼 차례예요</div>}
-            {others.map((r) => <ReviewCard key={r.id} r={r} isMine={false} />)}
+            {others.map((r) => reviewCard(r, false))}
             <button className="ins-more-btn open" onClick={() => setShowOthers(false)}>접기 <Icon name="chevron" size="sm" /></button>
           </>
         )
