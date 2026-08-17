@@ -310,6 +310,20 @@ svg.i.lg{ width:26px; height:26px; }
 .rlike.on{ color:var(--coral); }
 .rlike.on svg{ fill:var(--coral); }
 .rev-acts{ display:flex; align-items:center; margin:4px 0 2px; padding-top:8px; border-top:1px solid var(--hairline); }
+/* 최상위 인사이트 CTA */
+.cta-primary{ width:100%; text-align:center; background:var(--ink); color:var(--on-ink); font-size:15px; font-weight:700; padding:16px; border-radius:var(--r-full); cursor:pointer; }
+.cta-sticky{ position:fixed; left:50%; transform:translateX(-50%); bottom:calc(12px + env(safe-area-inset-bottom)); z-index:40; width:calc(min(var(--maxw),100vw) - 30px); box-shadow:0 8px 30px rgba(0,0,0,.22); border-radius:var(--r-full); }
+.review.mine{ background:var(--surface); }
+/* 다른 인사이터의 인사이트 (접힘) */
+.others-head{ display:flex; align-items:center; gap:10px; width:100%; margin-top:22px; padding:14px 2px; background:none; border:none; border-top:1px solid var(--hairline); font-family:var(--font); cursor:pointer; text-align:left; }
+.others-head .oh-txt{ font-size:14px; font-weight:700; color:var(--text); }
+.others-head .oh-avatars{ display:flex; margin-left:auto; }
+.others-head .oh-avatars .avatar{ margin-left:-6px; border:2px solid var(--canvas); }
+.others-head .oh-go{ font-size:13px; font-weight:600; color:var(--coral); }
+.others-open{ display:flex; align-items:center; margin-top:22px; padding:14px 2px 4px; border-top:1px solid var(--hairline); }
+.others-open .oh-txt{ font-size:14px; font-weight:700; }
+.others-open .oh-fold{ margin-left:auto; background:none; border:none; font-size:13px; font-weight:600; color:var(--text-sub); cursor:pointer; }
+.posted-hint{ font-size:13px; color:var(--coral); font-weight:600; margin:16px 0 4px; }
 /* 통일 카드 메타 라인 (커버 카드·리스트 로우 공통) */
 .cmeta{ display:flex; align-items:center; gap:8px; margin-top:10px; font-size:12px; color:var(--text-sub); flex-wrap:wrap; }
 .cmeta .cm-who{ font-weight:600; color:var(--charcoal); }

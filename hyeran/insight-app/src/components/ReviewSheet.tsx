@@ -27,6 +27,7 @@ export default function ReviewSheet({ postId, initial, trigger }: { postId: stri
     start(async () => {
       const res = await submitReview(postId, ans[0], ans[1], ans[2]);
       if (res?.error) { setErr(res.error); return; }
+      try { sessionStorage.setItem(`posted-${postId}`, "1"); } catch {}
       setOpen(false);
       router.refresh();
     });

@@ -6,7 +6,6 @@ import { CompanyLogo } from "@/components/PostCard";
 import Icon from "@/components/Icon";
 import BackButton from "@/components/BackButton";
 import BookmarkButton from "@/components/BookmarkButton";
-import ReviewSheet from "@/components/ReviewSheet";
 import ReviewList from "@/components/ReviewList";
 import PostOwnerMenu from "@/components/PostOwnerMenu";
 import ReadTracker from "@/components/ReadTracker";
@@ -37,7 +36,6 @@ export default async function PostDetail({ params, searchParams }: { params: Pro
   const isOwner = post.source === "direct" && post.author_id === user!.id;
   const highlights = (hlRes.data ?? []) as { sentence_idx: number; memo: string | null }[];
   const comments = await getCommentsForReviews(reviews.map((r) => r.id), user!.id);
-  const hasMyReview = initial.some((x) => x.trim());
 
   return (
     <div style={{ paddingBottom: 40 }}>
@@ -105,20 +103,14 @@ export default async function PostDetail({ params, searchParams }: { params: Pro
           </a>
         )}
 
-        <div className="sec-title">인사이트 {reviews.length}</div>
-        {!hasMyReview && <ReviewSheet postId={post.id} initial={initial} />}
-        {reviews.length ? (
-          <ReviewList
-            postId={post.id}
-            reviews={reviews}
-            comments={comments}
-            userId={user!.id}
-            myInitial={initial}
-            focusReviewId={focusReviewId}
-          />
-        ) : (
-          <div className="empty"><div className="art" /><div className="msg">첫 번째 인사이트를 남겨보세요</div></div>
-        )}
+        <ReviewList
+          postId={post.id}
+          reviews={reviews}
+          comments={comments}
+          userId={user!.id}
+          myInitial={initial}
+          focusReviewId={focusReviewId}
+        />
       </div>
     </div>
   );
