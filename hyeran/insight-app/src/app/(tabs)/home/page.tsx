@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getHomeData, getReadPostIds, getBookmarkedPostIds } from "@/lib/queries";
-import { FeatureCard } from "@/components/PostCard";
+import { FeatureCard, CompanyLogo } from "@/components/PostCard";
 import FeedCard from "@/components/FeedCard";
 import Icon from "@/components/Icon";
 import type { Post, Review } from "@/lib/types";
@@ -21,6 +21,8 @@ function SecHead({ title, sub, href }: { title: string; sub?: string; href?: str
 }
 
 function firstAnswer(r: Review) { return r.q1?.trim() || r.q2?.trim() || r.q3?.trim() || ""; }
+// 답변이 2개 이상이면(=더 볼 내용이 있으면) 미니 카드에 … 로 표시
+function hasMore(r: Review) { return [r.q1, r.q2, r.q3].filter((x) => x?.trim()).length > 1; }
 
 export default async function HomePage() {
   const sb = await createClient();
@@ -53,7 +55,7 @@ export default async function HomePage() {
         {/* ② 인기 키워드 */}
         {home.keywords.length > 0 && (
           <section className="hsec">
-            <SecHead title="요즘 이 단어들이 자주 보여요" />
+            <SecHead title="요즘 이 단어들이 자주 보여요 ✨" />
             <div className="kw-row">
               {home.keywords.map((k) => (
                 <Link key={k} href={`/search?q=${encodeURIComponent(k)}`} className="kw-chip">{k}</Link>
@@ -88,7 +90,7 @@ export default async function HomePage() {
                     <span className="ins-mini-name">{r.author?.name ?? "인사이터"}</span>
                   </div>
                   <div className="ins-mini-post">{r.post?.title}</div>
-                  <div className="ins-mini-body">{firstAnswer(r)}</div>
+                  <div className="ins-mini-body">{firstAnswer(r)}{hasMore(r) && <span className="ins-more-dots"> …</span>}</div>
                   <div className="ins-mini-foot">
                     <span className={r.liked ? "on" : ""}><Icon name="heart" size="sm" />{r.like_count ?? 0}</span>
                     <span><Icon name="comment" size="sm" />{r.comment_count ?? 0}</span>
@@ -103,7 +105,7 @@ export default async function HomePage() {
         {/* ⑤ 아직 안 끝난 글 */}
         {home.unfinished.length > 0 && (
           <section className="hsec zone">
-            <SecHead title="마저 끝내볼까요?" sub="다 읽고 인사이트도 남겨보세요" href="/my" />
+            <SecHead title="이어서 읽어볼까요?" sub="다 읽고 인사이트도 남겨보세요" href="/my" />
             {grid(home.unfinished)}
           </section>
         )}
@@ -111,7 +113,7 @@ export default async function HomePage() {
         {/* ⑥ 추천 글 */}
         {home.recommended.length > 0 && (
           <section className="hsec">
-            <SecHead title="이 글도 관심이 있을 것 같아요" />
+            <SecHead title="이 글도 관심있으실 것 같아요 👁️" />
             {swipe(home.recommended)}
           </section>
         )}
@@ -127,10 +129,19 @@ export default async function HomePage() {
                 <span className="hb-go">기업 고르기 ›</span>
               </Link>
             </>
-          ) : home.favNew.length > 0 ? (
+          ) : home.favGroups.length > 0 ? (
             <>
               <SecHead title="관심 기업에 새 글이 올라왔어요" href="/feed" />
-              {grid(home.favNew)}
+              {home.favGroups.map((g) => (
+                <div key={g.company?.id ?? Math.random()} className="fav-group">
+                  <Link href={`/feed?company=${g.company?.slug ?? ""}`} className="fav-co">
+                    <CompanyLogo company={g.company} />
+                    <span className="fav-co-name">{g.company?.name ?? "기업"}</span>
+                    <span className="fav-co-go">›</span>
+                  </Link>
+                  <div className="pop-grid">{g.posts.map((p) => <FeedCard key={p.id} post={mark(p)} />)}</div>
+                </div>
+              ))}
             </>
           ) : null}
         </section>

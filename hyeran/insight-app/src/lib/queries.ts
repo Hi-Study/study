@@ -215,7 +215,7 @@ export type HomeData = {
   popularInsights: Review[]; popularInsightsFallback: boolean;
   unfinished: Post[];
   recommended: Post[];
-  favNew: Post[]; favEmpty: boolean;
+  favGroups: { company: Company | null; posts: Post[] }[]; favEmpty: boolean;
   direct: Post[];
 };
 export async function getHomeData(userId: string): Promise<HomeData> {
@@ -277,15 +277,23 @@ export async function getHomeData(userId: string): Promise<HomeData> {
     recommended = take(scored.map((x) => x.p), 10);
   }
 
-  // ⑦ 즐겨찾기 기업 새 글 (없으면 유도 배너)
+  // ⑦ 즐겨찾기 기업 새 글: 기업별 최신 2개씩 (없으면 유도 배너)
   const favs = await getFavoriteCompanyIds(userId);
   const favEmpty = favs.size === 0;
-  const favNew = favEmpty ? [] : take(posts.filter((p) => p.company_id && favs.has(p.company_id)).sort(recentCmp), 10);
+  const favGroups: { company: Company | null; posts: Post[] }[] = [];
+  if (!favEmpty) {
+    for (const cid of favs) {
+      const cp = posts.filter((p) => p.company_id === cid).sort(recentCmp).slice(0, 2);
+      if (cp.length) favGroups.push({ company: cp[0].company ?? null, posts: cp });
+    }
+    // 기업명 가나다순
+    favGroups.sort((a, b) => (a.company?.name ?? "").localeCompare(b.company?.name ?? "", "ko"));
+  }
 
   // ⑧ 사용자 등록 글
   const direct = take(posts.filter((p) => p.source === "direct").sort(recentCmp), 10);
 
-  return { hero, keywords, popular, popularFallback, popularInsights, popularInsightsFallback, unfinished, recommended, favNew, favEmpty, direct };
+  return { hero, keywords, popular, popularFallback, popularInsights, popularInsightsFallback, unfinished, recommended, favGroups, favEmpty, direct };
 }
 
 // 유저가 조회한 글 (post_views → 글), 최근 조회순

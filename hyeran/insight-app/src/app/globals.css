@@ -109,6 +109,14 @@ svg.i.lg{ width:26px; height:26px; }
 .ins-mini-foot .on{ color:var(--coral); }
 .ins-mini-foot .on svg{ fill:var(--coral); }
 .ins-mini-foot svg{ width:14px; height:14px; }
+.ins-more-dots{ color:var(--text-sub); font-weight:700; }
+/* ⑦ 관심 기업별 그룹 (각 2개씩) */
+.fav-group{ margin-top:18px; }
+.fav-group:first-of-type{ margin-top:14px; }
+.fav-co{ display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.fav-co .clogo{ width:22px; height:22px; }
+.fav-co-name{ font-size:14.5px; font-weight:700; color:var(--text); }
+.fav-co-go{ color:var(--text-sub); font-size:15px; }
 /* ⑦⑧ 유도 배너 */
 .home-banner{ display:flex; align-items:center; gap:12px; background:var(--surface); padding:16px; }
 .home-banner .hb-txt{ flex:1; font-size:13.5px; line-height:1.5; color:var(--text-sub); }
