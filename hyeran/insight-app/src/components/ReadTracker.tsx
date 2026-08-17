@@ -7,6 +7,18 @@ import { createClient } from "@/lib/supabase/client";
 export default function ReadTracker({ postId, alreadyRead }: { postId: string; alreadyRead: boolean }) {
   const done = useRef(alreadyRead);
 
+  // 진입 시 조회 기록 (테이블 없으면 조용히 무시)
+  useEffect(() => {
+    (async () => {
+      const sb = createClient();
+      const { data: { user } } = await sb.auth.getUser();
+      if (user) await sb.from("post_views").upsert(
+        { user_id: user.id, post_id: postId, viewed_at: new Date().toISOString() },
+        { onConflict: "user_id,post_id" },
+      );
+    })();
+  }, [postId]);
+
   useEffect(() => {
     if (done.current) return;
     const check = async () => {

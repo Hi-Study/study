@@ -46,7 +46,9 @@ export interface Review {
   created_at: string;
   author?: { name: string; initial: string } | null;
   comment_count?: number;
-  post?: { title: string; company?: Company | null } | null;
+  like_count?: number;
+  liked?: boolean;
+  post?: { title: string; company?: Company | null; body?: string[] } | null;
 }
 
 // 카테고리 → 액센트 색 (DESIGN.md, aisbrow 팔레트와 동일)

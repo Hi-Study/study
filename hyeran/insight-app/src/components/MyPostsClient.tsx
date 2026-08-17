@@ -4,15 +4,16 @@ import { useState } from "react";
 import PostRow from "@/components/PostRow";
 import type { Post } from "@/lib/types";
 
-type Tab = "insight" | "comment" | "highlight";
+type Tab = "viewed" | "insight" | "comment" | "highlight";
 
 export default function MyPostsClient({
-  insights, comments, highlights,
+  viewed, insights, comments, highlights,
 }: {
-  insights: Post[]; comments: Post[]; highlights: Post[];
+  viewed: Post[]; insights: Post[]; comments: Post[]; highlights: Post[];
 }) {
-  const [tab, setTab] = useState<Tab>("insight");
+  const [tab, setTab] = useState<Tab>("viewed");
   const map: Record<Tab, { list: Post[]; label: string; empty: string }> = {
+    viewed: { list: viewed, label: "조회한 글", empty: "아직 조회한 글이 없어요" },
     insight: { list: insights, label: "인사이트", empty: "아직 인사이트를 남긴 글이 없어요" },
     comment: { list: comments, label: "댓글", empty: "아직 댓글을 단 글이 없어요" },
     highlight: { list: highlights, label: "하이라이트", empty: "아직 하이라이트한 글이 없어요" },

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getCommentedPosts, getReadPostIds, getHighlightedPosts, getPostsByIds, getBookmarkedPostIds } from "@/lib/queries";
+import { getCommentedPosts, getReadPostIds, getHighlightedPosts, getPostsByIds, getBookmarkedPostIds, getViewedPosts } from "@/lib/queries";
 import MyPostsClient from "@/components/MyPostsClient";
 import LogoutButton from "@/components/LogoutButton";
 import type { Post } from "@/lib/types";
@@ -15,7 +15,8 @@ export default async function MyPage() {
   const { data: myReviews } = await sb.from("reviews").select("post_id").eq("author_id", user!.id).eq("is_draft", false);
   const postIds = [...new Set((myReviews ?? []).map((r: { post_id: string }) => r.post_id))];
 
-  const [insights, comments, highlights, readIds, bmIds] = await Promise.all([
+  const [viewed, insights, comments, highlights, readIds, bmIds] = await Promise.all([
+    getViewedPosts(user!.id),
     getPostsByIds(postIds),
     getCommentedPosts(user!.id),
     getHighlightedPosts(user!.id),
@@ -37,7 +38,7 @@ export default async function MyPage() {
           </div>
           <LogoutButton />
         </div>
-        <MyPostsClient insights={insights.map(mark)} comments={comments.map(mark)} highlights={highlights.map(mark)} />
+        <MyPostsClient viewed={viewed.map(mark)} insights={insights.map(mark)} comments={comments.map(mark)} highlights={highlights.map(mark)} />
       </div>
     </>
   );

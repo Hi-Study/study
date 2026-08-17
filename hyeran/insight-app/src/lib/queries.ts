@@ -140,6 +140,21 @@ export async function getPost(id: string): Promise<Post | null> {
   return withCount;
 }
 
+// 인사이트 좋아요 수 + 내가 눌렀는지 (테이블 없으면 0/false 폴백)
+async function attachReviewLikes(sb: Awaited<ReturnType<typeof createClient>>, reviews: Review[], userId: string): Promise<Review[]> {
+  if (!reviews.length) return reviews;
+  const ids = reviews.map((r) => r.id);
+  const { data, error } = await sb.from("review_likes").select("review_id, user_id").in("review_id", ids);
+  if (error) return reviews.map((r) => ({ ...r, like_count: 0, liked: false }));
+  const counts = new Map<string, number>();
+  const mine = new Set<string>();
+  (data ?? []).forEach((l: { review_id: string; user_id: string }) => {
+    counts.set(l.review_id, (counts.get(l.review_id) ?? 0) + 1);
+    if (l.user_id === userId) mine.add(l.review_id);
+  });
+  return reviews.map((r) => ({ ...r, like_count: counts.get(r.id) ?? 0, liked: mine.has(r.id) }));
+}
+
 async function attachCommentCounts(sb: Awaited<ReturnType<typeof createClient>>, reviews: Review[]): Promise<Review[]> {
   if (!reviews.length) return reviews;
   const ids = reviews.map((r) => r.id);
@@ -150,7 +165,7 @@ async function attachCommentCounts(sb: Awaited<ReturnType<typeof createClient>>,
 }
 
 // 글에 달린 인사이트 (게시본)
-export async function getReviewsForPost(postId: string): Promise<Review[]> {
+export async function getReviewsForPost(postId: string, userId: string): Promise<Review[]> {
   const sb = await createClient();
   const { data } = await sb
     .from("reviews")
@@ -158,11 +173,12 @@ export async function getReviewsForPost(postId: string): Promise<Review[]> {
     .eq("post_id", postId)
     .eq("is_draft", false)
     .order("created_at", { ascending: false });
-  return attachCommentCounts(sb, (data as Review[]) ?? []);
+  const withComments = await attachCommentCounts(sb, (data as Review[]) ?? []);
+  return attachReviewLikes(sb, withComments, userId);
 }
 
 // 인사이트 탭: 인사이트 최신순 (글 정보 포함)
-export async function getInsightFeed(): Promise<Review[]> {
+export async function getInsightFeed(userId: string): Promise<Review[]> {
   const sb = await createClient();
   const { data } = await sb
     .from("reviews")
@@ -170,13 +186,8 @@ export async function getInsightFeed(): Promise<Review[]> {
     .eq("is_draft", false)
     .order("created_at", { ascending: false })
     .limit(50);
-  const reviews = (data as Review[]) ?? [];
-  if (!reviews.length) return reviews;
-  const ids = reviews.map((r) => r.id);
-  const { data: c } = await sb.from("comments").select("review_id").in("review_id", ids);
-  const counts = new Map<string, number>();
-  (c ?? []).forEach((x: { review_id: string }) => counts.set(x.review_id, (counts.get(x.review_id) ?? 0) + 1));
-  return reviews.map((r) => ({ ...r, comment_count: counts.get(r.id) ?? 0 }));
+  const withComments = await attachCommentCounts(sb, (data as Review[]) ?? []);
+  return attachReviewLikes(sb, withComments, userId);
 }
 
 // 인사이트 탭 · 북마크: 내가 북마크한 글에 달린 인사이트 최신순
@@ -192,13 +203,20 @@ export async function getBookmarkedInsightFeed(userId: string): Promise<Review[]
     .eq("is_draft", false)
     .order("created_at", { ascending: false })
     .limit(50);
-  const reviews = (data as Review[]) ?? [];
-  if (!reviews.length) return reviews;
-  const ids = reviews.map((r) => r.id);
-  const { data: c } = await sb.from("comments").select("review_id").in("review_id", ids);
-  const counts = new Map<string, number>();
-  (c ?? []).forEach((x: { review_id: string }) => counts.set(x.review_id, (counts.get(x.review_id) ?? 0) + 1));
-  return reviews.map((r) => ({ ...r, comment_count: counts.get(r.id) ?? 0 }));
+  const withComments = await attachCommentCounts(sb, (data as Review[]) ?? []);
+  return attachReviewLikes(sb, withComments, userId);
+}
+
+// 유저가 조회한 글 (post_views → 글), 최근 조회순
+export async function getViewedPosts(userId: string): Promise<Post[]> {
+  const sb = await createClient();
+  const { data: vs, error } = await sb.from("post_views").select("post_id, viewed_at").eq("user_id", userId).order("viewed_at", { ascending: false }).limit(100);
+  if (error) return [];
+  const ids = [...new Set((vs ?? []).map((v: { post_id: string }) => v.post_id))];
+  if (!ids.length) return [];
+  const posts = await getPostsByIds(ids);
+  const order = new Map(ids.map((id, i) => [id, i]));
+  return posts.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 }
 
 // 상세 페이지 인라인 댓글 스레드: 해당 글 인사이트들의 댓글 + 좋아요 수/내가 눌렀는지

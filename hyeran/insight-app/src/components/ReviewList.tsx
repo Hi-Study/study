@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Icon from "@/components/Icon";
 import ReviewSheet from "@/components/ReviewSheet";
+import ReviewLike from "@/components/ReviewLike";
 import type { Review } from "@/lib/types";
 import type { ThreadComment } from "@/lib/queries";
 
@@ -128,6 +129,10 @@ export default function ReviewList({
                 {a?.trim() ? <div className="a">{a}</div> : <div className="a" style={{ color: "var(--text-sub)", opacity: 0.6 }}>미작성</div>}
               </div>
             ))}
+
+            <div className="rev-acts">
+              <ReviewLike reviewId={r.id} initialCount={r.like_count ?? 0} initialLiked={r.liked ?? false} />
+            </div>
 
             <div className="cmt-sec">
               <div className="cmt-title">댓글 및 토론 {countFor(r.id)}</div>

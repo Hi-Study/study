@@ -168,6 +168,16 @@ create table if not exists public.comment_likes (
 );
 create index if not exists comment_likes_comment_idx on public.comment_likes (comment_id);
 
+-- 인사이트(리뷰) 좋아요
+create table if not exists public.review_likes (
+  review_id  uuid not null references public.reviews(id)  on delete cascade,
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (review_id, user_id)
+);
+create index if not exists review_likes_review_idx  on public.review_likes (review_id);
+create index if not exists review_likes_created_idx on public.review_likes (created_at desc);
+
 -- ============================================================
 -- 6) 유저별 상태: 북마크 / 기업 즐겨찾기 / 하이라이트 / 다읽음
 -- ============================================================
@@ -205,6 +215,15 @@ create table if not exists public.reads (
   primary key (user_id, post_id)
 );
 
+-- 조회 기록 (상세 진입 시)
+create table if not exists public.post_views (
+  user_id   uuid not null references public.profiles(id) on delete cascade,
+  post_id   uuid not null references public.posts(id)    on delete cascade,
+  viewed_at timestamptz not null default now(),
+  primary key (user_id, post_id)
+);
+create index if not exists post_views_recent_idx on public.post_views (user_id, viewed_at desc);
+
 -- ============================================================
 -- 7) 알림
 -- ============================================================
@@ -232,6 +251,8 @@ alter table public.posts         enable row level security;
 alter table public.reviews       enable row level security;
 alter table public.comments      enable row level security;
 alter table public.comment_likes enable row level security;
+alter table public.review_likes  enable row level security;
+alter table public.post_views    enable row level security;
 alter table public.bookmarks     enable row level security;
 alter table public.favorites     enable row level security;
 alter table public.highlights    enable row level security;
@@ -267,6 +288,16 @@ create policy "comments delete own" on public.comments for delete to authenticat
 create policy "comment_likes read"       on public.comment_likes for select to authenticated using (true);
 create policy "comment_likes insert own" on public.comment_likes for insert to authenticated with check (user_id = auth.uid());
 create policy "comment_likes delete own" on public.comment_likes for delete to authenticated using (user_id = auth.uid());
+
+-- 인사이트 좋아요: 읽기 공통, 쓰기/삭제 본인
+create policy "review_likes read"       on public.review_likes for select to authenticated using (true);
+create policy "review_likes insert own" on public.review_likes for insert to authenticated with check (user_id = auth.uid());
+create policy "review_likes delete own" on public.review_likes for delete to authenticated using (user_id = auth.uid());
+
+-- 조회 기록: 본인 것만
+create policy "post_views read own"   on public.post_views for select to authenticated using (user_id = auth.uid());
+create policy "post_views insert own" on public.post_views for insert to authenticated with check (user_id = auth.uid());
+create policy "post_views update own" on public.post_views for update to authenticated using (user_id = auth.uid());
 
 -- 북마크 / 즐겨찾기 / 다읽음: 본인 것만 (읽기·쓰기 모두)
 create policy "bookmarks own" on public.bookmarks for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());

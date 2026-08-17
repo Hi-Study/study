@@ -8,7 +8,7 @@ export default async function InsightPage() {
   const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   const [all, bookmarked] = await Promise.all([
-    getInsightFeed(),
+    getInsightFeed(user!.id),
     user ? getBookmarkedInsightFeed(user.id) : Promise.resolve([]),
   ]);
 

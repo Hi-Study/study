@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { CompanyLogo } from "@/components/PostCard";
 import Icon from "@/components/Icon";
+import ReviewLike from "@/components/ReviewLike";
 import type { Review } from "@/lib/types";
 
 const RQ = ["인상 깊은 부분", "업무 적용", "인사이터에게 질문"] as const;
@@ -48,7 +49,9 @@ function ReviewCard({ r }: { r: Review }) {
             {expanded ? "접기" : "더보기"}
           </button>
         )}
-        <span className="ins-cmt"><Icon name="comment" size="sm" />댓글 {r.comment_count ?? 0}</span>
+        <span style={{ flex: 1 }} />
+        <ReviewLike reviewId={r.id} initialCount={r.like_count ?? 0} initialLiked={r.liked ?? false} />
+        <span className="ins-cmt"><Icon name="comment" size="sm" />{r.comment_count ?? 0}</span>
       </div>
     </Link>
   );
