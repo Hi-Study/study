@@ -236,13 +236,13 @@ export async function getHomeData(userId: string): Promise<HomeData> {
   posts.filter((p) => days(p, 14)).forEach((p) => (p.tags ?? []).forEach((t) => freq.set(t, (freq.get(t) ?? 0) + 1)));
   const keywords = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t]) => t);
 
-  // ③ 인기 글 (최근 30일 인사이트≥2 상위, 부족하면 최신 폴백)
+  // ③ 인기 글 (최근 30일 참여도=인사이트 수 + 읽음 수 상위, 부족하면 최신 폴백)
   const recent30 = posts.filter((p) => days(p, 30));
-  const popCandidates = recent30.filter((p) => (p.review_count ?? 0) >= 2)
-    .sort((a, b) => (b.review_count ?? 0) - (a.review_count ?? 0) || recentCmp(a, b));
-  let popularFallback = false;
-  let popular = take(popCandidates, 10);
-  if (popular.length < 4) { popularFallback = true; popular = take([...recent30].sort(recentCmp), 10); }
+  const engage = (p: Post) => (p.review_count ?? 0) * 2 + (p.read_count ?? 0);
+  const engaged = recent30.filter((p) => engage(p) > 0).sort((a, b) => engage(b) - engage(a) || recentCmp(a, b));
+  let popularFallback = engaged.length < 4;
+  let popular = take(engaged, 10);
+  if (popularFallback) popular = take([...recent30].sort(recentCmp), 10);
 
   // ④ 인기 인사이트 (좋아요 상위, 없으면 최신 폴백) — 인사이트 단위(글 중복 허용)
   const feed = await getInsightFeed(userId);

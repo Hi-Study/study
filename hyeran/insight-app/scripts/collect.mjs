@@ -37,7 +37,9 @@ function imgSrc(n) {
     const ss = n.getAttribute("srcset") || n.getAttribute("data-srcset") || "";
     if (ss) src = ss.split(",")[0].trim().split(/\s+/)[0] || "";
   }
-  return src && !src.startsWith("data:") ? src : "";
+  if (!src || src.startsWith("data:")) return "";
+  if (/medium\.com\/_\/stat|clientViewed|\/stat\?|\/pixel|\/track|1x1/i.test(src)) return ""; // 추적 픽셀 제외
+  return src;
 }
 // 블록 타입: 헤딩/문단/목록/인용/코드/캡션
 function blockType(tag) {

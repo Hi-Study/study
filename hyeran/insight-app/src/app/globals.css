@@ -197,7 +197,7 @@ svg.i.lg{ width:26px; height:26px; }
 
 /* ===== 에디터 픽 히어로 카드 ===== */
 /* 오늘의 글 — 매거진 히어로 (큰 이미지 + 하단 오버레이 제목) */
-.feature{ position:relative; display:flex; flex-direction:column; justify-content:space-between; min-height:360px; background:var(--hero-bg); background-size:cover; background-position:center; color:#fff; padding:16px; overflow:hidden; animation:rise .22s ease-out both; }
+.feature{ position:relative; display:flex; flex-direction:column; justify-content:space-between; min-height:360px; background-color:var(--cc, var(--hero-bg)); background-size:cover; background-position:center; color:#fff; padding:16px; overflow:hidden; animation:rise .22s ease-out both; }
 .feature.ph{ background:linear-gradient(150deg, var(--cc), color-mix(in srgb, var(--cc) 42%, #000)); }
 .feature:active{ opacity:.85; }
 .feat-eyebrow{ position:relative; z-index:1; align-self:flex-start; display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700; color:#fff; background:rgba(0,0,0,.4); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); padding:6px 11px; border-radius:var(--r-full); }

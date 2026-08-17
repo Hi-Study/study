@@ -31,7 +31,9 @@ function bodyFromArticle(content: string | null | undefined, textContent: string
       const ss = n.getAttribute("srcset") || n.getAttribute("data-srcset") || "";
       if (ss) src = ss.split(",")[0].trim().split(/\s+/)[0] || "";
     }
-    return src && !src.startsWith("data:") ? src : "";
+    if (!src || src.startsWith("data:")) return "";
+    if (/medium\.com\/_\/stat|clientViewed|\/stat\?|\/pixel|\/track|1x1/i.test(src)) return "";
+    return src;
   };
   doc.querySelectorAll("h1,h2,h3,h4,h5,h6,p,li,blockquote,pre,figcaption,img,source").forEach((n) => {
     const tag = n.tagName.toLowerCase();

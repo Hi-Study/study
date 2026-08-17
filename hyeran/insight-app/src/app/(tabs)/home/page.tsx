@@ -64,7 +64,7 @@ export default async function HomePage() {
         {/* ③ 인기 글 */}
         {home.popular.length > 0 && (
           <section className="hsec">
-            <SecHead title={home.popularFallback ? "막 이야기가 시작됐어요" : "인사이트를 많이 남겼어요"} />
+            <SecHead title={home.popularFallback ? "막 이야기가 시작됐어요" : "요즘 많이 보고 인사이트를 남긴 글"} />
             {swipe(home.popular)}
           </section>
         )}
