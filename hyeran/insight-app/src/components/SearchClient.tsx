@@ -1,114 +1,97 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
-import Icon from "./Icon";
-import { toggleBookmark } from "@/app/actions";
-import { useOptimistic, useTransition } from "react";
-import type { FeedPost } from "@/lib/types";
+import { useEffect, useState } from "react";
+import PostRow from "@/components/PostRow";
+import Icon from "@/components/Icon";
+import type { Company, Post } from "@/lib/types";
 
-const TAGS = ["우선순위", "로드맵", "OKR", "리서치", "UX", "데이터", "조직", "도구", "커리어", "전략", "프로덕트"];
+const RISING = ["OKR", "리텐션", "온보딩", "디자인시스템", "RAG", "LLM", "실험", "생산성", "아키텍처", "AI"];
+// 추천 검색어(문장·질문형) — 보여줄 문구(label)와 실제 검색어(q)
+const SUGGEST: { label: string; q: string }[] = [
+  { label: "요즘 뜨는 디자인 시스템 이야기", q: "디자인시스템" },
+  { label: "LLM을 실제 서비스에 어떻게 붙였을까", q: "LLM" },
+  { label: "리텐션을 끌어올린 방법이 궁금해", q: "리텐션" },
+  { label: "온보딩을 개선한 사례가 보고 싶어", q: "온보딩" },
+  { label: "실험으로 배운 것들", q: "실험" },
+];
+const KEY = "recent-searches";
 
-function highlight(text: string, query: string) {
-  if (!query) return text;
-  const idx = text.indexOf(query);
-  if (idx === -1) return text;
+export default function SearchClient({ posts, companies, readIds, bookmarked, initialQuery = "" }: { posts: Post[]; companies: Company[]; readIds: string[]; bookmarked: string[]; initialQuery?: string }) {
+  const [q, setQ] = useState(initialQuery);
+  const [recent, setRecent] = useState<string[]>([]);
+  const readSet = new Set(readIds);
+  const bmSet = new Set(bookmarked);
+
+  useEffect(() => {
+    try { setRecent(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch {}
+  }, []);
+
+  const saveRecent = (term: string) => {
+    const next = [term, ...recent.filter((r) => r !== term)].slice(0, 8);
+    setRecent(next);
+    try { localStorage.setItem(KEY, JSON.stringify(next)); } catch {}
+  };
+  const removeRecent = (term: string) => {
+    const next = recent.filter((r) => r !== term);
+    setRecent(next);
+    try { localStorage.setItem(KEY, JSON.stringify(next)); } catch {}
+  };
+
+  const compName = (id: string | null) => companies.find((c) => c.id === id)?.name ?? "";
+  const query = q.trim().toLowerCase();
+  const results = query
+    ? posts.filter((p) =>
+        p.title.toLowerCase().includes(query) ||
+        compName(p.company_id).toLowerCase().includes(query) ||
+        p.tags.some((t) => t.toLowerCase().includes(query)))
+    : [];
+
+  const run = (term: string) => { setQ(term); if (term.trim()) saveRecent(term.trim()); };
+
   return (
-    <>
-      {text.slice(0, idx)}
-      <mark>{text.slice(idx, idx + query.length)}</mark>
-      {text.slice(idx + query.length)}
-    </>
-  );
-}
+    <div className="pad">
+      <div className="searchbar">
+        <Icon name="search" />
+        <input value={q} placeholder="글 제목·기업·태그 검색" autoFocus
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && query) saveRecent(query); }} />
+        {q && <button className="sb-clear" onClick={() => setQ("")} aria-label="지우기"><Icon name="x" /></button>}
+      </div>
 
-function CompactCard({ post, query }: { post: FeedPost; query: string }) {
-  const [, startTransition] = useTransition();
-  const [bookmarked, setBookmarked] = useOptimistic(post.bookmarked);
-
-  return (
-    <div className="compact-card">
-      <Link href={`/post/${post.id}`} className="compact-card-main">
-        <div className="compact-thumb">
-          <Icon name={(post.icon as never) || "link"} />
-        </div>
-        <div className="compact-body">
-          <div className="compact-title">{highlight(post.title, query)}</div>
-          <div className="compact-meta">
-            <span className="src" style={{ color: "var(--accent)" }}>
-              {post.source}
-            </span>{" "}
-            · {post.sharer?.name}
+      {query ? (
+        <>
+          <div className="sec-title">검색 결과 {results.length}</div>
+          {results.length ? results.map((p) => <PostRow key={p.id} post={{ ...p, read: readSet.has(p.id), bookmarked: bmSet.has(p.id) }} />)
+            : <div className="empty"><div className="art" /><div className="msg">결과가 없어요</div></div>}
+        </>
+      ) : (
+        <>
+          {recent.length > 0 && (
+            <>
+              <div className="sec-title">최근 검색어</div>
+              {recent.map((t) => (
+                <div key={t} className="recent-row">
+                  <button className="recent-term" onClick={() => run(t)}><Icon name="search" size="sm" />{t}</button>
+                  <button className="recent-x" onClick={() => removeRecent(t)} aria-label="삭제"><Icon name="x" size="sm" /></button>
+                </div>
+              ))}
+            </>
+          )}
+          <div className="sec-title">추천 검색어</div>
+          <div className="chips" style={{ flexWrap: "wrap", overflowX: "visible", marginBottom: 6 }}>
+            {SUGGEST.map((s) => (
+              <button key={s.q} className="chip" onClick={() => run(s.q)}>{s.label}</button>
+            ))}
           </div>
-        </div>
-      </Link>
-      <button
-        className={`bookmark-btn-compact${bookmarked ? " saved" : ""}`}
-        onClick={() =>
-          startTransition(async () => {
-            setBookmarked(!bookmarked);
-            await toggleBookmark(post.id);
-          })
-        }
-        aria-label={bookmarked ? "북마크 해제" : "북마크"}
-      >
-        <Icon name="bookmark" filled={bookmarked} />
-      </button>
-    </div>
-  );
-}
 
-export default function SearchClient({ posts }: { posts: FeedPost[] }) {
-  const [query, setQuery] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
-
-  const results = useMemo(() => {
-    return posts.filter((p) => {
-      const q = query.trim();
-      const matchQ =
-        !q ||
-        p.title.includes(q) ||
-        p.tags.some((t) => t.includes(q)) ||
-        (p.paragraphs?.[0] || "").includes(q);
-      const matchTags = tags.length === 0 || tags.every((t) => p.tags.includes(t));
-      return matchQ && matchTags;
-    });
-  }, [posts, query, tags]);
-
-  return (
-    <div className="content">
-      <div className="search-wrap">
-        <div className="search-bar">
-          <Icon name="search2" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="검색어를 입력하세요"
-          />
-          <button className="clear-btn" onClick={() => setQuery("")} aria-label="지우기">
-            <Icon name="x" />
-          </button>
-        </div>
-      </div>
-      <div className="filter-label">태그 필터</div>
-      <div className="chip-cloud">
-        {TAGS.map((t) => (
-          <button
-            key={t}
-            className={`chip${tags.includes(t) ? " selected" : ""}`}
-            onClick={() => setTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-      <div className="result-header">결과 {results.length}</div>
-      <div className="compact-list">
-        {results.length === 0 && <div className="empty-state">검색 결과가 없어요</div>}
-        {results.map((p) => (
-          <CompactCard key={p.id} post={p} query={query} />
-        ))}
-      </div>
+          <div className="sec-title">급상승 검색어</div>
+          {RISING.map((t, i) => (
+            <button key={t} className="rank-row" onClick={() => run(t)}>
+              <span className="rank-n">{i + 1}</span>{t}
+            </button>
+          ))}
+        </>
+      )}
     </div>
   );
 }

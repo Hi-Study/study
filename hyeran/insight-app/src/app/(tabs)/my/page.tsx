@@ -1,37 +1,45 @@
-import Link from "next/link";
-import Icon from "@/components/Icon";
-import MyClient from "@/components/MyClient";
-import { getCurrentProfile, getFeedPosts, getMyDrafts, getMyHighlights } from "@/lib/queries";
+import { createClient } from "@/lib/supabase/server";
+import { getCommentedPosts, getReadPostIds, getHighlightedPosts, getPostsByIds, getBookmarkedPostIds, getViewedPosts } from "@/lib/queries";
+import MyPostsClient from "@/components/MyPostsClient";
+import LogoutButton from "@/components/LogoutButton";
+import type { Post } from "@/lib/types";
+
+export const dynamic = "force-dynamic";
 
 export default async function MyPage() {
-  const [profile, posts, drafts, highlights] = await Promise.all([
-    getCurrentProfile(),
-    getFeedPosts(),
-    getMyDrafts(),
-    getMyHighlights(),
+  const sb = await createClient();
+  const { data: { user } } = await sb.auth.getUser();
+  const { data: profile } = await sb.from("profiles").select("name, initial").eq("id", user!.id).single();
+
+  // 내가 인사이트 남긴 글
+  const { data: myReviews } = await sb.from("reviews").select("post_id").eq("author_id", user!.id).eq("is_draft", false);
+  const postIds = [...new Set((myReviews ?? []).map((r: { post_id: string }) => r.post_id))];
+
+  const [viewed, insights, comments, highlights, readIds, bmIds] = await Promise.all([
+    getViewedPosts(user!.id),
+    getPostsByIds(postIds),
+    getCommentedPosts(user!.id),
+    getHighlightedPosts(user!.id),
+    getReadPostIds(user!.id),
+    getBookmarkedPostIds(user!.id),
   ]);
 
-  const myPosts = posts.filter((p) => p.sharer_id === profile?.id);
-  const bookmarked = posts.filter((p) => p.bookmarked);
-  const curated = posts.filter((p) => p.talked);
+  const mark = (p: Post) => ({ ...p, read: readIds.has(p.id), bookmarked: bmIds.has(p.id) });
 
   return (
     <>
-      <div className="top">
-        <span className="spacer-36" />
-        <span className="title">마이</span>
-        <Link href="/settings" className="icon-btn" aria-label="설정">
-          <Icon name="settings" />
-        </Link>
+      <div className="appbar"><span className="title">마이</span></div>
+      <div className="pad">
+        <div className="profile">
+          <span className="avatar lg">{profile?.initial ?? "?"}</span>
+          <div>
+            <div className="nm">{profile?.name ?? "인사이터"}</div>
+            <div className="sub">인사이터</div>
+          </div>
+          <LogoutButton />
+        </div>
+        <MyPostsClient viewed={viewed.map(mark)} insights={insights.map(mark)} comments={comments.map(mark)} highlights={highlights.map(mark)} />
       </div>
-      <MyClient
-        profile={profile}
-        myPosts={myPosts}
-        bookmarked={bookmarked}
-        curated={curated}
-        highlights={highlights}
-        drafts={drafts}
-      />
     </>
   );
 }

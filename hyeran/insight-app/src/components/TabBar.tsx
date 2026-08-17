@@ -1,30 +1,36 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import Icon from "./Icon";
+import { usePathname, useRouter } from "next/navigation";
+import Icon from "@/components/Icon";
 
 const TABS = [
-  { href: "/home", label: "홈", icon: "home" as const },
-  { href: "/search", label: "검색", icon: "search" as const },
-  { href: "/my", label: "마이", icon: "user" as const },
+  { href: "/home", label: "홈", icon: "home" },
+  { href: "/feed", label: "피드", icon: "feed" },
+  { href: "/insight", label: "인사이트", icon: "insight" },
+  { href: "/my", label: "마이", icon: "user" },
 ];
 
 export default function TabBar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const showFab = ["/home", "/feed", "/insight"].includes(pathname);
 
   return (
-    <nav id="tabbar">
-      {TABS.map((tab) => (
-        <Link
-          key={tab.href}
-          href={tab.href}
-          className={`tab-btn${pathname === tab.href ? " active" : ""}`}
-        >
-          <Icon name={tab.icon} />
-          {tab.label}
-        </Link>
-      ))}
-    </nav>
+    <>
+      {showFab && (
+        <button className="fab" onClick={() => router.push("/register")} aria-label="글 등록">
+          <Icon name="plus" size="lg" />
+        </button>
+      )}
+      <nav className="tabbar">
+        {TABS.map((t) => (
+          <Link key={t.href} href={t.href} className={`tab ${pathname === t.href ? "on" : ""}`}>
+            <Icon name={t.icon} />
+            <span className="lbl">{t.label}</span>
+          </Link>
+        ))}
+      </nav>
+    </>
   );
 }

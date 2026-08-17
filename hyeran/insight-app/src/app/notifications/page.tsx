@@ -1,21 +1,27 @@
-import Link from "next/link";
-import Icon from "@/components/Icon";
+import { createClient } from "@/lib/supabase/server";
+import BackButton from "@/components/BackButton";
 import NotificationsClient from "@/components/NotificationsClient";
-import { getNotifications } from "@/lib/queries";
+
+export const dynamic = "force-dynamic";
 
 export default async function NotificationsPage() {
-  const notifications = await getNotifications();
+  const sb = await createClient();
+  const { data: { user } } = await sb.auth.getUser();
+
+  const { data } = await sb
+    .from("notifications")
+    .select("id, type, title, body, read, created_at")
+    .eq("user_id", user!.id)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  // 조회 시 읽음 처리
+  await sb.from("notifications").update({ read: true }).eq("user_id", user!.id).eq("read", false);
 
   return (
-    <div className="page">
-      <div className="top">
-        <Link href="/home" className="icon-btn" aria-label="뒤로">
-          <Icon name="back" />
-        </Link>
-        <span className="title">알림</span>
-        <span className="spacer-36" />
-      </div>
-      <NotificationsClient notifications={notifications} />
+    <div className="screen">
+      <div className="appbar"><BackButton /><span className="title">알림</span></div>
+      <NotificationsClient items={data ?? []} />
     </div>
   );
 }
