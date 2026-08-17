@@ -46,9 +46,8 @@ export default function FeedClient({
   else if (source !== "all") list = list.filter((p) => p.company_id === source);
   if (cats.size) list = list.filter((p) => cats.has(p.category));
 
-  const favCompanies = companies.filter((c) => favSet.has(c.id));
-  const selCompany = companies.find((c) => c.id === source);
-  const selLabel = selCompany ? selCompany.name : "All";
+  // 즐겨찾기 기업 먼저, 그다음 나머지
+  const orderedCompanies = [...companies.filter((c) => favSet.has(c.id)), ...companies.filter((c) => !favSet.has(c.id))];
   const brandStyle = (c: Company) => ({ background: c.color, color: readableText(c.color), borderColor: "transparent" });
 
   return (
@@ -59,28 +58,31 @@ export default function FeedClient({
         <button className={`utab ${tab === "bookmark" ? "on" : ""}`} onClick={() => setTab("bookmark")}>북마크</button>
       </div>
 
-      {/* 필터 1줄 — 출처 */}
+      {/* 필터 1줄 — 출처(기업) : 셀렉트 · 전체 · 즐겨찾기 · 직접등록 · 기업칩(즐겨찾기 먼저) */}
       <div className="cchips">
-        <button className={`cchip sel-btn ${source === "all" || source === "favorites" || source === "direct" ? "" : "on"}`} onClick={() => setCoSheet(true)}>
-          {selLabel} <Icon name="chevron" size="sm" />
-        </button>
+        <button className="cchip sel-btn" onClick={() => setCoSheet(true)}>기업 <Icon name="chevron" size="sm" /></button>
+        <button className={`cchip ${source === "all" ? "on" : ""}`} onClick={() => setSource("all")}>전체</button>
         {favSet.size > 0 && (
           <button className={`cchip ${source === "favorites" ? "on" : ""}`} onClick={() => setSource(source === "favorites" ? "all" : "favorites")}>★ 즐겨찾기</button>
         )}
-        {favCompanies.map((c) => {
+        <button className={`cchip ${source === "direct" ? "on" : ""}`} onClick={() => setSource(source === "direct" ? "all" : "direct")}>직접 등록</button>
+        {orderedCompanies.map((c) => {
           const on = source === c.id;
+          const fav = favSet.has(c.id);
           return (
-            <button key={c.id} className={`cchip brand ${on ? "sel" : ""}`} style={on ? brandStyle(c) : undefined} onClick={() => setSource(on ? "all" : c.id)}>{c.name}</button>
+            <button key={c.id} className={`cchip brand ${on ? "sel" : ""}`} style={on ? brandStyle(c) : undefined} onClick={() => setSource(on ? "all" : c.id)}>
+              {fav && <span className="cchip-star" style={{ color: on ? readableText(c.color) : c.color }}>★</span>}{c.name}
+            </button>
           );
         })}
-        <button className={`cchip ${source === "direct" ? "on" : ""}`} onClick={() => setSource(source === "direct" ? "all" : "direct")}>직접 등록</button>
       </div>
 
-      {/* 필터 2줄 — 카테고리 */}
+      {/* 필터 2줄 — 카테고리 : 셀렉트 · 전체 · 11개 칩 */}
       <div className="cchips" style={{ marginTop: 8 }}>
-        <button className="cchip sel-btn" onClick={() => setCatSheet(true)}>All <Icon name="chevron" size="sm" /></button>
-        {[...cats].map((c) => (
-          <button key={c} className="cchip on" onClick={() => toggleCat(c)}>{c} ✕</button>
+        <button className="cchip sel-btn" onClick={() => setCatSheet(true)}>카테고리 <Icon name="chevron" size="sm" /></button>
+        <button className={`cchip ${cats.size === 0 ? "on" : ""}`} onClick={() => setCats(new Set())}>전체</button>
+        {CATEGORIES.map((c) => (
+          <button key={c} className={`cchip ${cats.has(c) ? "on" : ""}`} onClick={() => toggleCat(c)}>{c}</button>
         ))}
       </div>
 

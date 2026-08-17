@@ -146,22 +146,17 @@ export default function ReviewList({
         <ReviewSheet postId={postId} initial={myInitial} trigger={<div className="cta-primary">내 생각도 남겨볼까요?</div>} />
       )}
 
-      {/* 다른 인사이터의 인사이트 — 기본 접힘 */}
+      {/* 등록된 인사이트 — 기본 접힘 (은은한 서브 버튼) */}
       {others.length > 0 && (
         !showOthers ? (
-          <button className="others-head" onClick={() => setShowOthers(true)}>
-            <span className="oh-txt">다른 인사이터의 인사이트 {others.length}개</span>
-            <span className="oh-avatars">{others.slice(0, 3).map((o) => <span key={o.id} className="avatar sm">{o.author?.initial ?? "?"}</span>)}</span>
-            <span className="oh-go">보기</span>
+          <button className="ins-more-btn" onClick={() => setShowOthers(true)}>
+            등록된 인사이트 {others.length}개 보기 <Icon name="chevron" size="sm" />
           </button>
         ) : (
           <>
             {justPosted && <div className="posted-hint">이제 다른 인사이터들의 생각을 볼 차례예요</div>}
-            <div className="others-open">
-              <span className="oh-txt">다른 인사이터의 인사이트 {others.length}개</span>
-              <button className="oh-fold" onClick={() => setShowOthers(false)}>접기</button>
-            </div>
             {others.map((r) => <ReviewCard key={r.id} r={r} isMine={false} />)}
+            <button className="ins-more-btn open" onClick={() => setShowOthers(false)}>접기 <Icon name="chevron" size="sm" /></button>
           </>
         )
       )}
