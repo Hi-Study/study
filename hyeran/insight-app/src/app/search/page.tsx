@@ -5,7 +5,8 @@ import SearchClient from "@/components/SearchClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function SearchPage() {
+export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const initialQuery = (await searchParams).q ?? "";
   const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   const [posts, companies, readIds, bookmarked] = await Promise.all([
@@ -17,7 +18,7 @@ export default async function SearchPage() {
   return (
     <div className="screen">
       <div className="appbar"><BackButton /><span className="title">검색</span></div>
-      <SearchClient posts={posts} companies={companies} readIds={[...readIds]} bookmarked={[...bookmarked]} />
+      <SearchClient posts={posts} companies={companies} readIds={[...readIds]} bookmarked={[...bookmarked]} initialQuery={initialQuery} />
     </div>
   );
 }

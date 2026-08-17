@@ -16,8 +16,8 @@ const SUGGEST: { label: string; q: string }[] = [
 ];
 const KEY = "recent-searches";
 
-export default function SearchClient({ posts, companies, readIds, bookmarked }: { posts: Post[]; companies: Company[]; readIds: string[]; bookmarked: string[] }) {
-  const [q, setQ] = useState("");
+export default function SearchClient({ posts, companies, readIds, bookmarked, initialQuery = "" }: { posts: Post[]; companies: Company[]; readIds: string[]; bookmarked: string[]; initialQuery?: string }) {
+  const [q, setQ] = useState(initialQuery);
   const [recent, setRecent] = useState<string[]>([]);
   const readSet = new Set(readIds);
   const bmSet = new Set(bookmarked);

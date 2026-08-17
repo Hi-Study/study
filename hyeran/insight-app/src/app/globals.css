@@ -92,6 +92,28 @@ svg.i.lg{ width:26px; height:26px; }
 .hsec-head .see-all{ padding-bottom:2px; }
 .co-block{ margin-top:20px; }
 .co-block:first-of-type{ margin-top:4px; }
+.hsec.zone{ margin-top:76px; }  /* 존 경계는 더 넓게 */
+/* ② 인기 키워드 칩 */
+.kw-row{ display:flex; gap:8px; overflow-x:auto; padding:2px 0; }
+.kw-row::-webkit-scrollbar{ height:0; }
+.kw-chip{ flex:0 0 auto; height:34px; display:inline-flex; align-items:center; padding:0 15px; border-radius:var(--r-full); background:var(--surface); color:var(--text); font-size:13px; font-weight:600; white-space:nowrap; }
+.kw-chip::before{ content:"#"; opacity:.45; margin-right:2px; }
+/* ④ 인기 인사이트 미니 카드 */
+.ins-mini{ flex:0 0 76%; display:block; background:var(--surface); padding:14px; }
+.ins-mini-head{ display:flex; align-items:center; gap:7px; }
+.ins-mini-name{ font-size:12.5px; font-weight:600; }
+.ins-mini-post{ font-size:12px; color:var(--text-sub); margin:8px 0 5px; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }
+.ins-mini-body{ font-size:14px; line-height:1.5; color:var(--text); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; min-height:63px; }
+.ins-mini-foot{ display:flex; gap:14px; margin-top:10px; font-size:12px; color:var(--text-sub); }
+.ins-mini-foot span{ display:inline-flex; align-items:center; gap:4px; }
+.ins-mini-foot .on{ color:var(--coral); }
+.ins-mini-foot .on svg{ fill:var(--coral); }
+.ins-mini-foot svg{ width:14px; height:14px; }
+/* ⑦⑧ 유도 배너 */
+.home-banner{ display:flex; align-items:center; gap:12px; background:var(--surface); padding:16px; }
+.home-banner .hb-txt{ flex:1; font-size:13.5px; line-height:1.5; color:var(--text-sub); }
+.home-banner .hb-txt b{ color:var(--text); font-weight:700; }
+.home-banner .hb-go{ flex:0 0 auto; font-size:13px; font-weight:600; color:var(--coral); white-space:nowrap; }
 .sec-head{ display:flex; align-items:baseline; justify-content:space-between; margin:22px 0 11px; }
 .sec-head .sec-title{ margin:0; }
 .see-all{ font-size:12px; font-weight:600; color:var(--steel-text); white-space:nowrap; }

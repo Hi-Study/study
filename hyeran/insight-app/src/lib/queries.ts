@@ -207,6 +207,79 @@ export async function getBookmarkedInsightFeed(userId: string): Promise<Review[]
   return attachReviewLikes(sb, withComments, userId);
 }
 
+// 홈 8섹션 데이터 (중복 노출 제거 + 폴백 포함)
+export type HomeData = {
+  hero: Post | null;
+  keywords: string[];
+  popular: Post[]; popularFallback: boolean;
+  popularInsights: Review[]; popularInsightsFallback: boolean;
+  unfinished: Post[];
+  recommended: Post[];
+  favNew: Post[]; favEmpty: boolean;
+  direct: Post[];
+};
+export async function getHomeData(userId: string): Promise<HomeData> {
+  const sb = await createClient();
+  const posts = await getFeedPosts(); // company·author·review_count·read_count 포함
+  const now = Date.now();
+  const days = (p: Post, d: number) => now - new Date(p.published_at).getTime() <= d * 86_400_000;
+  const recentCmp = (a: Post, b: Post) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime();
+  const seen = new Set<string>();
+  const take = (list: Post[], n: number) => { const out: Post[] = []; for (const p of list) { if (seen.has(p.id)) continue; out.push(p); seen.add(p.id); if (out.length >= n) break; } return out; };
+
+  // ① 오늘의 글
+  const hero = pickTodayHero(posts);
+  if (hero) seen.add(hero.id);
+
+  // ② 인기 키워드 (최근 2주 tags 빈도 top 8)
+  const freq = new Map<string, number>();
+  posts.filter((p) => days(p, 14)).forEach((p) => (p.tags ?? []).forEach((t) => freq.set(t, (freq.get(t) ?? 0) + 1)));
+  const keywords = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t]) => t);
+
+  // ③ 인기 글 (최근 30일 인사이트≥2 상위, 부족하면 최신 폴백)
+  const recent30 = posts.filter((p) => days(p, 30));
+  const popCandidates = recent30.filter((p) => (p.review_count ?? 0) >= 2)
+    .sort((a, b) => (b.review_count ?? 0) - (a.review_count ?? 0) || recentCmp(a, b));
+  let popularFallback = false;
+  let popular = take(popCandidates, 10);
+  if (popular.length < 4) { popularFallback = true; popular = take([...recent30].sort(recentCmp), 10); }
+
+  // ④ 인기 인사이트 (좋아요 상위, 없으면 최신 폴백) — 인사이트 단위(글 중복 허용)
+  const feed = await getInsightFeed(userId);
+  const liked = [...feed].filter((r) => (r.like_count ?? 0) >= 1).sort((a, b) => (b.like_count ?? 0) - (a.like_count ?? 0) || (b.comment_count ?? 0) - (a.comment_count ?? 0));
+  const popularInsightsFallback = liked.length < 3;
+  const popularInsights = (popularInsightsFallback ? feed : liked).slice(0, 10);
+
+  // ⑤ 아직 안 끝난 글 (조회했으나 내 인사이트 없음)
+  const { data: myRv } = await sb.from("reviews").select("post_id").eq("author_id", userId).eq("is_draft", false);
+  const myReviewed = new Set((myRv ?? []).map((r: { post_id: string }) => r.post_id));
+  const viewed = await getViewedPosts(userId);
+  const unfinished = viewed.filter((p) => !myReviewed.has(p.id)).slice(0, 10);
+
+  // ⑥ 추천 글 (내 활동 태그 유사도) — 내 활동 없으면 빈 배열
+  const myTags = new Map<string, number>();
+  [...viewed, ...posts.filter((p) => myReviewed.has(p.id))].forEach((p) => (p.tags ?? []).forEach((t) => myTags.set(t, (myTags.get(t) ?? 0) + 1)));
+  let recommended: Post[] = [];
+  if (myTags.size) {
+    const scored = posts
+      .filter((p) => !myReviewed.has(p.id))
+      .map((p) => ({ p, s: (p.tags ?? []).reduce((s, t) => s + (myTags.get(t) ?? 0), 0) }))
+      .filter((x) => x.s > 0)
+      .sort((a, b) => b.s - a.s || recentCmp(a.p, b.p));
+    recommended = take(scored.map((x) => x.p), 10);
+  }
+
+  // ⑦ 즐겨찾기 기업 새 글 (없으면 유도 배너)
+  const favs = await getFavoriteCompanyIds(userId);
+  const favEmpty = favs.size === 0;
+  const favNew = favEmpty ? [] : take(posts.filter((p) => p.company_id && favs.has(p.company_id)).sort(recentCmp), 10);
+
+  // ⑧ 사용자 등록 글
+  const direct = take(posts.filter((p) => p.source === "direct").sort(recentCmp), 10);
+
+  return { hero, keywords, popular, popularFallback, popularInsights, popularInsightsFallback, unfinished, recommended, favNew, favEmpty, direct };
+}
+
 // 유저가 조회한 글 (post_views → 글), 최근 조회순
 export async function getViewedPosts(userId: string): Promise<Post[]> {
   const sb = await createClient();
