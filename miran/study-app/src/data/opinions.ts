@@ -87,7 +87,7 @@ export interface OpinionArticleLite {
   topic: Topic | null;
   url: string;
   summary: string | null;
-  blog: { key: string; name: string; brand_color: string | null; homepage: string | null } | null;
+  blog: { id: string; key: string; name: string; brand_color: string | null; homepage: string | null } | null;
 }
 
 export interface OpinionFeedItem extends OpinionWithAuthor {
@@ -95,7 +95,7 @@ export interface OpinionFeedItem extends OpinionWithAuthor {
 }
 
 const OPINION_SELECT =
-  "*, author:users(name, role_title), article:articles(id, title, og_image, topic, url, summary, blog:blogs(key, name, brand_color, homepage))";
+  "*, author:users(name, role_title), article:articles(id, title, og_image, topic, url, summary, blog:blogs(id, key, name, brand_color, homepage))";
 
 /** 전체 의견 피드 — 작성자 + 출처 글 요약 포함. 인기순(like_count) 또는 최신순. */
 export async function listOpinionsFeed(sort: OpinionSort = "latest"): Promise<OpinionFeedItem[]> {

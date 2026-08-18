@@ -15,10 +15,11 @@ import { Search, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
-import { useOpinionsFeed, type OpinionSort } from "@/data";
+import { useOpinionsFeed, useBlogs, type OpinionSort } from "@/data";
 import { dtype, TOPIC_META, TOPIC_ORDER } from "@/theme";
 import type { Topic } from "@/types/database";
 import { OpinionCard } from "@/components/distill/OpinionCard";
+import { BlogFilterChips } from "@/components/distill/BlogFilterChips";
 import { Loading, ErrorState, EmptyState } from "@/components";
 
 export function DiscussScreen() {
@@ -28,8 +29,10 @@ export function DiscussScreen() {
 
   const [sort, setSort] = useState<OpinionSort>("latest");
   const [topic, setTopic] = useState<Topic | null>(null);
+  const [blogSel, setBlogSel] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
 
+  const blogsQ = useBlogs();
   const q = useOpinionsFeed(sort);
   const list = q.data ?? [];
 
@@ -37,6 +40,7 @@ export function DiscussScreen() {
     const needle = query.trim().toLowerCase();
     return list.filter((o) => {
       if (topic && o.article?.topic !== topic) return false;
+      if (blogSel.size > 0 && !blogSel.has(o.article?.blog?.id ?? "")) return false;
       if (needle) {
         const hay = [JSON.stringify(o.insight), o.article?.title, o.article?.blog?.name, o.author?.name]
           .filter(Boolean)
@@ -46,9 +50,18 @@ export function DiscussScreen() {
       }
       return true;
     });
-  }, [list, topic, query]);
+  }, [list, topic, blogSel, query]);
 
-  const filtering = topic !== null || query.trim().length > 0;
+  const filtering = topic !== null || blogSel.size > 0 || query.trim().length > 0;
+  const countLabel = `${filtered.length.toLocaleString()}개`;
+
+  const toggleBlog = (id: string) =>
+    setBlogSel((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   return (
     <SafeAreaView
@@ -59,22 +72,6 @@ export function DiscussScreen() {
         <View>
           <Text style={[styles.title, { color: c.textPrimary }]}>토론</Text>
           <Text style={[styles.sub, { color: c.textMuted }]}>독후감·인사이트 모아보기</Text>
-        </View>
-        <View style={[styles.sortSeg, { backgroundColor: c.surfaceSunken }]}>
-          {(["latest", "popular"] as const).map((s) => {
-            const on = sort === s;
-            return (
-              <Pressable
-                key={s}
-                onPress={() => setSort(s)}
-                style={[styles.sortBtn, on && { backgroundColor: c.surfaceCard }]}
-              >
-                <Text style={[styles.sortBtnText, { color: on ? c.primary : c.textMuted }]}>
-                  {s === "latest" ? "최신순" : "인기순"}
-                </Text>
-              </Pressable>
-            );
-          })}
         </View>
       </View>
 
@@ -98,6 +95,14 @@ export function DiscussScreen() {
         </View>
       </View>
 
+      {/* 최상단 기업 칩(피드와 동일) */}
+      <BlogFilterChips
+        blogs={blogsQ.data ?? []}
+        selected={blogSel}
+        onToggle={toggleBlog}
+        onClear={() => setBlogSel(new Set())}
+      />
+
       {/* 주제 칩 */}
       <View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
@@ -111,6 +116,27 @@ export function DiscussScreen() {
             />
           ))}
         </ScrollView>
+      </View>
+
+      {/* 의견 개수(좌) + 정렬(우) — 피드와 동일 */}
+      <View style={styles.filterRow}>
+        <Text style={[styles.countText, { color: c.textSecondary }]}>{countLabel}</Text>
+        <View style={[styles.sortSeg, { backgroundColor: c.surfaceSunken }]}>
+          {(["latest", "popular"] as const).map((s) => {
+            const on = sort === s;
+            return (
+              <Pressable
+                key={s}
+                onPress={() => setSort(s)}
+                style={[styles.sortBtn, on && { backgroundColor: c.surfaceCard }]}
+              >
+                <Text style={[styles.sortBtnText, { color: on ? c.primary : c.textMuted }]}>
+                  {s === "latest" ? "최신순" : "인기순"}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
       {q.isLoading ? (
@@ -182,6 +208,16 @@ const styles = StyleSheet.create({
   sortSeg: { flexDirection: "row", borderRadius: 10, padding: 3, gap: 2 },
   sortBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   sortBtnText: { ...dtype.label, fontSize: 12.5, fontWeight: "700" },
+
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 2,
+    paddingBottom: 8,
+  },
+  countText: { ...dtype.label, fontSize: 13, fontWeight: "700" },
 
   searchWrap: { paddingHorizontal: 16, paddingTop: 4 },
   search: {

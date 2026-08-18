@@ -1,25 +1,17 @@
 // distill 피드 탭 — 주제별 테크 글 스트림 (회의록 §피드).
-// 정보 과다 완화: 주제 탭 + [정렬 · 기업 필터] 한 줄 + 리스트/그리드 보기 토글.
+// 최상단 기업 칩(무신사식) + 주제 탭 + [개수 좌·정렬 우] + 리스트/그리드 보기 토글.
 import React, { useMemo, useState } from "react";
-import {
-  Dimensions,
-  FlatList,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Dimensions, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Building2, Check, ChevronDown, LayoutGrid, Rows3, X } from "lucide-react-native";
+import { LayoutGrid, Rows3 } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
 import { useArticlesFeed, useArticlesFeedCount, useBlogs } from "@/data";
 import { dtype, TOPIC_META, TOPIC_ORDER } from "@/theme";
 import type { Topic } from "@/types/database";
-import { ArticleRow, ArticleGridCard, ServiceLogo } from "@/components/distill/ArticleCards";
+import { ArticleRow, ArticleGridCard } from "@/components/distill/ArticleCards";
+import { BlogFilterChips } from "@/components/distill/BlogFilterChips";
 import { Loading, ErrorState, EmptyState } from "@/components";
 
 const W = Dimensions.get("window").width;
@@ -36,7 +28,6 @@ export function FeedScreen() {
   const [sort, setSort] = useState<"latest" | "popular">("latest");
   const [view, setView] = useState<ViewMode>("list");
   const [blogSel, setBlogSel] = useState<Set<string>>(new Set());
-  const [filterOpen, setFilterOpen] = useState(false);
 
   const blogsQ = useBlogs();
   const blogIds = useMemo(() => [...blogSel], [blogSel]);
@@ -48,15 +39,6 @@ export function FeedScreen() {
   const q = useArticlesFeed({ ...baseFilter, sort });
   const countQ = useArticlesFeedCount(baseFilter);
   const rows = q.data?.pages.flatMap((p) => p.rows) ?? [];
-
-  // 드롭다운 요약(전체 / 기업명 / OO 외 N개) + 글 개수(더 있으면 '+').
-  const selectedNames = (blogsQ.data ?? []).filter((b) => blogSel.has(b.id)).map((b) => b.name);
-  const blogSummary =
-    selectedNames.length === 0
-      ? "전체"
-      : selectedNames.length === 1
-        ? selectedNames[0]
-        : `${selectedNames[0]} 외 ${selectedNames.length - 1}개`;
   const countLabel = countQ.data != null ? `${countQ.data.toLocaleString()}개` : "";
 
   const toggleBlog = (id: string) =>
@@ -68,10 +50,7 @@ export function FeedScreen() {
     });
 
   return (
-    <SafeAreaView
-      style={[styles.screen, { backgroundColor: c.surfacePage }]}
-      edges={["top", "left", "right"]}
-    >
+    <SafeAreaView style={[styles.screen, { backgroundColor: c.surfacePage }]} edges={["top", "left", "right"]}>
       {/* 제목 + 리스트/그리드 토글 */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: c.textPrimary }]}>피드</Text>
@@ -93,24 +72,13 @@ export function FeedScreen() {
         </View>
       </View>
 
-      {/* 기업 드롭다운 — 최상단, 기본 '전체' */}
-      <Pressable
-        onPress={() => setFilterOpen(true)}
-        style={[
-          styles.blogDropdown,
-          { backgroundColor: c.surfaceCard, borderColor: blogSel.size > 0 ? c.primary : c.hairline },
-        ]}
-      >
-        <Building2 size={16} color={blogSel.size > 0 ? c.primary : c.textSecondary} />
-        <Text style={[styles.blogDropdownLabel, { color: c.textMuted }]}>기업</Text>
-        <Text
-          style={[styles.blogDropdownValue, { color: blogSel.size > 0 ? c.primary : c.textPrimary }]}
-          numberOfLines={1}
-        >
-          {blogSummary}
-        </Text>
-        <ChevronDown size={18} color={c.textMuted} />
-      </Pressable>
+      {/* 최상단 기업 칩(무신사식) */}
+      <BlogFilterChips
+        blogs={blogsQ.data ?? []}
+        selected={blogSel}
+        onToggle={toggleBlog}
+        onClear={() => setBlogSel(new Set())}
+      />
 
       {/* 주제 탭 */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
@@ -128,7 +96,6 @@ export function FeedScreen() {
       {/* 글 개수(좌) + 정렬(우) */}
       <View style={styles.filterRow}>
         <Text style={[styles.countText, { color: c.textSecondary }]}>{countLabel}</Text>
-
         <View style={[styles.sortSeg, { backgroundColor: c.surfaceSunken }]}>
           {(["latest", "popular"] as const).map((s) => {
             const on = sort === s;
@@ -185,57 +152,6 @@ export function FeedScreen() {
           }}
         />
       )}
-
-      {/* 기업 필터 시트 */}
-      <Modal visible={filterOpen} transparent animationType="slide" onRequestClose={() => setFilterOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setFilterOpen(false)}>
-          <Pressable style={[styles.sheet, { backgroundColor: c.surfaceCard }]} onPress={() => {}}>
-            <View style={styles.sheetHead}>
-              <Text style={[styles.sheetTitle, { color: c.textPrimary }]}>기업 선택</Text>
-              <View style={styles.sheetHeadRight}>
-                {blogSel.size > 0 ? (
-                  <Pressable onPress={() => setBlogSel(new Set())} hitSlop={8}>
-                    <Text style={[styles.sheetReset, { color: c.primary }]}>초기화</Text>
-                  </Pressable>
-                ) : null}
-                <Pressable onPress={() => setFilterOpen(false)} hitSlop={8}>
-                  <X size={20} color={c.textMuted} />
-                </Pressable>
-              </View>
-            </View>
-            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
-              {(blogsQ.data ?? []).map((b) => {
-                const on = blogSel.has(b.id);
-                return (
-                  <Pressable key={b.id} style={styles.sheetRow} onPress={() => toggleBlog(b.id)}>
-                    <ServiceLogo
-                      name={b.name}
-                      brandColor={b.brand_color}
-                      homepage={b.homepage}
-                      blogKey={b.key}
-                      size={30}
-                    />
-                    <Text style={[styles.sheetName, { color: c.textPrimary }]}>{b.name}</Text>
-                    {on ? (
-                      <Check size={20} color={c.primary} />
-                    ) : (
-                      <View style={[styles.emptyCheck, { borderColor: c.hairline }]} />
-                    )}
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-            <Pressable
-              style={[styles.applyBtn, { backgroundColor: c.primary }]}
-              onPress={() => setFilterOpen(false)}
-            >
-              <Text style={[styles.applyText, { color: c.actionOn }]}>
-                {blogSel.size > 0 ? `${blogSel.size}개 기업 보기` : "전체 보기"}
-              </Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -287,34 +203,7 @@ const styles = StyleSheet.create({
   sortBtnText: { ...dtype.label, fontSize: 12.5, fontWeight: "700" },
   countText: { ...dtype.label, fontSize: 13, fontWeight: "700" },
 
-  blogDropdown: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    marginHorizontal: 16,
-    marginTop: 2,
-    marginBottom: 4,
-  },
-  blogDropdownLabel: { ...dtype.label, fontSize: 12.5 },
-  blogDropdownValue: { ...dtype.body, fontSize: 14, fontWeight: "700", flex: 1 },
-
   listContent: { paddingHorizontal: 16, paddingBottom: 32 },
   gridRow: { gap: GRID_GAP, marginBottom: GRID_GAP },
   sep: { height: 1 },
-
-  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
-  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 30, gap: 6 },
-  sheetHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
-  sheetHeadRight: { flexDirection: "row", alignItems: "center", gap: 16 },
-  sheetTitle: { ...dtype.title },
-  sheetReset: { ...dtype.label, fontSize: 13 },
-  sheetRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11 },
-  sheetName: { ...dtype.body, flex: 1 },
-  emptyCheck: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5 },
-  applyBtn: { marginTop: 10, borderRadius: 12, paddingVertical: 15, alignItems: "center" },
-  applyText: { ...dtype.cardTitle },
 });

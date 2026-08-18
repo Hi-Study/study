@@ -1,6 +1,6 @@
 // distill 단어 저장 시트 — 본문 문장을 길게 눌러 열고, 어려운 단어 칩을 눌러 담는다.
 //   단어를 누르면 즉시 저장(✓)되고, 그 자리에서 AI 뜻풀이가 채워져 표시된다(마이 단어장에도 담김).
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -10,10 +10,10 @@ import {
   Text,
   View,
 } from "react-native";
-import { BookmarkPlus, Check, X } from "lucide-react-native";
+import { BookmarkPlus, Check, RotateCw, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
-import { useCreateWord, useWordByTerm } from "@/data";
+import { useCreateWord, useWordByTerm, useDefineWord } from "@/data";
 import { tokenizeWords } from "@/lib/text";
 import { dtype } from "@/theme";
 
@@ -29,9 +29,20 @@ export function WordPickerSheet({
   const { theme } = useTheme();
   const c = theme.colors;
   const create = useCreateWord();
+  const define = useDefineWord();
   const [saved, setSaved] = useState<Set<string>>(new Set());
   const [active, setActive] = useState<string | null>(null);
+  const [gaveUp, setGaveUp] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
   const wordQ = useWordByTerm(active);
+
+  // 뜻풀이가 ~20초 안에 안 오면 '포기'로 전환(무한 로딩 대신 재시도 버튼 노출).
+  useEffect(() => {
+    setGaveUp(false);
+    if (!active) return;
+    const t = setTimeout(() => setGaveUp(true), 20000);
+    return () => clearTimeout(t);
+  }, [active, retryTick]);
 
   const words = useMemo(() => (sentence ? tokenizeWords(sentence) : []), [sentence]);
 
@@ -112,6 +123,19 @@ export function WordPickerSheet({
               <Text style={[styles.defTerm, { color: c.primary }]}>{active}</Text>
               {wordQ.data?.definition ? (
                 <Text style={[styles.defText, { color: c.textPrimary }]}>{wordQ.data.definition}</Text>
+              ) : gaveUp && !define.isPending && wordQ.data ? (
+                <Pressable
+                  style={styles.defLoading}
+                  onPress={() => {
+                    setRetryTick((t) => t + 1);
+                    define.mutate(wordQ.data!.id);
+                  }}
+                >
+                  <RotateCw size={14} color={c.primary} />
+                  <Text style={[styles.defLoadingText, { color: c.primary }]}>
+                    뜻풀이를 못 만들었어요. 다시 시도
+                  </Text>
+                </Pressable>
               ) : (
                 <View style={styles.defLoading}>
                   <ActivityIndicator size="small" color={c.primary} />

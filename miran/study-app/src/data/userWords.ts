@@ -108,7 +108,12 @@ export function useWordByTerm(term: string | null) {
     queryKey: [...qk.words(uid), "term", term ?? ""] as const,
     queryFn: () => getWordByTerm(uid, term!),
     enabled: Boolean(uid && term),
-    refetchInterval: (query) => (query.state.data?.definition ? false : 2500),
+    // 뜻이 나오면 폴링 중단. 안 나와도 ~20초(8회) 후 포기(무한 폴링 방지 — 화면은 재시도 버튼 노출).
+    refetchInterval: (query) => {
+      if (query.state.data?.definition) return false;
+      if (query.state.dataUpdateCount >= 8) return false;
+      return 2500;
+    },
   });
 }
 
