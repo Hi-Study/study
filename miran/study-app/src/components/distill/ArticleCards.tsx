@@ -208,6 +208,50 @@ export function FeaturedCard({
   );
 }
 
+// ---- 그리드 카드(2열) — 썸네일 상단 + 제목/메타. 썸네일 없으면 브랜드 로고로 채워 빈칸 방지 ----
+export function ArticleGridCard({
+  article,
+  onPress,
+  width,
+}: {
+  article: ArticleWithBlog;
+  onPress: () => void;
+  width: number;
+}) {
+  const { theme } = useTheme();
+  const c = theme.colors;
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.gridCard,
+        { width, backgroundColor: c.surfaceCard, borderColor: c.hairline, opacity: pressed ? 0.9 : 1 },
+      ]}
+    >
+      <View style={[styles.gridThumb, { backgroundColor: c.surfaceSunken }]}>
+        {article.og_image ? (
+          <Image source={{ uri: article.og_image }} style={styles.thumbImg} resizeMode="cover" />
+        ) : (
+          <ServiceLogo
+            name={article.blog?.name ?? "?"}
+            brandColor={article.blog?.brand_color}
+            homepage={article.blog?.homepage}
+            blogKey={article.blog?.key}
+            size={34}
+          />
+        )}
+      </View>
+      <View style={styles.gridBody}>
+        {article.topic ? <TopicChip topic={article.topic} /> : null}
+        <Text style={[styles.gridTitle, { color: c.textPrimary }]} numberOfLines={2}>
+          {article.title}
+        </Text>
+        <MetaLine article={article} />
+      </View>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   logo: { alignItems: "center", justifyContent: "center" },
   logoText: { color: "#fff", fontWeight: "800" },
@@ -234,4 +278,9 @@ const styles = StyleSheet.create({
   featuredThumb: { width: "100%", aspectRatio: 2 },
   featuredBody: { padding: 16, gap: 8 },
   featuredTitle: { ...dtype.titleL },
+
+  gridCard: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  gridThumb: { width: "100%", aspectRatio: 16 / 9, alignItems: "center", justifyContent: "center" },
+  gridBody: { padding: 10, gap: 6 },
+  gridTitle: { ...dtype.cardTitle, fontSize: 14 },
 });
