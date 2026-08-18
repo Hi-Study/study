@@ -16,7 +16,7 @@ import { Building2, Check, ChevronDown, LayoutGrid, Rows3, X } from "lucide-reac
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
-import { useArticlesFeed, useBlogs } from "@/data";
+import { useArticlesFeed, useArticlesFeedCount, useBlogs } from "@/data";
 import { dtype, TOPIC_META, TOPIC_ORDER } from "@/theme";
 import type { Topic } from "@/types/database";
 import { ArticleRow, ArticleGridCard, ServiceLogo } from "@/components/distill/ArticleCards";
@@ -40,11 +40,13 @@ export function FeedScreen() {
 
   const blogsQ = useBlogs();
   const blogIds = useMemo(() => [...blogSel], [blogSel]);
-  const q = useArticlesFeed({
-    ...(topic ? { topic } : {}),
-    ...(blogIds.length > 0 ? { blogIds } : {}),
-    sort,
-  });
+  // 정렬 무관한 기본 필터(주제+기업) — 피드와 개수 쿼리가 공유. 정렬 토글 시 개수는 재요청 안 함.
+  const baseFilter = useMemo(
+    () => ({ ...(topic ? { topic } : {}), ...(blogIds.length > 0 ? { blogIds } : {}) }),
+    [topic, blogIds],
+  );
+  const q = useArticlesFeed({ ...baseFilter, sort });
+  const countQ = useArticlesFeedCount(baseFilter);
   const rows = q.data?.pages.flatMap((p) => p.rows) ?? [];
 
   // 드롭다운 요약(전체 / 기업명 / OO 외 N개) + 글 개수(더 있으면 '+').
@@ -55,7 +57,7 @@ export function FeedScreen() {
       : selectedNames.length === 1
         ? selectedNames[0]
         : `${selectedNames[0]} 외 ${selectedNames.length - 1}개`;
-  const countLabel = `${rows.length}${q.hasNextPage ? "+" : ""}개`;
+  const countLabel = countQ.data != null ? `${countQ.data.toLocaleString()}개` : "";
 
   const toggleBlog = (id: string) =>
     setBlogSel((prev) => {
@@ -123,8 +125,10 @@ export function FeedScreen() {
         ))}
       </ScrollView>
 
-      {/* 정렬(좌) + 글 개수(우) */}
+      {/* 글 개수(좌) + 정렬(우) */}
       <View style={styles.filterRow}>
+        <Text style={[styles.countText, { color: c.textSecondary }]}>{countLabel}</Text>
+
         <View style={[styles.sortSeg, { backgroundColor: c.surfaceSunken }]}>
           {(["latest", "popular"] as const).map((s) => {
             const on = sort === s;
@@ -141,8 +145,6 @@ export function FeedScreen() {
             );
           })}
         </View>
-
-        <Text style={[styles.countText, { color: c.textMuted }]}>{countLabel}</Text>
       </View>
 
       {q.isLoading ? (

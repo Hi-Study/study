@@ -160,6 +160,28 @@ export function useArticlesFeed(filter: ArticleFeedFilter = {}) {
   });
 }
 
+// ---- 피드 필터에 맞는 정확한 글 개수(정렬·커서 무관) ----
+export async function countArticlesFeed(filter: ArticleFeedFilter = {}): Promise<number> {
+  let q = supabase.from("articles").select("id", { count: "exact", head: true });
+  if (filter.topic) q = q.eq("topic", filter.topic);
+  if (filter.blogId) q = q.eq("blog_id", filter.blogId);
+  if (filter.blogIds && filter.blogIds.length > 0) q = q.in("blog_id", filter.blogIds);
+  const search = filter.search?.replace(/[,(){}%*]/g, " ").trim();
+  if (search) {
+    q = q.or(`title.ilike.%${search}%,summary.ilike.%${search}%,tags.cs.{${search}}`);
+  }
+  const { count, error } = await q;
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export function useArticlesFeedCount(filter: ArticleFeedFilter = {}) {
+  return useQuery({
+    queryKey: [...qk.articles(), "feed-count", filter] as const,
+    queryFn: () => countArticlesFeed(filter),
+  });
+}
+
 // ---- 피처드(홈 상단 대표 글) — 대표 이미지 있는 최신 글 1개 ----
 export async function getFeaturedArticle(): Promise<ArticleWithBlog | null> {
   const { data, error } = await supabase
