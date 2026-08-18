@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import FeedCard from "@/components/FeedCard";
 import { CompanyLogo } from "@/components/PostCard";
 import Icon from "@/components/Icon";
+import DragScroll from "@/components/DragScroll";
 import { CATEGORIES, readableText, type Category, type Company, type Post } from "@/lib/types";
 
 // source: "all" | "favorites" | "direct" | companyId
@@ -59,7 +60,7 @@ export default function FeedClient({
       </div>
 
       {/* 필터 1줄 — 출처(기업) : 셀렉트 · 전체 · 즐겨찾기 · 직접등록 · 기업칩(즐겨찾기 먼저) */}
-      <div className="cchips">
+      <DragScroll className="cchips">
         <button className="cchip sel-btn" onClick={() => setCoSheet(true)}>기업 <Icon name="chevron" size="sm" /></button>
         <button className={`cchip ${source === "all" ? "on" : ""}`} onClick={() => setSource("all")}>전체</button>
         {favSet.size > 0 && (
@@ -75,16 +76,16 @@ export default function FeedClient({
             </button>
           );
         })}
-      </div>
+      </DragScroll>
 
       {/* 필터 2줄 — 카테고리 : 셀렉트 · 전체 · 11개 칩 */}
-      <div className="cchips" style={{ marginTop: 8 }}>
+      <DragScroll className="cchips" style={{ marginTop: 8 }}>
         <button className="cchip sel-btn" onClick={() => setCatSheet(true)}>카테고리 <Icon name="chevron" size="sm" /></button>
         <button className={`cchip ${cats.size === 0 ? "on" : ""}`} onClick={() => setCats(new Set())}>전체</button>
         {CATEGORIES.map((c) => (
           <button key={c} className={`cchip ${cats.has(c) ? "on" : ""}`} onClick={() => toggleCat(c)}>{c}</button>
         ))}
-      </div>
+      </DragScroll>
 
       <div style={{ height: 14 }} />
       {list.length ? (
