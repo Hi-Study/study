@@ -1,7 +1,6 @@
 // distill 마이 탭 (DESIGN_GUIDE §7.6) — 프로필 · 3모아보기(내 의견 · 하이라이트 · 단어장) · 설정.
 import React, { useState } from "react";
 import {
-  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -12,11 +11,10 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronRight, LogOut, MessageSquare, RotateCw, Settings, Star, Trash2, X } from "lucide-react-native";
+import { ChevronRight, MessageSquare, RotateCw, Settings, Star, Trash2, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
-import { signOut } from "@/auth/googleSignIn";
 import {
   useMyOpinions,
   useMyHighlights,
@@ -26,6 +24,7 @@ import {
   useMyReads,
   useMyDrafts,
   useBlogs,
+  useProfile,
   useFavoriteBlogIds,
   useToggleBlogFavorite,
   useDefineWord,
@@ -70,6 +69,9 @@ export function DistillMyPageScreen() {
   const nav = useRootNav();
   const [tab, setTab] = useState<MyTab>("opinions");
 
+  const profileQ = useProfile();
+  const displayName = profileQ.data?.name?.trim() || "게스트";
+  const roleTitle = profileQ.data?.role_title?.trim() || "읽고 생각을 남기는 중";
   const opinionsQ = useMyOpinions();
   const highlightsQ = useMyHighlights();
   const bookmarksQ = useMyBookmarks();
@@ -206,10 +208,14 @@ export function DistillMyPageScreen() {
           <View>
             {/* 프로필 */}
             <View style={styles.profile}>
-              <Avatar name="게스트" size={56} />
+              <Avatar name={displayName} size={56} />
               <View style={{ flex: 1 }}>
-                <Text style={[styles.name, { color: c.textPrimary }]}>게스트</Text>
-                <Text style={[styles.role, { color: c.textMuted }]}>읽고 생각을 남기는 중</Text>
+                <Text style={[styles.name, { color: c.textPrimary }]} numberOfLines={1}>
+                  {displayName}
+                </Text>
+                <Text style={[styles.role, { color: c.textMuted }]} numberOfLines={1}>
+                  {roleTitle}
+                </Text>
               </View>
               <Pressable
                 hitSlop={8}
@@ -235,30 +241,8 @@ export function DistillMyPageScreen() {
               </View>
             </Pressable>
 
-            {/* 설정 바로가기 */}
-            <Pressable
-              style={[styles.menuRow, { borderColor: c.hairline }]}
-              onPress={() => nav.navigate("DisplaySettings")}
-            >
-              <Text style={[styles.menuText, { color: c.textPrimary }]}>화면 설정 (테마)</Text>
-              <ChevronRight size={18} color={c.textMuted} />
-            </Pressable>
-
-            {/* 로그아웃 */}
-            <Pressable
-              style={[styles.menuRow, { borderColor: c.hairline }]}
-              onPress={() =>
-                Alert.alert("로그아웃", "로그아웃할까요?", [
-                  { text: "취소", style: "cancel" },
-                  { text: "로그아웃", style: "destructive", onPress: () => void signOut() },
-                ])
-              }
-            >
-              <Text style={[styles.menuText, { color: c.danger }]}>로그아웃</Text>
-              <LogOut size={18} color={c.danger} />
-            </Pressable>
-
-            {/* 세그먼트 탭 (가로 스크롤) */}
+            {/* 내 활동 — 세그먼트 탭 (가로 스크롤). 앱 설정(테마·로그아웃)은 상단 기어 → 설정 화면. */}
+            <Text style={[styles.activityLabel, { color: c.textPrimary }]}>내 활동</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -311,7 +295,7 @@ export function DistillMyPageScreen() {
                     style={styles.favRow}
                     onPress={() => toggleFav.mutate({ blogId: b.id, favorite: !on })}
                   >
-                    <ServiceLogo name={b.name} brandColor={b.brand_color} homepage={b.homepage} size={32} />
+                    <ServiceLogo name={b.name} brandColor={b.brand_color} homepage={b.homepage} blogKey={b.key} size={32} />
                     <Text style={[styles.favName, { color: c.textPrimary }]}>{b.name}</Text>
                     <Star size={20} color={on ? c.hot : c.textMuted} fill={on ? c.hot : "transparent"} />
                   </Pressable>
@@ -507,6 +491,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   menuText: { ...dtype.cardTitle },
+  activityLabel: { ...dtype.title, marginTop: 4, marginBottom: 10 },
   menuLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   menuRight: { flexDirection: "row", alignItems: "center", gap: 4 },
   menuCount: { ...dtype.cardTitle },

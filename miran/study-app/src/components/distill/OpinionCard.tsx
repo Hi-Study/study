@@ -73,7 +73,7 @@ export function OpinionCard({
           {a.og_image ? (
             <Image source={{ uri: a.og_image }} style={styles.sourceThumb} resizeMode="cover" />
           ) : (
-            <ServiceLogo name={a.blog?.name ?? "?"} brandColor={a.blog?.brand_color} size={36} />
+            <ServiceLogo name={a.blog?.name ?? "?"} brandColor={a.blog?.brand_color} homepage={a.blog?.homepage} blogKey={a.blog?.key} size={36} />
           )}
           <View style={{ flex: 1 }}>
             {a.topic ? <TopicChip topic={a.topic} /> : null}

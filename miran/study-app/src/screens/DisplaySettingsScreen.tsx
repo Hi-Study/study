@@ -1,8 +1,10 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { LogOut } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
 import { useSetTheme } from "@/data/profile";
+import { signOut } from "@/auth/googleSignIn";
 import { Screen, ScreenHeader, SectionLabel } from "@/components/Chrome";
 import type { ThemeMode } from "@/theme";
 
@@ -18,9 +20,17 @@ export function DisplaySettingsScreen() {
     setTheme.mutate(next); // 서버(users.theme) 영속
   }
 
+  function confirmSignOut() {
+    Alert.alert("로그아웃", "로그아웃할까요?", [
+      { text: "취소", style: "cancel" },
+      { text: "로그아웃", style: "destructive", onPress: () => void signOut() },
+    ]);
+  }
+
   return (
     <Screen contentStyle={styles.content}>
-      <ScreenHeader title="화면 설정" onBack={() => nav.goBack()} />
+      <ScreenHeader title="설정" onBack={() => nav.goBack()} />
+
       <SectionLabel>화면 모드</SectionLabel>
       <View style={styles.row}>
         <Opt label="낮" swatchBg="#fff" swatchFg="#000" on={mode === "light"} onPress={() => choose("light")} />
@@ -29,6 +39,15 @@ export function DisplaySettingsScreen() {
       <Text style={[styles.hint, { color: c.textMuted }]}>
         선택한 화면 모드는 앱 전체에 즉시 적용됩니다.
       </Text>
+
+      <SectionLabel>계정</SectionLabel>
+      <Pressable
+        onPress={confirmSignOut}
+        style={[styles.accountRow, { backgroundColor: c.surfaceCard, borderColor: c.hairline }]}
+      >
+        <Text style={[styles.accountText, { color: c.danger }]}>로그아웃</Text>
+        <LogOut size={18} color={c.danger} />
+      </Pressable>
     </Screen>
   );
 }
@@ -83,4 +102,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   hint: { fontSize: 13, marginTop: 6, marginHorizontal: 4, lineHeight: 20 },
+  accountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
+  },
+  accountText: { fontSize: 15, fontWeight: "600" },
 });

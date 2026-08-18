@@ -77,18 +77,20 @@ export function DistillSearchScreen() {
 
       {!active ? (
         <ScrollView contentContainerStyle={styles.preContent} keyboardShouldPersistTaps="handled">
-          {/* 최근 검색어 */}
-          {recents.length > 0 ? (
-            <View style={styles.section}>
-              <View style={styles.sectionHead}>
-                <View style={styles.sectionLabelRow}>
-                  <Clock size={14} color={c.textSecondary} />
-                  <Text style={[styles.sectionLabel, { color: c.textSecondary }]}>최근 검색어</Text>
-                </View>
+          {/* 최근 검색어 — 항상 노출(비어 있으면 안내) */}
+          <View style={styles.section}>
+            <View style={styles.sectionHead}>
+              <View style={styles.sectionLabelRow}>
+                <Clock size={14} color={c.textSecondary} />
+                <Text style={[styles.sectionLabel, { color: c.textSecondary }]}>최근 검색어</Text>
+              </View>
+              {recents.length > 0 ? (
                 <Pressable onPress={clear} hitSlop={8}>
                   <Text style={[styles.clearAll, { color: c.textMuted }]}>전체삭제</Text>
                 </Pressable>
-              </View>
+              ) : null}
+            </View>
+            {recents.length > 0 ? (
               <View style={styles.chipWrap}>
                 {recents.map((t) => (
                   <View
@@ -104,8 +106,12 @@ export function DistillSearchScreen() {
                   </View>
                 ))}
               </View>
-            </View>
-          ) : null}
+            ) : (
+              <Text style={[styles.hint, { color: c.textMuted }]}>
+                최근 검색한 키워드가 여기에 표시돼요.
+              </Text>
+            )}
+          </View>
 
           {/* 추천 검색어 — 내가 읽은 글 기반 */}
           <View style={styles.section}>
@@ -139,14 +145,27 @@ export function DistillSearchScreen() {
                 <TrendingUp size={14} color={c.textSecondary} />
                 <Text style={[styles.sectionLabel, { color: c.textSecondary }]}>급상승 검색어</Text>
               </View>
-              <View style={styles.rankList}>
-                {trending.map((t, i) => (
-                  <Pressable key={t} style={styles.rankRow} onPress={() => runSearch(t)}>
-                    <Text style={[styles.rankNum, { color: i < 3 ? c.primary : c.textMuted }]}>
-                      {i + 1}
-                    </Text>
-                    <Text style={[styles.rankText, { color: c.textPrimary }]}>{t}</Text>
-                  </Pressable>
+              {/* 2열 × 5행 랭킹(왼쪽 1~5, 오른쪽 6~10) */}
+              <View style={styles.rankGrid}>
+                {[trending.slice(0, 5), trending.slice(5, 10)].map((col, ci) => (
+                  <View key={ci} style={styles.rankCol}>
+                    {col.map((t, i) => {
+                      const rank = ci * 5 + i + 1;
+                      return (
+                        <Pressable key={t} style={styles.rankRow} onPress={() => runSearch(t)}>
+                          <Text style={[styles.rankNum, { color: rank <= 3 ? c.primary : c.textMuted }]}>
+                            {rank}
+                          </Text>
+                          <Text
+                            style={[styles.rankText, { color: c.textPrimary }]}
+                            numberOfLines={1}
+                          >
+                            {t}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
                 ))}
               </View>
             </View>
@@ -198,9 +217,10 @@ const styles = StyleSheet.create({
   recChip: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 13, paddingVertical: 9 },
   recText: { ...dtype.label, fontSize: 13.5 },
 
-  rankList: { gap: 2 },
-  rankRow: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 9 },
-  rankNum: { ...dtype.cardTitle, width: 20 },
+  rankGrid: { flexDirection: "row", gap: 18 },
+  rankCol: { flex: 1, gap: 2 },
+  rankRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 9 },
+  rankNum: { ...dtype.cardTitle, width: 18 },
   rankText: { ...dtype.body, flex: 1 },
 
   listContent: { paddingHorizontal: 16, paddingBottom: 32 },

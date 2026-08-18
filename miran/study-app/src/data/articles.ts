@@ -22,12 +22,13 @@ export interface ArticleBlog {
   key: string;
   name: string;
   brand_color: string | null;
+  homepage: string | null;
 }
 export interface ArticleWithBlog extends ArticleRow {
   blog: ArticleBlog | null;
 }
 
-const SELECT_WITH_BLOG = "*, blog:blogs(key, name, brand_color)";
+const SELECT_WITH_BLOG = "*, blog:blogs(key, name, brand_color, homepage)";
 
 // ---- 단건 상세 ----
 export async function getArticleDetail(articleId: string): Promise<ArticleWithBlog> {
@@ -104,6 +105,7 @@ export interface ArticleCursor {
 export interface ArticleFeedFilter {
   topic?: Topic;
   blogId?: string;
+  blogIds?: string[]; // 홈 서비스 다중선택 필터(여러 기업 동시)
   search?: string;
   sort?: "latest" | "popular"; // 기본 latest
 }
@@ -120,6 +122,7 @@ export async function listArticlesFeed(
 
   if (filter.topic) q = q.eq("topic", filter.topic);
   if (filter.blogId) q = q.eq("blog_id", filter.blogId);
+  if (filter.blogIds && filter.blogIds.length > 0) q = q.in("blog_id", filter.blogIds);
   const search = filter.search?.replace(/[,(){}%*]/g, " ").trim();
   if (search) {
     q = q.or(`title.ilike.%${search}%,summary.ilike.%${search}%,tags.cs.{${search}}`);

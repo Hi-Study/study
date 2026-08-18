@@ -29,7 +29,7 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav, type RootStackParamList } from "@/navigation/types";
 import { dtype } from "@/theme";
 import { cleanBody, readingMinutes } from "@/lib/text";
-import { splitInsightSections } from "@/lib/summary";
+import { splitInsightSections, isStructuredInsight } from "@/lib/summary";
 import { useReadingFontScale, getReadPos, setReadPos, clearReadPos } from "@/lib/readingPrefs";
 import {
   useArticle,
@@ -179,7 +179,7 @@ export function ArticleDetailScreen({ route }: Props) {
 
           {/* 출처 + 작성일 */}
           <View style={styles.source}>
-            <ServiceLogo name={a.blog?.name ?? "?"} brandColor={a.blog?.brand_color} size={24} />
+            <ServiceLogo name={a.blog?.name ?? "?"} brandColor={a.blog?.brand_color} homepage={a.blog?.homepage} blogKey={a.blog?.key} size={24} />
             <Text style={[styles.sourceText, { color: c.textSecondary }]}>
               {a.blog?.name ?? ""}
               {a.author ? ` · ${a.author}` : ""}
@@ -295,7 +295,7 @@ export function ArticleDetailScreen({ route }: Props) {
   );
 }
 
-// AI 요약 패널 — 3관점 고정(무슨 문제/어떻게 해결/기획 관점 배울 점) + 쉽게 풀기(선택).
+// AI 요약 패널 — 3관점 고정(무슨 문제/어떻게 해결/디자이너·PM 관점 배울 점) + 쉽게 풀기(선택).
 function AiSummaryPanel({
   articleId,
   cached,
@@ -310,7 +310,10 @@ function AiSummaryPanel({
   const req = useRequestArticleSummary(articleId);
 
   const run = (m: "insight" | "explain") => {
-    if (results[m] || running) return;
+    if (running) return;
+    // insight 는 '3관점 구조'가 이미 있으면 재생성 안 함(구형/단일 캐시는 재생성 허용).
+    if (m === "insight" && isStructuredInsight(results.insight)) return;
+    if (m === "explain" && results.explain) return;
     setRunning(m);
     req.mutate(m, {
       onSuccess: (s) => {
@@ -321,13 +324,20 @@ function AiSummaryPanel({
     });
   };
 
-  // AI 요약 탭 진입 시 3관점을 자동 생성(캐시 있으면 즉시).
+  // AI 요약 탭 진입 시 3관점을 자동 생성. 캐시가 구형(단일 요약)이면 새 프롬프트로 재생성.
   useEffect(() => {
-    if (!results.insight) run("insight");
+    if (!isStructuredInsight(results.insight)) run("insight");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const sections = results.insight ? splitInsightSections(results.insight) : [];
+  // 구조화된 3관점이 있으면 그걸, 아직 없으면(재생성 중/실패) 있는 텍스트라도 파싱.
+  const sections = isStructuredInsight(results.insight)
+    ? splitInsightSections(results.insight)
+    : running === "insight"
+      ? []
+      : results.insight
+        ? splitInsightSections(results.insight)
+        : [];
 
   return (
     <View style={styles.ai}>

@@ -31,7 +31,18 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.users (id) values (new.id)
+  -- 구글 로그인 프로필 이름을 메타데이터에서 가져옴(없으면 이메일 아이디, 그래도 없으면 '게스트').
+  insert into public.users (id, name)
+  values (
+    new.id,
+    coalesce(
+      nullif(new.raw_user_meta_data->>'full_name', ''),
+      nullif(new.raw_user_meta_data->>'name', ''),
+      nullif(new.raw_user_meta_data->>'user_name', ''),
+      nullif(split_part(coalesce(new.email, ''), '@', 1), ''),
+      '게스트'
+    )
+  )
   on conflict (id) do nothing;
   return new;
 end;

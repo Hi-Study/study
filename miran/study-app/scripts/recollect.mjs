@@ -68,6 +68,34 @@ function decodeEntities(s) {
     .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)));
 }
 
+// 콘텐츠 이미지가 아닌 것(이모지·스페이서·트래킹 픽셀·아바타)을 URL 로 걸러낸다. (extract.ts 와 동일 규칙)
+const IMG_SKIP_RE =
+  /s\.w\.org\/images\/core\/emoji|\/emoji\/|twemoji|wp-smiley|spacer\.gif|1x1\.|\/blank\.|\/pixel\.|gravatar\.com\/avatar|\.svg([?#]|$)/i;
+
+function attrValue(tag, name) {
+  const m = tag.match(new RegExp(`\\b${name}=["']([^"']+)["']`, "i"));
+  return m ? m[1].trim() : "";
+}
+function srcsetFirst(tag) {
+  const raw = attrValue(tag, "srcset");
+  if (!raw) return "";
+  return raw.split(",")[0]?.trim().split(/\s+/)[0] ?? "";
+}
+function imgToMarker(tag) {
+  if (/\bclass=["'][^"']*wp-smiley[^"']*["']/i.test(tag)) return " ";
+  let url =
+    attrValue(tag, "data-src") ||
+    attrValue(tag, "data-lazy-src") ||
+    attrValue(tag, "data-original") ||
+    attrValue(tag, "data-echo") ||
+    srcsetFirst(tag) ||
+    attrValue(tag, "src");
+  if (/^\/\//.test(url)) url = "https:" + url;
+  if (!/^https?:\/\//.test(url)) return " ";
+  if (IMG_SKIP_RE.test(url)) return " ";
+  return `\n[[img:${url}]]\n`;
+}
+
 function htmlToText(html) {
   let s = html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
@@ -78,11 +106,7 @@ function htmlToText(html) {
   s = s
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/(p|div|h[1-6]|li|section|article|tr|blockquote|figure|figcaption)>/gi, "\n");
-  s = s.replace(/<img\b[^>]*>/gi, (tag) => {
-    const m = tag.match(/\bdata-src=["']([^"']+)["']/i) ?? tag.match(/\bsrc=["']([^"']+)["']/i);
-    const url = m?.[1];
-    return url && /^https?:\/\//.test(url) ? `\n[[img:${url}]]\n` : " ";
-  });
+  s = s.replace(/<img\b[^>]*>/gi, (tag) => imgToMarker(tag));
   s = s.replace(/<[^>]+>/g, "");
   s = decodeEntities(s);
   return s
@@ -112,8 +136,18 @@ function stripFooter(text) {
 function firstImageUrl(bodyText, rawHtml) {
   const m = bodyText.match(/\[\[img:(https?:\/\/[^\]]+)\]\]/);
   if (m) return m[1];
-  const og = rawHtml.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
-  return og?.[1] ?? null;
+  // og:image → secure_url → twitter:image 순으로 폴백(대표 이미지 누락 최소화).
+  const metaRe = (key) =>
+    new RegExp(`<meta[^>]+(?:property|name)=["']${key}["'][^>]+content=["']([^"']+)["']`, "i");
+  for (const key of ["og:image", "og:image:secure_url", "og:image:url", "twitter:image", "twitter:image:src"]) {
+    const hit = rawHtml.match(metaRe(key));
+    if (hit?.[1]) {
+      let u = hit[1];
+      if (/^\/\//.test(u)) u = "https:" + u;
+      return u;
+    }
+  }
+  return null;
 }
 
 // ---- RSS 파싱(정규식 — content:encoded 는 CDATA HTML) ----

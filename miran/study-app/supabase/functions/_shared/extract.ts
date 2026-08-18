@@ -34,6 +34,38 @@ export function decodeEntities(s: string): string {
     .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)));
 }
 
+// 콘텐츠 이미지가 아닌 것(이모지·스페이서·트래킹 픽셀·아바타)을 URL 로 걸러낸다.
+const IMG_SKIP_RE =
+  /s\.w\.org\/images\/core\/emoji|\/emoji\/|twemoji|wp-smiley|spacer\.gif|1x1\.|\/blank\.|\/pixel\.|gravatar\.com\/avatar|\.svg([?#]|$)/i;
+
+function attrValue(tag: string, name: string): string {
+  const m = tag.match(new RegExp(`\\b${name}=["']([^"']+)["']`, "i"));
+  return m ? m[1].trim() : "";
+}
+
+function srcsetFirst(tag: string): string {
+  const raw = attrValue(tag, "srcset");
+  if (!raw) return "";
+  // "urlA 320w, urlB 640w" → 첫 URL
+  return raw.split(",")[0]?.trim().split(/\s+/)[0] ?? "";
+}
+
+/** <img> 태그 하나를 [[img:URL]] 마커로 변환. 실제 URL 을 못 찾거나 콘텐츠 이미지가 아니면 공백. */
+export function imgToMarker(tag: string): string {
+  if (/\bclass=["'][^"']*wp-smiley[^"']*["']/i.test(tag)) return " ";
+  let url =
+    attrValue(tag, "data-src") ||
+    attrValue(tag, "data-lazy-src") ||
+    attrValue(tag, "data-original") ||
+    attrValue(tag, "data-echo") ||
+    srcsetFirst(tag) ||
+    attrValue(tag, "src");
+  if (/^\/\//.test(url)) url = "https:" + url; // 프로토콜 상대 URL 보정
+  if (!/^https?:\/\//.test(url)) return " "; // 상대경로·data: 등은 렌더 불가 → 제외
+  if (IMG_SKIP_RE.test(url)) return " ";
+  return `\n[[img:${url}]]\n`;
+}
+
 export function htmlToText(html: string): string {
   let s = html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
@@ -45,12 +77,9 @@ export function htmlToText(html: string): string {
   s = s
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/(p|div|h[1-6]|li|section|article|tr|blockquote)>/gi, "\n");
-  // <img> 는 버리지 말고 [[img:URL]] 마커로 보존(앱에서 이미지로 렌더). lazy-load(data-src) 우선, data: 제외.
-  s = s.replace(/<img\b[^>]*>/gi, (tag) => {
-    const m = tag.match(/\bdata-src=["']([^"']+)["']/i) ?? tag.match(/\bsrc=["']([^"']+)["']/i);
-    const url = m?.[1];
-    return url && /^https?:\/\//.test(url) ? `\n[[img:${url}]]\n` : " ";
-  });
+  // <img> 는 버리지 말고 [[img:URL]] 마커로 보존(앱에서 이미지로 렌더).
+  // 여러 lazy-load 속성/srcset 을 폭넓게 지원하고, 이모지·스페이서·트래킹 픽셀은 제외.
+  s = s.replace(/<img\b[^>]*>/gi, (tag) => imgToMarker(tag));
   // 남은 태그 제거
   s = s.replace(/<[^>]+>/g, "");
   s = decodeEntities(s);
@@ -127,7 +156,14 @@ export function stripFooter(text: string): string {
 }
 
 export function extractArticle(html: string): Extracted {
-  const image = metaContent(html, "og:image");
+  // 대표 이미지 — og:image 우선, 없으면 secure_url·twitter:image 등으로 폭넓게 폴백.
+  let image =
+    metaContent(html, "og:image") ??
+    metaContent(html, "og:image:secure_url") ??
+    metaContent(html, "og:image:url") ??
+    metaContent(html, "twitter:image") ??
+    metaContent(html, "twitter:image:src");
+  if (image && /^\/\//.test(image)) image = "https:" + image; // 프로토콜 상대 보정
   const excerpt =
     metaContent(html, "og:description") ?? metaContent(html, "description");
 

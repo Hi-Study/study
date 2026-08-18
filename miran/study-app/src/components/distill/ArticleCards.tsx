@@ -6,6 +6,7 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTheme } from "@/providers/ThemeProvider";
 import { TOPIC_META, dtype } from "@/theme";
 import { readingMinutes } from "@/lib/text";
+import { faviconDomain, faviconUrl } from "@/lib/brandIcon";
 import type { ArticleWithBlog } from "@/data/articles";
 import type { Topic } from "@/types/database";
 
@@ -23,29 +24,23 @@ export function relativeDate(iso: string | null): string {
   return `${Math.floor(days / 365)}년 전`;
 }
 
-// ---- 서비스 로고칩 — homepage 주면 실제 파비콘(기업 아이콘), 없거나 실패 시 브랜드색+이니셜 ----
-function domainOfUrl(u: string | null | undefined): string | null {
-  if (!u) return null;
-  try {
-    return new URL(u).host;
-  } catch {
-    return null;
-  }
-}
-
+// ---- 서비스 로고칩 — 브랜드 파비콘(기업 아이콘), 없거나 실패 시 브랜드색+이니셜 ----
+// blogKey 로 브랜드 도메인을 우선 해석(네이버 계열 통일·Medium 호스팅 보정). brandIcon.ts 참고.
 export function ServiceLogo({
   name,
   brandColor,
   size = 44,
   homepage,
+  blogKey,
 }: {
   name: string;
   brandColor?: string | null;
   size?: number;
   homepage?: string | null;
+  blogKey?: string | null;
 }) {
   const [failed, setFailed] = useState(false);
-  const domain = useMemo(() => domainOfUrl(homepage), [homepage]);
+  const domain = useMemo(() => faviconDomain(blogKey, homepage), [blogKey, homepage]);
 
   if (domain && !failed) {
     return (
@@ -56,7 +51,7 @@ export function ServiceLogo({
         ]}
       >
         <Image
-          source={{ uri: `https://www.google.com/s2/favicons?sz=128&domain=${domain}` }}
+          source={{ uri: faviconUrl(domain) }}
           style={{ width: size * 0.66, height: size * 0.66 }}
           resizeMode="contain"
           onError={() => setFailed(true)}
@@ -96,7 +91,13 @@ function MetaLine({ article }: { article: ArticleWithBlog }) {
   const mins = readingMinutes(article.body);
   return (
     <View style={styles.metaRow}>
-      <ServiceLogo name={article.blog?.name ?? "?"} brandColor={article.blog?.brand_color} size={18} />
+      <ServiceLogo
+        name={article.blog?.name ?? "?"}
+        brandColor={article.blog?.brand_color}
+        homepage={article.blog?.homepage}
+        blogKey={article.blog?.key}
+        size={18}
+      />
       <Text style={[styles.metaText, { color: c.textMuted }]} numberOfLines={1}>
         {article.blog?.name ?? ""}
         {article.published_at ? ` · ${relativeDate(article.published_at)}` : ""}

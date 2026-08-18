@@ -168,7 +168,7 @@ export function OpinionDetailScreen({ route }: Props) {
                 {a.og_image ? (
                   <Image source={{ uri: a.og_image }} style={styles.sourceThumb} resizeMode="cover" />
                 ) : (
-                  <ServiceLogo name={a.blog?.name ?? "?"} brandColor={a.blog?.brand_color} size={44} />
+                  <ServiceLogo name={a.blog?.name ?? "?"} brandColor={a.blog?.brand_color} homepage={a.blog?.homepage} blogKey={a.blog?.key} size={44} />
                 )}
                 <View style={{ flex: 1 }}>
                   {a.topic ? <TopicChip topic={a.topic} /> : null}
