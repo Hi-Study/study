@@ -11,7 +11,7 @@ import { useArticlesFeed, useArticlesFeedCount, useBlogs } from "@/data";
 import { dtype, TOPIC_META, TOPIC_ORDER } from "@/theme";
 import type { Topic } from "@/types/database";
 import { ArticleRow, ArticleGridCard } from "@/components/distill/ArticleCards";
-import { BlogFilterChips } from "@/components/distill/BlogFilterChips";
+import { BlogDropdown } from "@/components/distill/BlogDropdown";
 import { Loading, ErrorState, EmptyState } from "@/components";
 
 const W = Dimensions.get("window").width;
@@ -72,8 +72,8 @@ export function FeedScreen() {
         </View>
       </View>
 
-      {/* 최상단 기업 칩(무신사식) */}
-      <BlogFilterChips
+      {/* 최상단 기업 드롭다운(무신사식 — 눌러서 리스트 펼침) */}
+      <BlogDropdown
         blogs={blogsQ.data ?? []}
         selected={blogSel}
         onToggle={toggleBlog}

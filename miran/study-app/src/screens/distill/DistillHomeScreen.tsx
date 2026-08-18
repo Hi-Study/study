@@ -35,25 +35,17 @@ function greeting(): string {
   return "좋은 저녁이에요";
 }
 
-// 서비스 모아보기 셀 — 아이콘(파비콘) + 이름. 탭하면 다중선택 토글.
+// 서비스 모아보기 셀 — 카드 없이 아이콘(파비콘) + 이름만. 탭하면 다중선택(선택 시 이름 강조).
 function BlogCell({ blog, active, onPress }: { blog: BlogRow; active: boolean; onPress: () => void }) {
   const { theme } = useTheme();
   const c = theme.colors;
   return (
-    <Pressable
-      onPress={onPress}
-      style={[
-        styles.cell,
-        {
-          width: CELL_W,
-          height: CELL_H,
-          backgroundColor: active ? c.primaryTint : c.surfaceCard,
-          borderColor: active ? c.primary : c.hairline,
-        },
-      ]}
-    >
-      <ServiceLogo name={blog.name} brandColor={blog.brand_color} homepage={blog.homepage} blogKey={blog.key} size={36} />
-      <Text style={[styles.cellText, { color: active ? c.primary : c.textSecondary }]} numberOfLines={1}>
+    <Pressable onPress={onPress} style={[styles.cell, { width: CELL_W, height: CELL_H }]}>
+      <ServiceLogo name={blog.name} brandColor={blog.brand_color} homepage={blog.homepage} blogKey={blog.key} size={44} />
+      <Text
+        style={[styles.cellText, { color: active ? c.primary : c.textSecondary, fontWeight: active ? "800" : "600" }]}
+        numberOfLines={1}
+      >
         {blog.name}
       </Text>
     </Pressable>
@@ -241,10 +233,8 @@ const styles = StyleSheet.create({
   cell: {
     alignItems: "center",
     justifyContent: "center",
-    gap: 7,
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 4,
+    gap: 8,
+    paddingHorizontal: 2,
   },
   cellText: { ...dtype.label, fontSize: 11.5, textAlign: "center" },
 

@@ -19,6 +19,7 @@ interface Payload {
   word_id?: string;
   target?: "content" | "result";
   mode?: Mode;
+  debug?: boolean;
 }
 
 // 단어장 뜻풀이 프롬프트 — 문맥(문장)을 참고해 비전공자도 이해할 정의를 만든다.
@@ -57,15 +58,27 @@ const RESULT_SYS =
   "중심으로 4~6문장으로 정리해라. 어떤 의견들이 오갔고 무엇으로 모였는지 드러나게. 존댓말, 문단으로.";
 
 // Groq(OpenAI 호환) 요약.
-async function llmSummarize(text: string, system: string): Promise<string | null> {
+// Groq 모델 폴백 체인 — 앞에서부터 시도해 첫 성공을 사용(모델 폐기에 견고).
+// 이 키로 실측 확인: gpt-oss 계열만 접근 가능(llama 계열은 model_not_found). 120b 우선, 20b 폴백.
+const LLM_MODELS = [
+  "openai/gpt-oss-120b",
+  "openai/gpt-oss-20b",
+];
+
+let lastLlmError: string | null = null;
+
+async function callGroq(text: string, system: string, model: string): Promise<string | null> {
   const apiKey = Deno.env.get("LLM_API_KEY");
-  if (!apiKey) return null;
+  if (!apiKey) {
+    lastLlmError = "NO_LLM_API_KEY";
+    return null;
+  }
   try {
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model,
         temperature: 0.2,
         max_tokens: 900,
         messages: [
@@ -74,12 +87,27 @@ async function llmSummarize(text: string, system: string): Promise<string | null
         ],
       }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      lastLlmError = `[${model}] HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`;
+      return null;
+    }
     const data = await res.json();
-    return data?.choices?.[0]?.message?.content?.trim() ?? null;
-  } catch {
+    const out = data?.choices?.[0]?.message?.content?.trim() ?? null;
+    if (!out) lastLlmError = `[${model}] EMPTY_CONTENT`;
+    return out;
+  } catch (e) {
+    lastLlmError = `[${model}] EXC: ${e instanceof Error ? e.message : String(e)}`;
     return null;
   }
+}
+
+async function llmSummarize(text: string, system: string): Promise<string | null> {
+  for (const model of LLM_MODELS) {
+    const out = await callGroq(text, system, model);
+    if (out) return out;
+    console.error("[summarize] model fail:", lastLlmError);
+  }
+  return null;
 }
 
 // 공유 글 본문 확보(article_text → 라이브 추출 → body → og_description 순).
@@ -236,9 +264,20 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { share_id, article_id, discussion_id, word_id, target, mode } = (await req.json()) as Payload;
+    const { share_id, article_id, discussion_id, word_id, target, mode, debug } =
+      (await req.json()) as Payload;
     const m: Mode =
       mode === "planner" || mode === "explain" || mode === "insight" ? mode : "plain";
+
+    // 진단용: 후보 모델별 성패를 그대로 반환(임시).
+    if (debug) {
+      const results: Record<string, string> = {};
+      for (const model of LLM_MODELS) {
+        const out = await callGroq("한 줄로 '테스트'라고만 답하세요.", "간단히 답하는 도우미.", model);
+        results[model] = out ? `OK: ${out.slice(0, 40)}` : (lastLlmError ?? "null");
+      }
+      return json({ ok: true, hasKey: Boolean(Deno.env.get("LLM_API_KEY")), results });
+    }
 
     if (word_id) {
       const definition = await defineWord(word_id);

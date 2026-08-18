@@ -19,7 +19,7 @@ import { useOpinionsFeed, useBlogs, type OpinionSort } from "@/data";
 import { dtype, TOPIC_META, TOPIC_ORDER } from "@/theme";
 import type { Topic } from "@/types/database";
 import { OpinionCard } from "@/components/distill/OpinionCard";
-import { BlogFilterChips } from "@/components/distill/BlogFilterChips";
+import { BlogDropdown } from "@/components/distill/BlogDropdown";
 import { Loading, ErrorState, EmptyState } from "@/components";
 
 export function DiscussScreen() {
@@ -95,8 +95,8 @@ export function DiscussScreen() {
         </View>
       </View>
 
-      {/* 최상단 기업 칩(피드와 동일) */}
-      <BlogFilterChips
+      {/* 최상단 기업 드롭다운(피드와 동일) */}
+      <BlogDropdown
         blogs={blogsQ.data ?? []}
         selected={blogSel}
         onToggle={toggleBlog}
