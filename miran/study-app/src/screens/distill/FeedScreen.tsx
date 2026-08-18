@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Check, LayoutGrid, Rows3, SlidersHorizontal, X } from "lucide-react-native";
+import { Building2, Check, ChevronDown, LayoutGrid, Rows3, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
@@ -46,6 +46,16 @@ export function FeedScreen() {
     sort,
   });
   const rows = q.data?.pages.flatMap((p) => p.rows) ?? [];
+
+  // 드롭다운 요약(전체 / 기업명 / OO 외 N개) + 글 개수(더 있으면 '+').
+  const selectedNames = (blogsQ.data ?? []).filter((b) => blogSel.has(b.id)).map((b) => b.name);
+  const blogSummary =
+    selectedNames.length === 0
+      ? "전체"
+      : selectedNames.length === 1
+        ? selectedNames[0]
+        : `${selectedNames[0]} 외 ${selectedNames.length - 1}개`;
+  const countLabel = `${rows.length}${q.hasNextPage ? "+" : ""}개`;
 
   const toggleBlog = (id: string) =>
     setBlogSel((prev) => {
@@ -81,6 +91,25 @@ export function FeedScreen() {
         </View>
       </View>
 
+      {/* 기업 드롭다운 — 최상단, 기본 '전체' */}
+      <Pressable
+        onPress={() => setFilterOpen(true)}
+        style={[
+          styles.blogDropdown,
+          { backgroundColor: c.surfaceCard, borderColor: blogSel.size > 0 ? c.primary : c.hairline },
+        ]}
+      >
+        <Building2 size={16} color={blogSel.size > 0 ? c.primary : c.textSecondary} />
+        <Text style={[styles.blogDropdownLabel, { color: c.textMuted }]}>기업</Text>
+        <Text
+          style={[styles.blogDropdownValue, { color: blogSel.size > 0 ? c.primary : c.textPrimary }]}
+          numberOfLines={1}
+        >
+          {blogSummary}
+        </Text>
+        <ChevronDown size={18} color={c.textMuted} />
+      </Pressable>
+
       {/* 주제 탭 */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
         <Chip label="전체" active={topic === null} onPress={() => setTopic(null)} />
@@ -94,7 +123,7 @@ export function FeedScreen() {
         ))}
       </ScrollView>
 
-      {/* 정렬 + 기업 필터 한 줄 */}
+      {/* 정렬(좌) + 글 개수(우) */}
       <View style={styles.filterRow}>
         <View style={[styles.sortSeg, { backgroundColor: c.surfaceSunken }]}>
           {(["latest", "popular"] as const).map((s) => {
@@ -113,23 +142,7 @@ export function FeedScreen() {
           })}
         </View>
 
-        <Pressable
-          onPress={() => setFilterOpen(true)}
-          style={[
-            styles.blogFilterBtn,
-            {
-              backgroundColor: blogSel.size > 0 ? c.primaryTint : c.surfaceCard,
-              borderColor: blogSel.size > 0 ? c.primary : c.hairline,
-            },
-          ]}
-        >
-          <SlidersHorizontal size={15} color={blogSel.size > 0 ? c.primary : c.textSecondary} />
-          <Text
-            style={[styles.blogFilterText, { color: blogSel.size > 0 ? c.primary : c.textSecondary }]}
-          >
-            {blogSel.size > 0 ? `기업 ${blogSel.size}` : "기업"}
-          </Text>
-        </Pressable>
+        <Text style={[styles.countText, { color: c.textMuted }]}>{countLabel}</Text>
       </View>
 
       {q.isLoading ? (
@@ -270,16 +283,22 @@ const styles = StyleSheet.create({
   sortSeg: { flexDirection: "row", borderRadius: 10, padding: 3, gap: 2 },
   sortBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   sortBtnText: { ...dtype.label, fontSize: 12.5, fontWeight: "700" },
-  blogFilterBtn: {
+  countText: { ...dtype.label, fontSize: 13, fontWeight: "700" },
+
+  blogDropdown: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
     borderWidth: 1,
-    borderRadius: 999,
+    borderRadius: 10,
     paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingVertical: 11,
+    marginHorizontal: 16,
+    marginTop: 2,
+    marginBottom: 4,
   },
-  blogFilterText: { ...dtype.label, fontSize: 13 },
+  blogDropdownLabel: { ...dtype.label, fontSize: 12.5 },
+  blogDropdownValue: { ...dtype.body, fontSize: 14, fontWeight: "700", flex: 1 },
 
   listContent: { paddingHorizontal: 16, paddingBottom: 32 },
   gridRow: { gap: GRID_GAP, marginBottom: GRID_GAP },
