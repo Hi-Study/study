@@ -50,5 +50,3 @@ Supabase Dashboard → **Authentication → URL Configuration**
 `scripts/collect.mjs`(RSS 수집)는 배포 앱과 별개로 **로컬/크론에서** 실행한다.
 Vercel 서버리스에서 장시간 크롤링은 부적합. 로컬에서 `node scripts/collect.mjs` 로 돌리면
 같은 Supabase DB에 쌓이므로 배포 앱에 바로 반영된다.
-
-<!-- deploy: trigger fresh production build -->
