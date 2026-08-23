@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev)",
+      "Bash(npm run build)",
+      "Bash(npm run lint)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(timeout 20 bash -c 'until grep -qE \"Ready in|Local:\" \"$1\"; do sleep 0.5; done; tail -n 20 \"$1\"' _ \"C:\\\\Users\\\\ELUO\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-ELUO-Desktop----------claude-techblog-archive\\\\909c4e8e-b75b-4d7d-8435-d3760e67bee5\\\\tasks\\\\b9897u2ok.output\")",
+      "Bash(powershell -NoProfile -Command \"Stop-Process -Id 28068 -Force -ErrorAction SilentlyContinue\")",
+      "Bash(curl -s -o /dev/null -w \"my: %{http_code}\\\\n\" \"http://localhost:3000/my\")",
+      "Bash(npm run *)"
+    ]
+  }
+}

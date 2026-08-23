@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getHomeData, getReadPostIds, getBookmarkedPostIds } from "@/lib/queries";
 import { FeatureCard, CompanyLogo } from "@/components/PostCard";
 import FeedCard from "@/components/FeedCard";
+import DragScroll from "@/components/DragScroll";
 import Icon from "@/components/Icon";
 import type { Post, Review } from "@/lib/types";
 
@@ -33,7 +34,7 @@ export default async function HomePage() {
     getBookmarkedPostIds(user!.id),
   ]);
   const mark = (p: Post) => ({ ...p, read: readIds.has(p.id), bookmarked: bmIds.has(p.id) });
-  const swipe = (list: Post[]) => <div className="swipe">{list.map((p) => <FeedCard key={p.id} post={mark(p)} />)}</div>;
+  const swipe = (list: Post[]) => <DragScroll className="swipe">{list.map((p) => <FeedCard key={p.id} post={mark(p)} />)}</DragScroll>;
   const grid = (list: Post[]) => <div className="pop-grid">{list.slice(0, 4).map((p) => <FeedCard key={p.id} post={mark(p)} />)}</div>;
 
   return (
@@ -82,7 +83,7 @@ export default async function HomePage() {
               title={home.popularInsightsFallback ? "먼저 읽은 사람들의 생각은?" : "이 생각에 공감을 많이 했어요"}
               sub={home.popularInsightsFallback ? "다양한 인사이트를 함께 확인해보세요" : undefined}
             />
-            <div className="swipe">
+            <DragScroll className="swipe">
               {home.popularInsights.map((r) => (
                 <Link key={r.id} href={`/posts/${r.post_id}?insight=${r.id}`} className="ins-mini">
                   <div className="ins-mini-head">
@@ -97,7 +98,7 @@ export default async function HomePage() {
                   </div>
                 </Link>
               ))}
-            </div>
+            </DragScroll>
           </section>
         )}
 
