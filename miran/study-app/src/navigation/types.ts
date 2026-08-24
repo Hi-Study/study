@@ -11,8 +11,7 @@ export type StudyTabParamList = {
 export type DistillTabParamList = {
   Home: undefined;
   Feed: undefined;
-  Discuss: undefined;
-  Search: undefined;
+  Insight: undefined;
   MyPage: undefined;
 };
 
@@ -37,13 +36,14 @@ export type RootStackParamList = {
 
   // ===== distill =====
   DistillTabs: NavigatorScreenParams<DistillTabParamList> | undefined;
-  ArticleDetail: { articleId: string };
+  ArticleDetail: { articleId: string; focusOpinionId?: string };
   BlogArticles: { blogId: string; blogName: string };
   CreateOpinion: { articleId: string };
   OpinionDetail: { opinionId: string };
   CreateArticle: undefined;
   DistillNotifications: undefined;
   InsighterProfile: { userId: string };
+  Search: undefined;
 };
 
 export type RootNav = NativeStackNavigationProp<RootStackParamList>;

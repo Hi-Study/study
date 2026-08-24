@@ -4,6 +4,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   Image,
   Linking,
   Pressable,
@@ -13,6 +14,8 @@ import {
   Text,
   View,
 } from "react-native";
+
+const HERO_H = Math.round(Dimensions.get("window").width * (9 / 16));
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
@@ -50,7 +53,7 @@ import { Loading, ErrorState } from "@/components";
 type Props = NativeStackScreenProps<RootStackParamList, "ArticleDetail">;
 
 export function ArticleDetailScreen({ route }: Props) {
-  const { articleId } = route.params;
+  const { articleId, focusOpinionId } = route.params;
   const { theme } = useTheme();
   const c = theme.colors;
   const nav = useRootNav();
@@ -66,11 +69,23 @@ export function ArticleDetailScreen({ route }: Props) {
   const { scale, step } = useReadingFontScale();
   const scrollRef = useRef<ScrollView>(null);
   const [resumeY, setResumeY] = useState(0);
+  const tabsY = useRef(0);
 
   // 이어읽기 — 이전에 읽던 위치 불러오기(자동 스크롤 대신 '이어읽기' 버튼으로 이동).
   useEffect(() => {
     getReadPos(articleId).then(setResumeY);
   }, [articleId]);
+
+  // 인사이트 카드로 진입(focusOpinionId) → 의견 탭 열고 그 영역으로 스크롤.
+  useEffect(() => {
+    if (!focusOpinionId) return;
+    setTab("opinions");
+    const t = setTimeout(
+      () => scrollRef.current?.scrollTo({ y: HERO_H + tabsY.current - 12, animated: true }),
+      350,
+    );
+    return () => clearTimeout(t);
+  }, [focusOpinionId]);
 
   if (q.isLoading) {
     return (
@@ -199,7 +214,12 @@ export function ArticleDetailScreen({ route }: Props) {
           </Pressable>
 
           {/* 원문 / 의견 탭 */}
-          <View style={[styles.tabs, { borderColor: c.hairline }]}>
+          <View
+            style={[styles.tabs, { borderColor: c.hairline }]}
+            onLayout={(e) => {
+              tabsY.current = e.nativeEvent.layout.y;
+            }}
+          >
             {(["original", "opinions"] as const).map((t) => {
               const label = t === "original" ? "원문" : "의견";
               const on = tab === t;
@@ -288,7 +308,7 @@ export function ArticleDetailScreen({ route }: Props) {
           style={[styles.cta, { backgroundColor: c.primary }]}
           onPress={() => nav.navigate("CreateOpinion", { articleId: a.id })}
         >
-          <Text style={[styles.ctaText, { color: c.actionOn }]}>내 의견 남기기</Text>
+          <Text style={[styles.ctaText, { color: c.actionOn }]}>내 생각도 남겨볼까요?</Text>
         </Pressable>
       </SafeAreaView>
     </View>
@@ -404,7 +424,7 @@ function OpinionsSection({ articleId }: { articleId: string }) {
     return (
       <View style={styles.opinionsEmpty}>
         <Text style={[styles.opinionsEmptyText, { color: c.textMuted }]}>
-          아직 의견이 없어요.{"\n"}아래 "내 의견 남기기"로 첫 인사이트를 남겨보세요.
+          아직 의견이 없어요.{"\n"}아래 "내 생각도 남겨볼까요?"로 첫 인사이트를 남겨보세요.
         </Text>
       </View>
     );

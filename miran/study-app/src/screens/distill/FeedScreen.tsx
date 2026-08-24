@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { Dimensions, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LayoutGrid, Rows3 } from "lucide-react-native";
+import { LayoutGrid, Rows3, Search } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
@@ -51,9 +51,13 @@ export function FeedScreen() {
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: c.surfacePage }]} edges={["top", "left", "right"]}>
-      {/* 제목 + 리스트/그리드 토글 */}
+      {/* 제목 + 검색 유틸 + 리스트/그리드 토글 */}
       <View style={styles.header}>
         <Text style={[styles.title, { color: c.textPrimary }]}>피드</Text>
+        <View style={{ flex: 1 }} />
+        <Pressable hitSlop={8} style={styles.searchUtil} onPress={() => nav.navigate("Search")}>
+          <Search size={22} color={c.textSecondary} />
+        </Pressable>
         <View style={[styles.viewSeg, { backgroundColor: c.surfaceSunken }]}>
           {(["list", "grid"] as const).map((v) => {
             const on = view === v;
@@ -183,6 +187,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   title: { ...dtype.display },
+  searchUtil: { width: 38, height: 38, alignItems: "center", justifyContent: "center", marginRight: 4 },
   viewSeg: { flexDirection: "row", borderRadius: 10, padding: 3, gap: 2 },
   viewBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
 

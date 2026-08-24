@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronRight, MessageSquare, RotateCw, Settings, Star, Trash2, X } from "lucide-react-native";
+import { ChevronRight, MessageSquare, RotateCw, Search, Settings, Star, Trash2, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
@@ -217,6 +217,9 @@ export function DistillMyPageScreen() {
                   {roleTitle}
                 </Text>
               </View>
+              <Pressable hitSlop={8} style={styles.iconBtn} onPress={() => nav.navigate("Search")}>
+                <Search size={22} color={c.textSecondary} />
+              </Pressable>
               <Pressable
                 hitSlop={8}
                 style={styles.iconBtn}

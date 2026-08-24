@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Clock, Search, Sparkles, TrendingUp, X } from "lucide-react-native";
+import { ChevronLeft, Clock, Search, Sparkles, TrendingUp, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
@@ -54,9 +54,12 @@ export function DistillSearchScreen() {
       style={[styles.screen, { backgroundColor: c.surfacePage }]}
       edges={["top", "left", "right"]}
     >
-      {/* 검색바 */}
+      {/* 검색바 (상단 유틸에서 진입 — 뒤로가기) */}
       <View style={styles.searchWrap}>
-        <View style={[styles.searchBar, { backgroundColor: c.surfaceSunken }]}>
+        <Pressable onPress={() => nav.goBack()} hitSlop={8} style={styles.backBtn}>
+          <ChevronLeft size={24} color={c.textPrimary} />
+        </Pressable>
+        <View style={[styles.searchBar, { backgroundColor: c.surfaceSunken, flex: 1 }]}>
           <Search size={18} color={c.textMuted} />
           <TextInput
             value={query}
@@ -199,7 +202,8 @@ export function DistillSearchScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  searchWrap: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 },
+  searchWrap: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingRight: 16, paddingTop: 8, paddingBottom: 8 },
+  backBtn: { width: 36, height: 44, alignItems: "center", justifyContent: "center" },
   searchBar: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 12, paddingHorizontal: 12, height: 44 },
   searchInput: { flex: 1, ...dtype.body },
 

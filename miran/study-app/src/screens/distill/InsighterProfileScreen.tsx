@@ -1,20 +1,13 @@
-// distill 인사이터 프로필 — 그 사람 정보 + 팔로우 + 남긴 의견(독후감) 모아보기.
+// distill 인사이터 프로필 — 그 사람 정보 + 남긴 의견(독후감) 모아보기.
 import React from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ChevronLeft, UserCheck, UserPlus } from "lucide-react-native";
+import { ChevronLeft } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
-import { useUid } from "@/auth/AuthProvider";
 import { useRootNav, type RootStackParamList } from "@/navigation/types";
-import {
-  useUserProfile,
-  useFollowCounts,
-  useIsFollowing,
-  useToggleFollow,
-  useOpinionsByAuthor,
-} from "@/data";
+import { useUserProfile, useOpinionsByAuthor } from "@/data";
 import { dtype } from "@/theme";
 import { Avatar } from "@/components/Avatar";
 import { OpinionCard } from "@/components/distill/OpinionCard";
@@ -27,18 +20,12 @@ export function InsighterProfileScreen({ route }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
   const nav = useRootNav();
-  const uid = useUid();
-  const isMe = uid === userId;
 
   const profileQ = useUserProfile(userId);
-  const counts = useFollowCounts(userId);
-  const following = useIsFollowing(userId);
-  const toggleFollow = useToggleFollow(userId);
   const opinionsQ = useOpinionsByAuthor(userId);
 
   const profile = profileQ.data;
   const opinions = opinionsQ.data ?? [];
-  const isFollowing = following.data ?? false;
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: c.surfacePage }]} edges={["top", "left", "right"]}>
@@ -59,7 +46,14 @@ export function InsighterProfileScreen({ route }: Props) {
           data={opinions}
           keyExtractor={(o) => o.id}
           renderItem={({ item }) => (
-            <OpinionCard opinion={item} onPress={() => nav.navigate("OpinionDetail", { opinionId: item.id })} />
+            <OpinionCard
+              opinion={item}
+              onPress={() =>
+                item.article
+                  ? nav.navigate("ArticleDetail", { articleId: item.article.id, focusOpinionId: item.id })
+                  : nav.navigate("OpinionDetail", { opinionId: item.id })
+              }
+            />
           )}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
           contentContainerStyle={styles.listContent}
@@ -76,46 +70,10 @@ export function InsighterProfileScreen({ route }: Props) {
 
                 <View style={styles.counts}>
                   <View style={styles.countItem}>
-                    <Text style={[styles.countNum, { color: c.textPrimary }]}>
-                      {counts.data?.followers ?? 0}
-                    </Text>
-                    <Text style={[styles.countLabel, { color: c.textMuted }]}>팔로워</Text>
-                  </View>
-                  <View style={[styles.countDivider, { backgroundColor: c.hairline }]} />
-                  <View style={styles.countItem}>
-                    <Text style={[styles.countNum, { color: c.textPrimary }]}>
-                      {counts.data?.following ?? 0}
-                    </Text>
-                    <Text style={[styles.countLabel, { color: c.textMuted }]}>팔로잉</Text>
-                  </View>
-                  <View style={[styles.countDivider, { backgroundColor: c.hairline }]} />
-                  <View style={styles.countItem}>
                     <Text style={[styles.countNum, { color: c.textPrimary }]}>{opinions.length}</Text>
                     <Text style={[styles.countLabel, { color: c.textMuted }]}>독후감</Text>
                   </View>
                 </View>
-
-                {!isMe ? (
-                  <Pressable
-                    onPress={() => toggleFollow.mutate(!isFollowing)}
-                    disabled={toggleFollow.isPending}
-                    style={[
-                      styles.followBtn,
-                      isFollowing
-                        ? { backgroundColor: c.surfaceSunken, borderColor: c.hairline }
-                        : { backgroundColor: c.primary, borderColor: c.primary },
-                    ]}
-                  >
-                    {isFollowing ? (
-                      <UserCheck size={16} color={c.textSecondary} />
-                    ) : (
-                      <UserPlus size={16} color={c.actionOn} />
-                    )}
-                    <Text style={[styles.followText, { color: isFollowing ? c.textSecondary : c.actionOn }]}>
-                      {isFollowing ? "팔로잉" : "팔로우"}
-                    </Text>
-                  </Pressable>
-                ) : null}
               </View>
 
               <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>남긴 독후감</Text>
