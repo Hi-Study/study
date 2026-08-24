@@ -581,3 +581,30 @@ end; $$;
 drop trigger if exists trg_notify_new_opinion on public.opinions;
 create trigger trg_notify_new_opinion after insert on public.opinions
   for each row execute function public.notify_new_opinion();
+
+-- ============================================================
+-- 20) 커뮤니티 자유글(community_posts) — 인사이트 탭의 '커뮤니티' 서브탭.
+--     · 모두 읽기, 본인만 쓰기/수정/삭제.
+-- ============================================================
+create table if not exists public.community_posts (
+  id         uuid primary key default gen_random_uuid(),
+  author_id  uuid references public.users(id) on delete set null,
+  title      text not null,
+  body       text not null,
+  like_count int not null default 0,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_community_posts_created on public.community_posts(created_at desc);
+
+alter table public.community_posts enable row level security;
+drop policy if exists cposts_read on public.community_posts;
+create policy cposts_read on public.community_posts for select to authenticated using (true);
+drop policy if exists cposts_insert_own on public.community_posts;
+create policy cposts_insert_own on public.community_posts for insert to authenticated
+  with check (author_id = auth.uid());
+drop policy if exists cposts_update_own on public.community_posts;
+create policy cposts_update_own on public.community_posts for update to authenticated
+  using (author_id = auth.uid()) with check (author_id = auth.uid());
+drop policy if exists cposts_delete_own on public.community_posts;
+create policy cposts_delete_own on public.community_posts for delete to authenticated
+  using (author_id = auth.uid());

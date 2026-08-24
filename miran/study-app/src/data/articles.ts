@@ -242,6 +242,95 @@ export function usePopularTags() {
   return useQuery({ queryKey: qk.popularTags(), queryFn: () => listPopularTags() });
 }
 
+/** 홈 큐레이션 — 인기 글(좋아요 상위). 히어로/인기글 캐러셀용. */
+export async function listPopularArticles(limit = 10): Promise<ArticleWithBlog[]> {
+  const { data, error } = await supabase
+    .from("articles")
+    .select(SELECT_WITH_BLOG)
+    .order("like_count", { ascending: false })
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as unknown as ArticleWithBlog[];
+}
+
+export function usePopularArticles(limit = 10) {
+  return useQuery({
+    queryKey: [...qk.articles(), "popular", limit] as const,
+    queryFn: () => listPopularArticles(limit),
+  });
+}
+
+/** 홈 큐레이션 — 즐겨찾기(관심) 기업의 새 글, 최신순. 즐겨찾기 없으면 빈 배열. */
+export async function listFavoriteBlogArticles(uid: string, limit = 10): Promise<ArticleWithBlog[]> {
+  const { data: favs, error: favErr } = await supabase
+    .from("user_blog_favorites")
+    .select("blog_id")
+    .eq("user_id", uid);
+  if (favErr) throw favErr;
+  const blogIds = (favs ?? []).map((f) => f.blog_id as string);
+  if (blogIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("articles")
+    .select(SELECT_WITH_BLOG)
+    .in("blog_id", blogIds)
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as unknown as ArticleWithBlog[];
+}
+
+export function useFavoriteBlogArticles(limit = 10) {
+  const uid = useUid();
+  return useQuery({
+    queryKey: [...qk.articles(), "fav-blog", uid, limit] as const,
+    queryFn: () => listFavoriteBlogArticles(uid, limit),
+    enabled: Boolean(uid),
+  });
+}
+
+/** 홈 큐레이션 — 사용자가 직접 등록한 글(submitted_by 있음), 최신순. */
+export async function listDirectArticles(limit = 10): Promise<ArticleWithBlog[]> {
+  const { data, error } = await supabase
+    .from("articles")
+    .select(SELECT_WITH_BLOG)
+    .not("submitted_by", "is", null)
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as unknown as ArticleWithBlog[];
+}
+
+export function useDirectArticles(limit = 10) {
+  return useQuery({
+    queryKey: [...qk.articles(), "direct", limit] as const,
+    queryFn: () => listDirectArticles(limit),
+  });
+}
+
+/** 홈 큐레이션 — 추천 글. 내가 읽은 글들의 태그와 겹치는 최신 글(활동 없으면 빈 배열). */
+export async function listRecommendedArticles(uid: string, limit = 10): Promise<ArticleWithBlog[]> {
+  const tags = await listRecommendedKeywords(uid, 8);
+  if (tags.length === 0) return [];
+  const { data, error } = await supabase
+    .from("articles")
+    .select(SELECT_WITH_BLOG)
+    .overlaps("tags", tags)
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as unknown as ArticleWithBlog[];
+}
+
+export function useRecommendedArticles(limit = 10) {
+  const uid = useUid();
+  return useQuery({
+    queryKey: [...qk.articles(), "recommended-articles", uid, limit] as const,
+    queryFn: () => listRecommendedArticles(uid, limit),
+    enabled: Boolean(uid),
+  });
+}
+
 /** 홈 대표글 캐러셀 — 이미지 있는 최신 글 N개(좌우 슬라이드). */
 export async function listFeaturedArticles(limit = 6): Promise<ArticleWithBlog[]> {
   const { data, error } = await supabase

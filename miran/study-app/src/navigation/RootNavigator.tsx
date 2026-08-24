@@ -33,6 +33,7 @@ import { BlogArticlesScreen } from "@/screens/distill/BlogArticlesScreen";
 import { CreateOpinionScreen } from "@/screens/distill/CreateOpinionScreen";
 import { OpinionDetailScreen } from "@/screens/distill/OpinionDetailScreen";
 import { CreateArticleScreen } from "@/screens/distill/CreateArticleScreen";
+import { CreateCommunityPostScreen } from "@/screens/distill/CreateCommunityPostScreen";
 import { DistillNotificationsScreen } from "@/screens/distill/DistillNotificationsScreen";
 import { InsighterProfileScreen } from "@/screens/distill/InsighterProfileScreen";
 import { DistillSearchScreen } from "@/screens/distill/DistillSearchScreen";
@@ -91,6 +92,7 @@ function Gate() {
         <Stack.Screen name="CreateOpinion" component={CreateOpinionScreen} />
         <Stack.Screen name="OpinionDetail" component={OpinionDetailScreen} />
         <Stack.Screen name="CreateArticle" component={CreateArticleScreen} />
+        <Stack.Screen name="CreateCommunityPost" component={CreateCommunityPostScreen} />
         <Stack.Screen name="DistillNotifications" component={DistillNotificationsScreen} />
         <Stack.Screen name="InsighterProfile" component={InsighterProfileScreen} />
         <Stack.Screen name="Search" component={DistillSearchScreen} />

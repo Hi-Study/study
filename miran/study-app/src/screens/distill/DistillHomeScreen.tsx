@@ -1,30 +1,34 @@
-// distill 홈 — "발견" (회의록 §홈).
-// [인사말+알림] · [대표글 캐러셀] · [서비스 모아보기 2행 가로 스와이프(다중선택)] ·
-// [선택(없으면 전체) 기업별 최신글 가로 캐러셀] · [글쓰기 FAB(홈 전용)].
-import React, { useMemo, useState } from "react";
+// distill 홈 — "발견" (회의록 2026-08-18 §홈 큐레이션 8섹션).
+// [검색바] · ①오늘의 글(히어로) · ②인기 키워드 칩 · 서비스 모아보기(기업 아이콘) ·
+// ④인기 글 · ⑤인기 인사이트 · ⑥추천 글 · ⑦즐겨찾기 기업 새 글 · ⑧사용자 등록 글.
+import React from "react";
 import { Dimensions, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Bell, ChevronRight, PenLine } from "lucide-react-native";
+import { Search } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
 import {
   useBlogs,
-  useFeaturedArticles,
-  useArticlesByBlog,
-  useUnreadNotificationCount,
+  usePopularArticles,
+  usePopularTags,
+  useOpinionsFeed,
+  useFavoriteBlogArticles,
+  useRecommendedArticles,
+  useDirectArticles,
 } from "@/data";
 import type { BlogRow } from "@/types/tables";
+import type { ArticleWithBlog } from "@/data/articles";
 import { dtype } from "@/theme";
-import { ArticleCardH, ServiceLogo } from "@/components/distill/ArticleCards";
+import { ArticleCardH, ArticleRow, FeaturedCard, ServiceLogo } from "@/components/distill/ArticleCards";
+import { OpinionCard } from "@/components/distill/OpinionCard";
 import { Loading } from "@/components";
 
 const W = Dimensions.get("window").width;
-const CARD_W = Math.round(W * 0.82);
-const BLOG_CARD_W = Math.round(W * 0.62);
-// 서비스 모아보기 2행 가로 스와이프 셀(약 4.4칸 노출 → 다음 칸 살짝 보여 스와이프 유도).
+const CARD_W = Math.round(W * 0.62);
+const OPINION_W = Math.round(W * 0.82);
 const CELL_W = Math.round((W - 32) / 4.4);
-const CELL_H = 86;
+const CELL_H = 84;
 const ROW_GAP = 12;
 
 function greeting(): string {
@@ -35,59 +39,55 @@ function greeting(): string {
   return "좋은 저녁이에요";
 }
 
-// 서비스 모아보기 셀 — 카드 없이 아이콘(파비콘) + 이름만. 탭하면 다중선택(선택 시 이름 강조).
-function BlogCell({ blog, active, onPress }: { blog: BlogRow; active: boolean; onPress: () => void }) {
+function SectionHeader({ title, sub }: { title: string; sub?: string }) {
   const { theme } = useTheme();
   const c = theme.colors;
   return (
-    <Pressable onPress={onPress} style={[styles.cell, { width: CELL_W, height: CELL_H }]}>
-      <ServiceLogo name={blog.name} brandColor={blog.brand_color} homepage={blog.homepage} blogKey={blog.key} size={44} />
-      <Text
-        style={[styles.cellText, { color: active ? c.primary : c.textSecondary, fontWeight: active ? "800" : "600" }]}
-        numberOfLines={1}
-      >
-        {blog.name}
-      </Text>
-    </Pressable>
+    <View style={styles.sectionHead}>
+      <Text style={[styles.sectionTitle, { color: c.textPrimary }]}>{title}</Text>
+      {sub ? <Text style={[styles.sectionSub, { color: c.textMuted }]}>{sub}</Text> : null}
+    </View>
   );
 }
 
-// 기업별 최신글 가로 캐러셀 — 글 없으면 렌더 안 함.
-function BlogCarousel({ blog }: { blog: BlogRow }) {
+// 가로 캐러셀(글) — 공통.
+function ArticleCarousel({ data }: { data: ArticleWithBlog[] }) {
+  const nav = useRootNav();
+  return (
+    <FlatList
+      data={data}
+      keyExtractor={(a) => a.id}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      snapToInterval={CARD_W + 12}
+      decelerationRate="fast"
+      contentContainerStyle={styles.carouselRow}
+      renderItem={({ item }) => (
+        <ArticleCardH
+          article={item}
+          width={CARD_W}
+          onPress={() => nav.navigate("ArticleDetail", { articleId: item.id })}
+        />
+      )}
+    />
+  );
+}
+
+// 서비스 모아보기 셀 — 카드 없이 아이콘+텍스트. 탭 시 기업 상세로.
+function BlogCell({ blog }: { blog: BlogRow }) {
   const { theme } = useTheme();
   const c = theme.colors;
   const nav = useRootNav();
-  const q = useArticlesByBlog(blog.id, 10);
-  const rows = q.data ?? [];
-  if (q.isLoading || rows.length === 0) return null;
-
   return (
-    <View style={styles.blogSection}>
-      <Pressable
-        style={styles.blogHead}
-        onPress={() => nav.navigate("BlogArticles", { blogId: blog.id, blogName: blog.name })}
-      >
-        <ServiceLogo name={blog.name} brandColor={blog.brand_color} homepage={blog.homepage} blogKey={blog.key} size={24} />
-        <Text style={[styles.blogName, { color: c.textPrimary }]}>{blog.name}</Text>
-        <ChevronRight size={18} color={c.textMuted} />
-      </Pressable>
-      <FlatList
-        data={rows}
-        keyExtractor={(a) => a.id}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        snapToInterval={BLOG_CARD_W + 12}
-        decelerationRate="fast"
-        contentContainerStyle={styles.blogCarousel}
-        renderItem={({ item }) => (
-          <ArticleCardH
-            article={item}
-            width={BLOG_CARD_W}
-            onPress={() => nav.navigate("ArticleDetail", { articleId: item.id })}
-          />
-        )}
-      />
-    </View>
+    <Pressable
+      style={[styles.cell, { width: CELL_W, height: CELL_H }]}
+      onPress={() => nav.navigate("BlogArticles", { blogId: blog.id, blogName: blog.name })}
+    >
+      <ServiceLogo name={blog.name} brandColor={blog.brand_color} homepage={blog.homepage} blogKey={blog.key} size={44} />
+      <Text style={[styles.cellText, { color: c.textSecondary }]} numberOfLines={1}>
+        {blog.name}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -95,168 +95,175 @@ export function DistillHomeScreen() {
   const { theme } = useTheme();
   const c = theme.colors;
   const nav = useRootNav();
-  const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const blogsQ = useBlogs();
-  const featuredQ = useFeaturedArticles(6);
-  const unread = useUnreadNotificationCount().data ?? 0;
+  const blogs = useBlogs().data ?? [];
+  const popular = usePopularArticles(10).data ?? [];
+  const tags = usePopularTags().data ?? [];
+  const insights = (useOpinionsFeed("popular").data ?? []).slice(0, 8);
+  const favArticles = useFavoriteBlogArticles(10).data ?? [];
+  const recommended = useRecommendedArticles(10).data ?? [];
+  const direct = useDirectArticles(10).data ?? [];
 
-  const blogs = blogsQ.data ?? [];
-  const featured = featuredQ.data ?? [];
-  // 선택된 기업만(없으면 전체)의 캐러셀 표시.
-  const shown = useMemo(
-    () => (selected.size > 0 ? blogs.filter((b) => selected.has(b.id)) : blogs),
-    [blogs, selected],
-  );
-
-  const toggle = (id: string) =>
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const hero = popular[0];
+  const popularRest = popular.slice(1);
+  const loading = blogs.length === 0 && popular.length === 0;
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: c.surfacePage }]} edges={["top", "left", "right"]}>
-      <FlatList
-        data={shown}
-        keyExtractor={(b) => b.id}
-        renderItem={({ item }) => <BlogCarousel blog={item} />}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={blogsQ.isLoading ? <Loading label="불러오는 중…" /> : null}
-        ListHeaderComponent={
-          <View>
-            {/* 인사말 + 알림 */}
-            <View style={styles.greetRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.greetTitle, { color: c.textPrimary }]}>{greeting()}</Text>
-                <Text style={[styles.greetSub, { color: c.textMuted }]}>오늘의 테크 인사이트</Text>
-              </View>
-              <Pressable hitSlop={8} style={styles.iconBtn} onPress={() => nav.navigate("DistillNotifications")}>
-                <Bell size={22} color={c.textSecondary} />
-                {unread > 0 ? (
-                  <View style={[styles.bellDot, { backgroundColor: c.hot, borderColor: c.surfacePage }]} />
-                ) : null}
-              </Pressable>
-            </View>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* 인사말 */}
+        <Text style={[styles.greetTitle, { color: c.textPrimary }]}>{greeting()}</Text>
 
-            {/* 대표글 좌우 캐러셀 */}
-            {featured.length > 0 ? (
-              <View style={styles.carousel}>
-                <FlatList
-                  data={featured}
-                  keyExtractor={(a) => a.id}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  snapToInterval={CARD_W + 12}
-                  decelerationRate="fast"
-                  contentContainerStyle={styles.carouselContent}
-                  renderItem={({ item }) => (
-                    <ArticleCardH
-                      article={item}
-                      width={CARD_W}
-                      onPress={() => nav.navigate("ArticleDetail", { articleId: item.id })}
-                    />
-                  )}
-                />
-              </View>
-            ) : null}
+        {/* 검색바 (홈 전용) */}
+        <Pressable
+          style={[styles.searchBar, { backgroundColor: c.surfaceSunken }]}
+          onPress={() => nav.navigate("Search")}
+        >
+          <Search size={18} color={c.textMuted} />
+          <Text style={[styles.searchPlaceholder, { color: c.textMuted }]}>글 제목·주제·태그 검색</Text>
+        </Pressable>
 
-            {/* 서비스 모아보기 — 2행 가로 스와이프(다중선택) */}
-            <View style={styles.sectionHead}>
-              <Text style={[styles.listLabel, { color: c.textPrimary }]}>서비스 모아보기</Text>
-              {selected.size > 0 ? (
-                <Pressable hitSlop={8} onPress={() => setSelected(new Set())}>
-                  <Text style={[styles.reset, { color: c.primary }]}>전체 보기</Text>
+        {loading ? <Loading label="불러오는 중…" /> : null}
+
+        {/* ① 오늘의 글 (히어로) */}
+        {hero ? (
+          <View style={styles.block}>
+            <FeaturedCard article={hero} onPress={() => nav.navigate("ArticleDetail", { articleId: hero.id })} />
+          </View>
+        ) : null}
+
+        {/* ② 인기 키워드 칩 */}
+        {tags.length > 0 ? (
+          <View style={styles.block}>
+            <SectionHeader title="요즘 이 단어들이 자주 보여요" />
+            <View style={styles.tagWrap}>
+              {tags.slice(0, 8).map((t) => (
+                <Pressable
+                  key={t}
+                  style={[styles.tagChip, { backgroundColor: c.surfaceCard, borderColor: c.hairline }]}
+                  onPress={() => nav.navigate("Search")}
+                >
+                  <Text style={[styles.tagText, { color: c.textSecondary }]}>#{t}</Text>
                 </Pressable>
-              ) : null}
+              ))}
             </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.gridScroll}
-            >
+          </View>
+        ) : null}
+
+        {/* 서비스 모아보기 (기업 아이콘) */}
+        {blogs.length > 0 ? (
+          <View style={styles.block}>
+            <SectionHeader title="서비스 모아보기" />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gridScroll}>
               <View style={[styles.grid2row, { height: CELL_H * 2 + ROW_GAP }]}>
                 {blogs.map((b) => (
-                  <BlogCell key={b.id} blog={b} active={selected.has(b.id)} onPress={() => toggle(b.id)} />
+                  <BlogCell key={b.id} blog={b} />
                 ))}
               </View>
             </ScrollView>
-
-            <Text style={[styles.listLabel, { color: c.textSecondary, marginTop: 16, marginBottom: 4 }]}>
-              {selected.size > 0 ? `선택한 서비스 (${selected.size})` : "기업별 최신글"}
-            </Text>
           </View>
-        }
-      />
+        ) : null}
 
-      {/* 글쓰기 FAB — 홈 전용 */}
-      <Pressable
-        onPress={() => nav.navigate("CreateArticle")}
-        style={({ pressed }) => [styles.fab, { backgroundColor: c.primary, opacity: pressed ? 0.9 : 1 }]}
-        hitSlop={8}
-      >
-        <PenLine size={24} color="#fff" />
-      </Pressable>
+        {/* ④ 인기 글 */}
+        {popularRest.length > 0 ? (
+          <View style={styles.block}>
+            <SectionHeader title="인사이트를 많이 남겼어요" />
+            <ArticleCarousel data={popularRest} />
+          </View>
+        ) : null}
+
+        {/* ⑤ 인기 인사이트 */}
+        {insights.length > 0 ? (
+          <View style={styles.block}>
+            <SectionHeader title="이 생각에 공감을 많이 했어요" />
+            <FlatList
+              data={insights}
+              keyExtractor={(o) => o.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={OPINION_W + 12}
+              decelerationRate="fast"
+              contentContainerStyle={styles.carouselRow}
+              renderItem={({ item }) => (
+                <View style={{ width: OPINION_W }}>
+                  <OpinionCard
+                    opinion={item}
+                    onPress={() =>
+                      item.article
+                        ? nav.navigate("ArticleDetail", { articleId: item.article.id, focusOpinionId: item.id })
+                        : nav.navigate("OpinionDetail", { opinionId: item.id })
+                    }
+                  />
+                </View>
+              )}
+            />
+          </View>
+        ) : null}
+
+        {/* ⑦ 즐겨찾기 기업 새 글 */}
+        {favArticles.length > 0 ? (
+          <View style={styles.block}>
+            <SectionHeader title="관심 기업에 새 글이 올라왔어요" />
+            <ArticleCarousel data={favArticles} />
+          </View>
+        ) : null}
+
+        {/* ⑧ 사용자 등록 글 */}
+        {direct.length > 0 ? (
+          <View style={styles.block}>
+            <SectionHeader title="인사이터가 직접 소개하는 글이에요" />
+            <ArticleCarousel data={direct} />
+          </View>
+        ) : null}
+
+        {/* ⑥ 추천 글 (세로 리스트) */}
+        {recommended.length > 0 ? (
+          <View style={styles.block}>
+            <SectionHeader title="이 글도 관심이 있을 것 같아요" />
+            {recommended.map((a, i) => (
+              <View key={a.id}>
+                {i > 0 ? <View style={[styles.sep, { backgroundColor: c.hairline }]} /> : null}
+                <ArticleRow article={a} onPress={() => nav.navigate("ArticleDetail", { articleId: a.id })} />
+              </View>
+            ))}
+          </View>
+        ) : null}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  listContent: { paddingHorizontal: 16, paddingBottom: 40 },
+  content: { paddingHorizontal: 16, paddingBottom: 40 },
 
-  greetRow: { flexDirection: "row", alignItems: "center", paddingTop: 8, paddingBottom: 8, gap: 4 },
-  greetTitle: { ...dtype.display },
-  greetSub: { ...dtype.body, marginTop: 2 },
-  iconBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  bellDot: { position: "absolute", top: 8, right: 9, width: 9, height: 9, borderRadius: 5, borderWidth: 1.5 },
-
-  carousel: { marginHorizontal: -16, marginTop: 4, marginBottom: 8 },
-  carouselContent: { paddingHorizontal: 16, gap: 12 },
-
-  sectionHead: {
+  greetTitle: { ...dtype.display, paddingTop: 8 },
+  searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 8,
-    marginBottom: 10,
+    gap: 8,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 46,
+    marginTop: 10,
   },
-  reset: { ...dtype.label, fontSize: 13 },
-  listLabel: { ...dtype.title },
+  searchPlaceholder: { ...dtype.body },
 
-  // 2행 가로 스와이프 그리드
+  block: { marginTop: 22 },
+  sectionHead: { marginBottom: 12 },
+  sectionTitle: { ...dtype.title },
+  sectionSub: { ...dtype.bodyS, marginTop: 2 },
+
+  carouselRow: { gap: 12, paddingRight: 4 },
+
+  tagWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  tagChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 13, paddingVertical: 8 },
+  tagText: { ...dtype.label, fontSize: 13.5 },
+
   gridScroll: { paddingRight: 8 },
   grid2row: { flexDirection: "column", flexWrap: "wrap", rowGap: ROW_GAP, columnGap: 10 },
-  cell: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: 2,
-  },
+  cell: { alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 2 },
   cellText: { ...dtype.label, fontSize: 11.5, textAlign: "center" },
 
-  // 기업별 캐러셀
-  blogSection: { marginTop: 6, marginBottom: 12 },
-  blogHead: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
-  blogName: { ...dtype.cardTitle, flex: 1 },
-  blogCarousel: { gap: 12, paddingRight: 4 },
-
-  fab: {
-    position: "absolute",
-    right: 18,
-    bottom: 22,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.22,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 5,
-  },
+  sep: { height: 1 },
 });

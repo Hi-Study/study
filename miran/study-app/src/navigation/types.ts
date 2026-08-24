@@ -41,6 +41,7 @@ export type RootStackParamList = {
   CreateOpinion: { articleId: string };
   OpinionDetail: { opinionId: string };
   CreateArticle: undefined;
+  CreateCommunityPost: undefined;
   DistillNotifications: undefined;
   InsighterProfile: { userId: string };
   Search: undefined;

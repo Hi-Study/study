@@ -1,10 +1,10 @@
 // distill 기업(브랜드) 홈 — 홈의 서비스 로고/캐러셀 헤더 탭으로 진입.
 //   피드와 다르게: [브랜드 히어로 + 즐겨찾기] · [인기글 큐레이션 캐러셀] · [주제별 최신글].
 import React, { useMemo, useState } from "react";
-import { Dimensions, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Dimensions, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ChevronLeft, Star } from "lucide-react-native";
+import { Check, ChevronDown, ChevronLeft, Star, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav, type RootStackParamList } from "@/navigation/types";
@@ -32,8 +32,10 @@ export function BlogArticlesScreen({ route }: Props) {
   const c = theme.colors;
   const nav = useRootNav();
   const [topic, setTopic] = useState<Topic | null>(null);
+  const [switchOpen, setSwitchOpen] = useState(false);
 
-  const blog = useBlogs().data?.find((b) => b.id === blogId);
+  const allBlogs = useBlogs().data ?? [];
+  const blog = allBlogs.find((b) => b.id === blogId);
   const favIds = useFavoriteBlogIds();
   const toggleFav = useToggleBlogFavorite();
   const isFav = useMemo(() => new Set(favIds.data ?? []).has(blogId), [favIds.data, blogId]);
@@ -50,13 +52,54 @@ export function BlogArticlesScreen({ route }: Props) {
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: c.surfacePage }]} edges={["top", "left", "right"]}>
-      {/* 헤더 */}
+      {/* 헤더 — 기업명 셀렉트로 다른 기업 전환 */}
       <View style={styles.header}>
         <Pressable onPress={() => nav.goBack()} hitSlop={8} style={styles.backBtn}>
           <ChevronLeft size={24} color={c.textPrimary} />
         </Pressable>
+        <Pressable style={styles.headerSelect} onPress={() => setSwitchOpen(true)}>
+          <Text style={[styles.headerSelectText, { color: c.textPrimary }]} numberOfLines={1}>
+            {blogName}
+          </Text>
+          <ChevronDown size={18} color={c.textMuted} />
+        </Pressable>
         <View style={styles.backBtn} />
       </View>
+
+      {/* 기업 전환 드롭다운 */}
+      <Modal visible={switchOpen} transparent animationType="fade" onRequestClose={() => setSwitchOpen(false)}>
+        <Pressable style={styles.backdrop} onPress={() => setSwitchOpen(false)}>
+          <SafeAreaView edges={["top"]}>
+            <Pressable style={[styles.switchPanel, { backgroundColor: c.surfaceCard }]} onPress={() => {}}>
+              <View style={styles.switchHead}>
+                <Text style={[styles.switchTitle, { color: c.textPrimary }]}>기업 전환</Text>
+                <Pressable onPress={() => setSwitchOpen(false)} hitSlop={8}>
+                  <X size={20} color={c.textMuted} />
+                </Pressable>
+              </View>
+              <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+                {allBlogs.map((b) => {
+                  const on = b.id === blogId;
+                  return (
+                    <Pressable
+                      key={b.id}
+                      style={styles.switchRow}
+                      onPress={() => {
+                        setSwitchOpen(false);
+                        if (!on) nav.replace("BlogArticles", { blogId: b.id, blogName: b.name });
+                      }}
+                    >
+                      <ServiceLogo name={b.name} brandColor={b.brand_color} homepage={b.homepage} blogKey={b.key} size={26} />
+                      <Text style={[styles.switchName, { color: on ? c.primary : c.textPrimary }]}>{b.name}</Text>
+                      {on ? <Check size={18} color={c.primary} /> : null}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </Pressable>
+          </SafeAreaView>
+        </Pressable>
+      </Modal>
 
       <FlatList
         data={rows}
@@ -183,6 +226,26 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 8 },
   backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  headerSelect: { flexDirection: "row", alignItems: "center", gap: 4, flex: 1, justifyContent: "center" },
+  headerSelectText: { ...dtype.title, maxWidth: W * 0.6 },
+
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
+  switchPanel: {
+    marginHorizontal: 10,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
+    padding: 16,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  switchHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
+  switchTitle: { ...dtype.title },
+  switchRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11 },
+  switchName: { ...dtype.body, flex: 1 },
 
   listContent: { paddingHorizontal: 16, paddingBottom: 32 },
 

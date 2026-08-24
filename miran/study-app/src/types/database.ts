@@ -265,6 +265,26 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["article_reads"]["Insert"]>;
         Relationships: [];
       };
+      community_posts: {
+        Row: {
+          id: string;
+          author_id: string | null;
+          title: string;
+          body: string;
+          like_count: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          author_id?: string | null;
+          title: string;
+          body: string;
+          like_count?: number;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["community_posts"]["Insert"]>;
+        Relationships: [];
+      };
       // ---- distill: 의견(독후감) 임시저장 ----
       opinion_drafts: {
         Row: {
