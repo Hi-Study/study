@@ -2,9 +2,9 @@
 //   인사이트: 사람들의 독후감(의견) 모아보기(기업·주제·정렬 필터).
 //   커뮤니티: 자유글. 글쓰기 FAB는 커뮤니티에만.
 import React, { useMemo, useState } from "react";
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { PenLine, Search } from "lucide-react-native";
+import { FileText, Link2, PenLine, Search, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
@@ -26,6 +26,7 @@ export function DiscussScreen() {
   const nav = useRootNav();
 
   const [mainTab, setMainTab] = useState<MainTab>("insight");
+  const [writeOpen, setWriteOpen] = useState(false);
   const [sort, setSort] = useState<OpinionSort>("latest");
   const [topic, setTopic] = useState<Topic | null>(null);
   const [blogSel, setBlogSel] = useState<Set<string>>(new Set());
@@ -176,14 +177,60 @@ export function DiscussScreen() {
             />
           )}
 
-          {/* 글쓰기 FAB — 커뮤니티 전용 */}
+          {/* 글쓰기 FAB — 커뮤니티 전용. 2가지 방식 선택 */}
           <Pressable
-            onPress={() => nav.navigate("CreateCommunityPost")}
+            onPress={() => setWriteOpen(true)}
             style={({ pressed }) => [styles.fab, { backgroundColor: c.primary, opacity: pressed ? 0.9 : 1 }]}
             hitSlop={8}
           >
             <PenLine size={24} color="#fff" />
           </Pressable>
+
+          {/* 글쓰기 방식 선택 시트 */}
+          <Modal visible={writeOpen} transparent animationType="slide" onRequestClose={() => setWriteOpen(false)}>
+            <Pressable style={styles.wBackdrop} onPress={() => setWriteOpen(false)}>
+              <Pressable style={[styles.wSheet, { backgroundColor: c.surfaceCard }]} onPress={() => {}}>
+                <View style={styles.wHead}>
+                  <Text style={[styles.wTitle, { color: c.textPrimary }]}>어떤 글을 쓸까요?</Text>
+                  <Pressable onPress={() => setWriteOpen(false)} hitSlop={8}>
+                    <X size={20} color={c.textMuted} />
+                  </Pressable>
+                </View>
+
+                <Pressable
+                  style={[styles.wOpt, { borderColor: c.hairline }]}
+                  onPress={() => {
+                    setWriteOpen(false);
+                    nav.navigate("CreateArticle");
+                  }}
+                >
+                  <View style={[styles.wIcon, { backgroundColor: c.primaryTint }]}>
+                    <Link2 size={20} color={c.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.wOptTitle, { color: c.textPrimary }]}>인사이트 공유</Text>
+                    <Text style={[styles.wOptSub, { color: c.textMuted }]}>URL 링크 + 독후감 항목을 채워서</Text>
+                  </View>
+                </Pressable>
+
+                <Pressable
+                  style={[styles.wOpt, { borderColor: c.hairline }]}
+                  onPress={() => {
+                    setWriteOpen(false);
+                    nav.navigate("CreateCommunityPost");
+                  }}
+                >
+                  <View style={[styles.wIcon, { backgroundColor: c.surfaceSunken }]}>
+                    <FileText size={20} color={c.textSecondary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.wOptTitle, { color: c.textPrimary }]}>자유글</Text>
+                    <Text style={[styles.wOptSub, { color: c.textMuted }]}>제목과 내용만 자유롭게</Text>
+                  </View>
+                </Pressable>
+              </Pressable>
+            </Pressable>
+          </Modal>
         </>
       )}
     </SafeAreaView>
@@ -286,4 +333,20 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     elevation: 5,
   },
+
+  wBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
+  wSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 34, gap: 12 },
+  wHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 2 },
+  wTitle: { ...dtype.title },
+  wOpt: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+  },
+  wIcon: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  wOptTitle: { ...dtype.cardTitle, fontSize: 15 },
+  wOptSub: { ...dtype.bodyS, marginTop: 2 },
 });
