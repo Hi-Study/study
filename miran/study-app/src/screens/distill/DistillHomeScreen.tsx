@@ -4,7 +4,7 @@
 import React from "react";
 import { Dimensions, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Search } from "lucide-react-native";
+import { Bell, Search } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
@@ -16,6 +16,7 @@ import {
   useFavoriteBlogArticles,
   useRecommendedArticles,
   useDirectArticles,
+  useUnreadNotificationCount,
 } from "@/data";
 import type { BlogRow } from "@/types/tables";
 import type { ArticleWithBlog } from "@/data/articles";
@@ -103,6 +104,7 @@ export function DistillHomeScreen() {
   const favArticles = useFavoriteBlogArticles(10).data ?? [];
   const recommended = useRecommendedArticles(10).data ?? [];
   const direct = useDirectArticles(10).data ?? [];
+  const unread = useUnreadNotificationCount().data ?? 0;
 
   const hero = popular[0];
   const popularRest = popular.slice(1);
@@ -111,8 +113,20 @@ export function DistillHomeScreen() {
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: c.surfacePage }]} edges={["top", "left", "right"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* 인사말 */}
-        <Text style={[styles.greetTitle, { color: c.textPrimary }]}>{greeting()}</Text>
+        {/* 인사말 + 알림 */}
+        <View style={styles.topRow}>
+          <Text style={[styles.greetTitle, { color: c.textPrimary }]}>{greeting()}</Text>
+          <Pressable
+            hitSlop={8}
+            style={styles.bellBtn}
+            onPress={() => nav.navigate("DistillNotifications")}
+          >
+            <Bell size={22} color={c.textSecondary} />
+            {unread > 0 ? (
+              <View style={[styles.bellDot, { backgroundColor: c.hot, borderColor: c.surfacePage }]} />
+            ) : null}
+          </Pressable>
+        </View>
 
         {/* 검색바 (홈 전용) */}
         <Pressable
@@ -237,7 +251,10 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { paddingHorizontal: 16, paddingBottom: 40 },
 
-  greetTitle: { ...dtype.display, paddingTop: 8 },
+  topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 8 },
+  greetTitle: { ...dtype.display },
+  bellBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  bellDot: { position: "absolute", top: 8, right: 9, width: 9, height: 9, borderRadius: 5, borderWidth: 1.5 },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
