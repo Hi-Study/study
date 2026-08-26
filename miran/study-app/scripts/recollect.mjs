@@ -220,14 +220,30 @@ async function recollectBlog(blog, since) {
         reachedOld = true; // since 이전 글에 도달 → 백필 종료
         continue;
       }
-      const body = stripFooter(htmlToText(it.contentHtml));
+      let body = stripFooter(htmlToText(it.contentHtml));
       if (body.length < 100) continue; // 본문 너무 짧으면 스킵
+      let ogImage = firstImageUrl(body, it.contentHtml);
+      // 피드가 이미지를 안 주는 경우(예: AWS content:encoded 에 img 없음) → 페이지에서 보강.
+      if (!body.includes("[[img:")) {
+        try {
+          const pageHtml = await fetchText(it.url, BROWSER_UA).catch(() => fetchText(it.url, CRAWLER_UA));
+          const ex = extractWithReadability(pageHtml, it.url);
+          if (ex && ex.body.includes("[[img:") && ex.body.length > 200) body = ex.body;
+          if (!ogImage && ex && ex.image) ogImage = ex.image;
+          if (!ogImage) {
+            const m = pageHtml.match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]+content=["']([^"']+)["']/i);
+            if (m) ogImage = /^\/\//.test(m[1]) ? "https:" + m[1] : m[1];
+          }
+        } catch {
+          /* 페이지 보강 실패 시 피드 본문 그대로 유지 */
+        }
+      }
       rows.push({
         blog_id: blog.id,
         url: it.url,
         title: it.title || it.url,
         body,
-        og_image: firstImageUrl(body, it.contentHtml),
+        og_image: ogImage,
         published_at: iso,
       });
     }

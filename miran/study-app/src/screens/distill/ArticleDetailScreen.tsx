@@ -23,7 +23,6 @@ import {
   ChevronLeft,
   CornerDownLeft,
   ExternalLink,
-  Heart,
   MessageSquare,
   Share2,
 } from "lucide-react-native";
@@ -39,8 +38,6 @@ import {
   useArticle,
   useOpinions,
   useRequestArticleSummary,
-  useLiked,
-  useToggleReaction,
   useIsBookmarked,
   useToggleBookmark,
   useMarkArticleRead,
@@ -48,6 +45,7 @@ import {
 import { ServiceLogo, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
 import { ArticleHighlightSection } from "@/components/distill/ArticleHighlightSection";
 import { OpinionThread } from "@/components/distill/OpinionThread";
+import { InsightBody } from "@/components/distill/InsightBody";
 import { Avatar } from "@/components/Avatar";
 import { Loading, ErrorState } from "@/components";
 
@@ -61,8 +59,6 @@ export function ArticleDetailScreen({ route }: Props) {
   const q = useArticle(articleId);
   // ⚠️ 훅은 early return 앞에서 무조건 호출 (React 훅 규칙 — 렌더마다 개수 동일).
   const [tab, setTab] = useState<"original" | "opinions">("original");
-  const liked = useLiked("article", articleId);
-  const toggleLike = useToggleReaction("article", articleId);
   const bookmarked = useIsBookmarked(articleId);
   const toggleBookmark = useToggleBookmark(articleId);
   const markRead = useMarkArticleRead(articleId);
@@ -138,7 +134,7 @@ export function ArticleDetailScreen({ route }: Props) {
         </View>
 
         <View style={styles.body}>
-          {/* 주제칩 · 읽기시간 · 좋아요 */}
+          {/* 주제칩 · 읽기시간 · 공유·북마크 */}
           <View style={styles.metaTop}>
             {a.topic ? <TopicChip topic={a.topic} /> : null}
             {mins ? <Text style={[styles.readTime, { color: c.textMuted }]}>{mins}분 읽기</Text> : null}
@@ -161,21 +157,6 @@ export function ArticleDetailScreen({ route }: Props) {
                 color={bookmarked.data ? c.primary : c.textMuted}
                 fill={bookmarked.data ? c.primary : "transparent"}
               />
-            </Pressable>
-            <Pressable
-              onPress={() => toggleLike.mutate(liked.data ?? false)}
-              disabled={toggleLike.isPending}
-              hitSlop={8}
-              style={styles.likeBtn}
-            >
-              <Heart
-                size={18}
-                color={liked.data ? c.danger : c.textMuted}
-                fill={liked.data ? c.danger : "transparent"}
-              />
-              <Text style={[styles.likeCount, { color: liked.data ? c.danger : c.textMuted }]}>
-                {a.like_count}
-              </Text>
             </Pressable>
           </View>
 
@@ -222,7 +203,7 @@ export function ArticleDetailScreen({ route }: Props) {
             }}
           >
             {(["original", "opinions"] as const).map((t) => {
-              const label = t === "original" ? "원문" : "의견";
+              const label = t === "original" ? "원문" : "인사이트";
               const on = tab === t;
               return (
                 <Pressable
@@ -433,7 +414,7 @@ function OpinionsSection({ articleId }: { articleId: string }) {
 
   return (
     <View style={styles.opinions}>
-      <Text style={[styles.opinionsTitle, { color: c.textPrimary }]}>의견 {list.length}</Text>
+      <Text style={[styles.opinionsTitle, { color: c.textPrimary }]}>인사이트 {list.length}</Text>
       {list.map((o) => {
         const isOpen = !!open[o.id];
         return (
@@ -447,17 +428,7 @@ function OpinionsSection({ articleId }: { articleId: string }) {
                 {o.author?.name ?? "게스트"}
               </Text>
             </View>
-            <Text
-              style={[styles.opinionCore, { color: c.textPrimary }]}
-              numberOfLines={isOpen ? undefined : 4}
-            >
-              {o.insight.core}
-            </Text>
-            {o.insight.apply ? (
-              <Text style={[styles.opinionField, { color: c.textSecondary }]} numberOfLines={isOpen ? undefined : 2}>
-                접목 · {o.insight.apply}
-              </Text>
-            ) : null}
+            <InsightBody insight={o.insight} compact={!isOpen} />
 
             <Pressable
               onPress={() => setOpen((p) => ({ ...p, [o.id]: !p[o.id] }))}

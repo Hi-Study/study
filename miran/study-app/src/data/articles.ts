@@ -331,6 +331,42 @@ export function useRecommendedArticles(limit = 10) {
   });
 }
 
+/** 홈 큐레이션 — 읽었지만 인사이트를 안 남긴 글(마저 인사이트 유도). 없으면 빈 배열. */
+export async function listUnfinishedArticles(uid: string, limit = 10): Promise<ArticleWithBlog[]> {
+  const { data: reads, error: rErr } = await supabase
+    .from("article_reads")
+    .select("article_id, created_at")
+    .eq("user_id", uid)
+    .order("created_at", { ascending: false })
+    .limit(60);
+  if (rErr) throw rErr;
+  const readIds = (reads ?? []).map((r) => r.article_id as string);
+  if (readIds.length === 0) return [];
+  const { data: mine, error: oErr } = await supabase
+    .from("opinions")
+    .select("article_id")
+    .eq("author_id", uid);
+  if (oErr) throw oErr;
+  const opinedIds = new Set((mine ?? []).map((o) => o.article_id as string));
+  const targetIds = readIds.filter((id) => !opinedIds.has(id)).slice(0, limit);
+  if (targetIds.length === 0) return [];
+  const { data, error } = await supabase.from("articles").select(SELECT_WITH_BLOG).in("id", targetIds);
+  if (error) throw error;
+  const rows = (data ?? []) as unknown as ArticleWithBlog[];
+  // 읽은 최신순 유지
+  const order = new Map(targetIds.map((id, i) => [id, i]));
+  return rows.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+}
+
+export function useUnfinishedArticles(limit = 10) {
+  const uid = useUid();
+  return useQuery({
+    queryKey: [...qk.articles(), "unfinished", uid, limit] as const,
+    queryFn: () => listUnfinishedArticles(uid, limit),
+    enabled: Boolean(uid),
+  });
+}
+
 /** 홈 대표글 캐러셀 — 이미지 있는 최신 글 N개(좌우 슬라이드). */
 export async function listFeaturedArticles(limit = 6): Promise<ArticleWithBlog[]> {
   const { data, error } = await supabase

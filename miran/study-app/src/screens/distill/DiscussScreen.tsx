@@ -128,7 +128,7 @@ export function DiscussScreen() {
           ) : q.isError ? (
             <ErrorState onRetry={() => q.refetch()} />
           ) : filtered.length === 0 ? (
-            <EmptyState title="아직 의견이 없어요" hint="글을 읽고 첫 의견을 남겨보세요" />
+            <EmptyState title="아직 인사이트가 없어요" hint="글을 읽고 첫 인사이트를 남겨보세요" />
           ) : (
             <FlatList
               data={filtered}

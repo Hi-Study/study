@@ -1,6 +1,6 @@
-// distill 홈 — "발견" (회의록 2026-08-18 §홈 큐레이션 8섹션).
-// [검색바] · ①오늘의 글(히어로) · ②인기 키워드 칩 · 서비스 모아보기(기업 아이콘) ·
-// ④인기 글 · ⑤인기 인사이트 · ⑥추천 글 · ⑦즐겨찾기 기업 새 글 · ⑧사용자 등록 글.
+// distill 홈 — "발견" (회의록 2026-08-18). 순서:
+//   [인사말+알림] · [검색바] · ①추천글(맞춤) · ②서비스 모아보기 · ③인기글(조회순) ·
+//   ④요즘 뜨는 주제(태그칩) · ⑤인기 인사이트 · ⑥커뮤니티 인기글 · ⑦읽다만 글(없으면 숨김).
 import React from "react";
 import { Dimensions, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -13,15 +13,16 @@ import {
   usePopularArticles,
   usePopularTags,
   useOpinionsFeed,
-  useFavoriteBlogArticles,
   useRecommendedArticles,
-  useDirectArticles,
+  useUnfinishedArticles,
+  useCommunityPosts,
   useUnreadNotificationCount,
+  useProfile,
 } from "@/data";
 import type { BlogRow } from "@/types/tables";
 import type { ArticleWithBlog } from "@/data/articles";
 import { dtype } from "@/theme";
-import { ArticleCardH, ArticleRow, FeaturedCard, ServiceLogo } from "@/components/distill/ArticleCards";
+import { ArticleCardH, ArticleRow, ServiceLogo } from "@/components/distill/ArticleCards";
 import { OpinionCard } from "@/components/distill/OpinionCard";
 import { Loading } from "@/components";
 
@@ -51,7 +52,6 @@ function SectionHeader({ title, sub }: { title: string; sub?: string }) {
   );
 }
 
-// 가로 캐러셀(글) — 공통.
 function ArticleCarousel({ data }: { data: ArticleWithBlog[] }) {
   const nav = useRootNav();
   return (
@@ -74,7 +74,6 @@ function ArticleCarousel({ data }: { data: ArticleWithBlog[] }) {
   );
 }
 
-// 서비스 모아보기 셀 — 카드 없이 아이콘+텍스트. 탭 시 기업 상세로.
 function BlogCell({ blog }: { blog: BlogRow }) {
   const { theme } = useTheme();
   const c = theme.colors;
@@ -97,18 +96,18 @@ export function DistillHomeScreen() {
   const c = theme.colors;
   const nav = useRootNav();
 
+  const name = useProfile().data?.name?.trim() || "";
   const blogs = useBlogs().data ?? [];
   const popular = usePopularArticles(10).data ?? [];
   const tags = usePopularTags().data ?? [];
   const insights = (useOpinionsFeed("popular").data ?? []).slice(0, 8);
-  const favArticles = useFavoriteBlogArticles(10).data ?? [];
   const recommended = useRecommendedArticles(10).data ?? [];
-  const direct = useDirectArticles(10).data ?? [];
+  const unfinished = useUnfinishedArticles(10).data ?? [];
+  const community = (useCommunityPosts().data ?? []).slice(0, 8);
   const unread = useUnreadNotificationCount().data ?? 0;
 
-  const hero = popular[0];
-  const popularRest = popular.slice(1);
   const loading = blogs.length === 0 && popular.length === 0;
+  const recoTitle = name ? `${name}님이 관심 있을 글이에요` : "관심 있을 만한 글이에요";
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: c.surfacePage }]} edges={["top", "left", "right"]}>
@@ -116,11 +115,7 @@ export function DistillHomeScreen() {
         {/* 인사말 + 알림 */}
         <View style={styles.topRow}>
           <Text style={[styles.greetTitle, { color: c.textPrimary }]}>{greeting()}</Text>
-          <Pressable
-            hitSlop={8}
-            style={styles.bellBtn}
-            onPress={() => nav.navigate("DistillNotifications")}
-          >
+          <Pressable hitSlop={8} style={styles.bellBtn} onPress={() => nav.navigate("DistillNotifications")}>
             <Bell size={22} color={c.textSecondary} />
             {unread > 0 ? (
               <View style={[styles.bellDot, { backgroundColor: c.hot, borderColor: c.surfacePage }]} />
@@ -128,28 +123,53 @@ export function DistillHomeScreen() {
           </Pressable>
         </View>
 
-        {/* 검색바 (홈 전용) */}
-        <Pressable
-          style={[styles.searchBar, { backgroundColor: c.surfaceSunken }]}
-          onPress={() => nav.navigate("Search")}
-        >
+        {/* 검색바 */}
+        <Pressable style={[styles.searchBar, { backgroundColor: c.surfaceSunken }]} onPress={() => nav.navigate("Search")}>
           <Search size={18} color={c.textMuted} />
           <Text style={[styles.searchPlaceholder, { color: c.textMuted }]}>글 제목·주제·태그 검색</Text>
         </Pressable>
 
         {loading ? <Loading label="불러오는 중…" /> : null}
 
-        {/* ① 오늘의 글 (히어로) */}
-        {hero ? (
+        {/* ① 추천 글(맞춤) — 세로 리스트 */}
+        {recommended.length > 0 ? (
           <View style={styles.block}>
-            <FeaturedCard article={hero} onPress={() => nav.navigate("ArticleDetail", { articleId: hero.id })} />
+            <SectionHeader title={recoTitle} sub="읽은 글의 주제를 바탕으로 골랐어요" />
+            {recommended.slice(0, 4).map((a, i) => (
+              <View key={a.id}>
+                {i > 0 ? <View style={[styles.sep, { backgroundColor: c.hairline }]} /> : null}
+                <ArticleRow article={a} onPress={() => nav.navigate("ArticleDetail", { articleId: a.id })} />
+              </View>
+            ))}
           </View>
         ) : null}
 
-        {/* ② 인기 키워드 칩 */}
+        {/* ② 서비스 모아보기 (기업 아이콘 2행) */}
+        {blogs.length > 0 ? (
+          <View style={styles.block}>
+            <SectionHeader title="서비스별로 모아봤어요" />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gridScroll}>
+              <View style={[styles.grid2row, { height: CELL_H * 2 + ROW_GAP }]}>
+                {blogs.map((b) => (
+                  <BlogCell key={b.id} blog={b} />
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        ) : null}
+
+        {/* ③ 인기 글(조회·좋아요 순) */}
+        {popular.length > 0 ? (
+          <View style={styles.block}>
+            <SectionHeader title="지금 많이 보는 글이에요" />
+            <ArticleCarousel data={popular} />
+          </View>
+        ) : null}
+
+        {/* ④ 요즘 뜨는 주제(태그칩) */}
         {tags.length > 0 ? (
           <View style={styles.block}>
-            <SectionHeader title="요즘 이 단어들이 자주 보여요" />
+            <SectionHeader title="요즘 이런 주제가 자주 보여요" />
             <View style={styles.tagWrap}>
               {tags.slice(0, 8).map((t) => (
                 <Pressable
@@ -164,29 +184,7 @@ export function DistillHomeScreen() {
           </View>
         ) : null}
 
-        {/* 서비스 모아보기 (기업 아이콘) */}
-        {blogs.length > 0 ? (
-          <View style={styles.block}>
-            <SectionHeader title="서비스 모아보기" />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gridScroll}>
-              <View style={[styles.grid2row, { height: CELL_H * 2 + ROW_GAP }]}>
-                {blogs.map((b) => (
-                  <BlogCell key={b.id} blog={b} />
-                ))}
-              </View>
-            </ScrollView>
-          </View>
-        ) : null}
-
-        {/* ④ 인기 글 */}
-        {popularRest.length > 0 ? (
-          <View style={styles.block}>
-            <SectionHeader title="인사이트를 많이 남겼어요" />
-            <ArticleCarousel data={popularRest} />
-          </View>
-        ) : null}
-
-        {/* ⑤ 인기 인사이트 */}
+        {/* ⑤ 인기 인사이트(좋아요순) */}
         {insights.length > 0 ? (
           <View style={styles.block}>
             <SectionHeader title="이 생각에 공감을 많이 했어요" />
@@ -214,32 +212,31 @@ export function DistillHomeScreen() {
           </View>
         ) : null}
 
-        {/* ⑦ 즐겨찾기 기업 새 글 */}
-        {favArticles.length > 0 ? (
+        {/* ⑥ 커뮤니티 인기글 */}
+        {community.length > 0 ? (
           <View style={styles.block}>
-            <SectionHeader title="관심 기업에 새 글이 올라왔어요" />
-            <ArticleCarousel data={favArticles} />
-          </View>
-        ) : null}
-
-        {/* ⑧ 사용자 등록 글 */}
-        {direct.length > 0 ? (
-          <View style={styles.block}>
-            <SectionHeader title="인사이터가 직접 소개하는 글이에요" />
-            <ArticleCarousel data={direct} />
-          </View>
-        ) : null}
-
-        {/* ⑥ 추천 글 (세로 리스트) */}
-        {recommended.length > 0 ? (
-          <View style={styles.block}>
-            <SectionHeader title="이 글도 관심이 있을 것 같아요" />
-            {recommended.map((a, i) => (
-              <View key={a.id}>
+            <SectionHeader title="커뮤니티에서 이야기 나누고 있어요" />
+            {community.map((p, i) => (
+              <View key={p.id}>
                 {i > 0 ? <View style={[styles.sep, { backgroundColor: c.hairline }]} /> : null}
-                <ArticleRow article={a} onPress={() => nav.navigate("ArticleDetail", { articleId: a.id })} />
+                <View style={styles.communityRow}>
+                  <Text style={[styles.communityTitle, { color: c.textPrimary }]} numberOfLines={1}>
+                    {p.title}
+                  </Text>
+                  <Text style={[styles.communityBody, { color: c.textMuted }]} numberOfLines={1}>
+                    {p.body}
+                  </Text>
+                </View>
               </View>
             ))}
+          </View>
+        ) : null}
+
+        {/* ⑦ 읽다만 글(없으면 숨김) */}
+        {unfinished.length > 0 ? (
+          <View style={styles.block}>
+            <SectionHeader title="마저 읽고 인사이트 남겨볼까요?" sub="읽었지만 아직 생각을 안 남긴 글이에요" />
+            <ArticleCarousel data={unfinished} />
           </View>
         ) : null}
       </ScrollView>
@@ -255,6 +252,7 @@ const styles = StyleSheet.create({
   greetTitle: { ...dtype.display },
   bellBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   bellDot: { position: "absolute", top: 8, right: 9, width: 9, height: 9, borderRadius: 5, borderWidth: 1.5 },
+
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -275,12 +273,16 @@ const styles = StyleSheet.create({
 
   tagWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   tagChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 13, paddingVertical: 8 },
-  tagText: { ...dtype.label, fontSize: 13.5 },
+  tagText: { fontSize: 13.5, lineHeight: 18, fontWeight: "700" },
 
   gridScroll: { paddingRight: 8 },
   grid2row: { flexDirection: "column", flexWrap: "wrap", rowGap: ROW_GAP, columnGap: 10 },
   cell: { alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 2 },
   cellText: { fontSize: 11.5, lineHeight: 15, fontWeight: "700", textAlign: "center" },
+
+  communityRow: { paddingVertical: 12, gap: 4 },
+  communityTitle: { ...dtype.cardTitle, fontSize: 15 },
+  communityBody: { ...dtype.bodyS },
 
   sep: { height: 1 },
 });
