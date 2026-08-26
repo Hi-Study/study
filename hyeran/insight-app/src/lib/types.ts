@@ -54,6 +54,15 @@ export interface Review {
   post?: { title: string; company?: Company | null; body?: string[] } | null;
 }
 
+// 단어장 [v3.0]
+export interface Word {
+  id: string;
+  term: string;
+  meaning: string | null;
+  post_id: string | null;
+  created_at: string;
+}
+
 // 커뮤니티 자유글 [v3.0]
 export interface CommunityPost {
   id: string;

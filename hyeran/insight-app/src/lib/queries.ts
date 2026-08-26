@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Company, CommunityPost, Post, Review } from "@/lib/types";
+import type { Company, CommunityPost, Post, Review, Word } from "@/lib/types";
 
 // 기업 목록
 export async function getCompanies(): Promise<Company[]> {
@@ -404,6 +404,21 @@ export async function getCommentsForTarget(targetType: string, targetId: string,
     if (l.user_id === userId) myLikes.add(l.target_id);
   });
   return comments.map((c) => ({ ...c, like_count: likeCounts.get(c.id) ?? 0, liked: myLikes.has(c.id) }));
+}
+
+// 내 단어장
+export async function getMyWords(userId: string): Promise<Word[]> {
+  const sb = await createClient();
+  const { data } = await sb.from("words").select("id, term, meaning, post_id, created_at")
+    .eq("user_id", userId).order("created_at", { ascending: false });
+  return (data as Word[]) ?? [];
+}
+
+// 내가 인사이트 남긴 날짜(ISO) — 마이 캘린더/이번 달 카운트용
+export async function getMyReviewDates(userId: string): Promise<string[]> {
+  const sb = await createClient();
+  const { data } = await sb.from("reviews").select("created_at").eq("author_id", userId).eq("is_draft", false);
+  return (data ?? []).map((r: { created_at: string }) => r.created_at);
 }
 
 // 즐겨찾기한 기업 slug 집합

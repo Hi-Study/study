@@ -397,6 +397,32 @@ svg.i.lg{ width:26px; height:26px; }
 .fab-menu button{ display:inline-flex; align-items:center; gap:8px; background:var(--canvas); border:1px solid var(--hairline); border-radius:var(--r-full); padding:11px 18px; font-size:14px; font-weight:700; color:var(--text); font-family:var(--font); box-shadow:0 6px 18px rgba(0,0,0,.16); cursor:pointer; white-space:nowrap; }
 .fab-menu button svg{ color:var(--coral); }
 
+/* 마이 상단: 이번 달 인사이트 수 + 캘린더 */
+.my-head{ display:flex; gap:14px; align-items:stretch; margin:6px 0 18px; }
+.mh-count-box{ flex:1; display:flex; flex-direction:column; justify-content:center; background:var(--surface); border-radius:var(--r-card); padding:16px; }
+.mh-label{ font-size:12px; color:var(--text-sub); font-weight:600; }
+.mh-count{ font-size:34px; font-weight:800; color:var(--coral); letter-spacing:-1px; line-height:1.1; margin-top:4px; }
+.mh-unit{ font-size:15px; font-weight:700; color:var(--text-sub); margin-left:2px; }
+.cal{ flex:0 0 auto; width:196px; background:var(--surface); border-radius:var(--r-card); padding:12px; }
+.cal-title{ font-size:12px; font-weight:700; color:var(--text); text-align:center; margin-bottom:8px; font-family:var(--mono); }
+.cal-grid{ display:grid; grid-template-columns:repeat(7, 1fr); gap:2px; }
+.cal-w{ font-size:9px; color:var(--text-sub); text-align:center; padding-bottom:2px; }
+.cal-d{ font-size:10.5px; color:var(--text); text-align:center; aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:50%; position:relative; }
+.cal-d.today{ font-weight:800; color:var(--text); }
+.cal-d.on{ background:var(--coral); color:#fff; font-weight:700; }
+.cal-d.today::after{ content:""; position:absolute; bottom:1px; left:50%; transform:translateX(-50%); width:3px; height:3px; border-radius:50%; background:var(--text); }
+.cal-d.on.today::after{ background:#fff; }
+
+/* 마이 탭 칩 (가로 스크롤) */
+.seg-scroll{ display:flex; gap:8px; overflow-x:auto; margin:0 -15px 14px; padding:0 15px 2px; }
+.seg-scroll::-webkit-scrollbar{ height:0; }
+.seg-chip{ flex:0 0 auto; background:var(--surface); border:none; border-radius:var(--r-full); padding:8px 14px; font-size:13px; font-weight:600; color:var(--text-sub); cursor:pointer; font-family:var(--font); white-space:nowrap; }
+.seg-chip.on{ background:var(--ink); color:var(--on-ink); }
+
+/* 단어장 목록 */
+.word-list{ display:flex; flex-wrap:wrap; gap:8px; padding:6px 0; }
+.word-list .wchip{ cursor:default; }
+
 /* 커뮤니티 자유글 카드 */
 .cpost-card{ display:flex; gap:12px; align-items:flex-start; padding:16px 2px; border-bottom:1px solid var(--hairline); }
 .cpost-card:active{ background:var(--surface); }
