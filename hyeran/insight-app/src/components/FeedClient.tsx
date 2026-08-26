@@ -19,15 +19,16 @@ export default function FeedClient({
   const [cats, setCats] = useState<Set<Category>>(new Set(initialCategory ? [initialCategory as Category] : []));
   const [favSet, setFavSet] = useState<Set<string>>(new Set(favorites));
 
-  // 통합 필터 시트 (기업+카테고리 한 곳에서 고르고 [적용])
+  // 통합 필터 시트 (기업/카테고리 탭 분리, 한 시트에서 고르고 [적용])
   const [sheet, setSheet] = useState(false);
+  const [sheetTab, setSheetTab] = useState<"company" | "category">("company");
   const [draftSource, setDraftSource] = useState("all");
   const [draftCats, setDraftCats] = useState<Set<Category>>(new Set());
 
   const bmSet = useMemo(() => new Set(bookmarked), [bookmarked]);
   const readSet = useMemo(() => new Set(readIds), [readIds]);
 
-  const openSheet = () => { setDraftSource(source); setDraftCats(new Set(cats)); setSheet(true); };
+  const openSheet = (t: "company" | "category") => { setSheetTab(t); setDraftSource(source); setDraftCats(new Set(cats)); setSheet(true); };
   const apply = () => { setSource(draftSource); setCats(new Set(draftCats)); setSheet(false); };
   const reset = () => { setDraftSource("all"); setDraftCats(new Set()); };
   const toggleDraftCat = (c: Category) => { const n = new Set(draftCats); n.has(c) ? n.delete(c) : n.add(c); setDraftCats(n); };
@@ -68,10 +69,10 @@ export default function FeedClient({
         <button className={`utab ${tab === "bookmark" ? "on" : ""}`} onClick={() => setTab("bookmark")}>북마크</button>
       </div>
 
-      {/* 필터 — 항목 칩 2개(기업·카테고리) → 통합 셀렉트 시트 */}
+      {/* 필터 — 항목 칩 2개(기업·카테고리) → 통합 셀렉트 시트(탭 분리) */}
       <div className="cchips">
-        <button className={`cchip sel-btn ${source !== "all" ? "on" : ""}`} onClick={openSheet}>{sourceLabel} <Icon name="chevron" size="sm" /></button>
-        <button className={`cchip sel-btn ${cats.size ? "on" : ""}`} onClick={openSheet}>{catLabel} <Icon name="chevron" size="sm" /></button>
+        <button className={`cchip sel-btn ${source !== "all" ? "on" : ""}`} onClick={() => openSheet("company")}>{sourceLabel} <Icon name="chevron" size="sm" /></button>
+        <button className={`cchip sel-btn ${cats.size ? "on" : ""}`} onClick={() => openSheet("category")}>{catLabel} <Icon name="chevron" size="sm" /></button>
       </div>
 
       <div style={{ height: 14 }} />
@@ -88,34 +89,44 @@ export default function FeedClient({
       <div className={`drawer ${sheet ? "show" : ""}`}>
         <div className="handle" />
         <div className="dhead">필터<button className="iconbtn" style={{ marginLeft: "auto" }} onClick={() => setSheet(false)}><Icon name="x" /></button></div>
-        <div className="dbody" style={{ maxHeight: "60vh", overflowY: "auto" }}>
-          <div className="filter-sec-label">기업</div>
-          <button className="sheet-row" onClick={() => setDraftSource("all")}>
-            <span className="sr-name">전체 기업</span>{draftSource === "all" && <Icon name="check" size="sm" />}
+        <div className="utabs" style={{ margin: "0 15px 4px" }}>
+          <button className={`utab ${sheetTab === "company" ? "on" : ""}`} onClick={() => setSheetTab("company")}>
+            기업{draftSource !== "all" ? " ·" : ""}
           </button>
-          {favSet.size > 0 && (
-            <button className="sheet-row" onClick={() => setDraftSource("favorites")}>
-              <span className="sr-name">★ 즐겨찾기만</span>{draftSource === "favorites" && <Icon name="check" size="sm" />}
-            </button>
-          )}
-          <button className="sheet-row" onClick={() => setDraftSource("direct")}>
-            <span className="sr-name">직접 등록</span>{draftSource === "direct" && <Icon name="check" size="sm" />}
+          <button className={`utab ${sheetTab === "category" ? "on" : ""}`} onClick={() => setSheetTab("category")}>
+            카테고리{draftCats.size ? ` ${draftCats.size}` : ""}
           </button>
-          {companies.map((c) => (
-            <div key={c.id} className="sheet-row">
-              <span className="sr-tap" onClick={() => setDraftSource(c.id)}>
-                <CompanyLogo company={c} /><span className="sr-name">{c.name}</span>{draftSource === c.id && <Icon name="check" size="sm" />}
-              </span>
-              <button className={`startoggle ${favSet.has(c.id) ? "on" : ""}`} onClick={() => toggleFav(c.id)} aria-label="즐겨찾기"><Icon name="star" /></button>
+        </div>
+        <div className="dbody" style={{ maxHeight: "56vh", overflowY: "auto" }}>
+          {sheetTab === "company" ? (
+            <>
+              <button className="sheet-row" onClick={() => setDraftSource("all")}>
+                <span className="sr-name">전체 기업</span>{draftSource === "all" && <Icon name="check" size="sm" />}
+              </button>
+              {favSet.size > 0 && (
+                <button className="sheet-row" onClick={() => setDraftSource("favorites")}>
+                  <span className="sr-name">★ 즐겨찾기만</span>{draftSource === "favorites" && <Icon name="check" size="sm" />}
+                </button>
+              )}
+              <button className="sheet-row" onClick={() => setDraftSource("direct")}>
+                <span className="sr-name">직접 등록</span>{draftSource === "direct" && <Icon name="check" size="sm" />}
+              </button>
+              {companies.map((c) => (
+                <div key={c.id} className="sheet-row">
+                  <span className="sr-tap" onClick={() => setDraftSource(c.id)}>
+                    <CompanyLogo company={c} /><span className="sr-name">{c.name}</span>{draftSource === c.id && <Icon name="check" size="sm" />}
+                  </span>
+                  <button className={`startoggle ${favSet.has(c.id) ? "on" : ""}`} onClick={() => toggleFav(c.id)} aria-label="즐겨찾기"><Icon name="star" /></button>
+                </div>
+              ))}
+            </>
+          ) : (
+            <div className="cat-grid">
+              {CATEGORIES.map((c) => (
+                <button key={c} className={`cchip ${draftCats.has(c) ? "on" : ""}`} onClick={() => toggleDraftCat(c)}>{c}</button>
+              ))}
             </div>
-          ))}
-
-          <div className="filter-sec-label">카테고리</div>
-          <div className="cat-grid">
-            {CATEGORIES.map((c) => (
-              <button key={c} className={`cchip ${draftCats.has(c) ? "on" : ""}`} onClick={() => toggleDraftCat(c)}>{c}</button>
-            ))}
-          </div>
+          )}
         </div>
         <div className="dfoot">
           <button className="ghost" onClick={reset}>초기화</button>

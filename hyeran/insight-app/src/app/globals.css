@@ -135,11 +135,11 @@ svg.i.lg{ width:26px; height:26px; }
 .co-select-name{ font-size:22px; font-weight:700; letter-spacing:-.5px; color:var(--text); }
 .co-select > svg.i{ color:var(--text-sub); width:18px; height:18px; }
 .sr-fav{ color:var(--coral); margin-left:6px; font-size:12px; }
-/* 홈 기업 아이콘 그리드 (2줄 · 넘치면 가로 스와이프) → 기업 상세 */
-.co-grid{ display:grid; grid-auto-flow:column; grid-template-rows:repeat(2, auto); gap:14px 16px; overflow-x:auto; margin:0 -15px; padding:2px 15px 4px; }
+/* 홈 기업 아이콘 그리드 (2줄 · 한 화면에 ~5.5개 → 나머지 스와이프) → 기업 상세 */
+.co-grid{ display:grid; grid-auto-flow:column; grid-template-rows:repeat(2, auto); gap:14px 14px; overflow-x:auto; margin:0 -15px; padding:2px 15px 4px; scroll-snap-type:x proximity; }
 .co-grid::-webkit-scrollbar{ height:0; }
-.co-cell{ display:flex; flex-direction:column; align-items:center; gap:6px; width:52px; }
-.co-cell .clogo{ width:42px; height:42px; border-radius:13px; }
+.co-cell{ display:flex; flex-direction:column; align-items:center; gap:6px; width:calc((min(100vw, 480px) - 30px) / 5.5 - 14px); scroll-snap-align:start; }
+.co-cell .clogo{ width:44px; height:44px; border-radius:13px; }
 .co-name{ font-size:11px; font-weight:600; color:var(--text-sub); text-align:center; line-height:1.2; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 /* 피드 1열 리스트 (v3.0: 한 줄당 아티클 1개 — 작은 썸네일 + 제목 나란히) */
 .feed-list{ display:flex; flex-direction:column; }
