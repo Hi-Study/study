@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
-type Noti = { id: string; type: string; title: string; body: string; read: boolean; created_at: string };
+type Noti = { id: string; type: string; title: string; body: string; read: boolean; created_at: string; post_id: string | null };
 const SEGS = [
   { key: "all", label: "전체" },
   { key: "new_post", label: "새 글" },
@@ -31,16 +32,22 @@ export default function NotificationsClient({ items }: { items: Noti[] }) {
         ))}
       </div>
       {list.length ? (
-        list.map((n) => (
-          <div key={n.id} style={{ display: "flex", gap: 10, padding: "13px 2px" }}>
-            <span style={{ width: 7, height: 7, borderRadius: "50%", background: n.read ? "transparent" : "var(--blue)", marginTop: 6, flex: "0 0 auto" }} />
-            <div>
-              <div style={{ fontSize: 14, lineHeight: 1.5 }}>{n.title}</div>
-              {n.body && <div style={{ fontSize: 12, color: "var(--text-sub)", marginTop: 2 }}>{n.body}</div>}
-              <div className="mono" style={{ fontSize: 11, color: "var(--text-sub)", marginTop: 4 }}>{rel(n.created_at)}</div>
-            </div>
-          </div>
-        ))
+        list.map((n) => {
+          const inner = (
+            <>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: n.read ? "transparent" : "var(--blue)", marginTop: 6, flex: "0 0 auto" }} />
+              <div>
+                <div style={{ fontSize: 14, lineHeight: 1.5 }}>{n.title}</div>
+                {n.body && <div style={{ fontSize: 12, color: "var(--text-sub)", marginTop: 2 }}>{n.body}</div>}
+                <div className="mono" style={{ fontSize: 11, color: "var(--text-sub)", marginTop: 4 }}>{rel(n.created_at)}</div>
+              </div>
+            </>
+          );
+          const style = { display: "flex", gap: 10, padding: "13px 2px", borderBottom: "1px solid var(--hairline)" } as const;
+          return n.post_id
+            ? <Link key={n.id} href={`/posts/${n.post_id}`} style={style}>{inner}</Link>
+            : <div key={n.id} style={style}>{inner}</div>;
+        })
       ) : (
         <div className="empty"><div className="art" /><div className="msg">알림이 없어요</div></div>
       )}

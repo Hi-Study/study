@@ -385,3 +385,21 @@ create policy "highlights own" on public.highlights for all to authenticated usi
 create policy "notifications select own" on public.notifications for select to authenticated using (user_id = auth.uid());
 create policy "notifications update own" on public.notifications for update to authenticated using (user_id = auth.uid());
 create policy "notifications insert"     on public.notifications for insert to authenticated with check (true);
+
+-- 즐겨찾기 기업 새 글 알림 트리거 [010]
+create or replace function public.notify_favorites_new_post()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.company_id is not null then
+    insert into public.notifications (user_id, type, title, body, post_id)
+    select f.user_id, 'new_post', c.name || '에 새 글이 올라왔어요', new.title, new.id
+    from public.favorites f
+    join public.companies c on c.id = new.company_id
+    where f.company_id = new.company_id;
+  end if;
+  return new;
+end $$;
+drop trigger if exists trg_notify_favorites_new_post on public.posts;
+create trigger trg_notify_favorites_new_post
+  after insert on public.posts
+  for each row execute function public.notify_favorites_new_post();
