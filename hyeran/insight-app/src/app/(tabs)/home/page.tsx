@@ -57,14 +57,14 @@ export default async function HomePage() {
         {/* ★ 기업 아이콘 그리드 → 기업 상세 */}
         {companies.length > 0 && (
           <section className="hsec">
-            <div className="co-grid">
+            <DragScroll className="co-grid">
               {companies.map((c) => (
                 <Link key={c.id} href={`/companies/${c.slug}`} className="co-cell">
                   <CompanyLogo company={c} />
                   <span className="co-name">{c.name}</span>
                 </Link>
               ))}
-            </div>
+            </DragScroll>
           </section>
         )}
 

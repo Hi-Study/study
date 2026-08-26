@@ -40,10 +40,12 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
       <div className="appbar">
         <BackButton />
         <span className="spacer" />
-        <FavoriteToggle companyId={company.id} initial={favSet.has(company.id)} />
       </div>
       <div className="pad">
-        <CompanySelect current={company} companies={companies} />
+        <div className="co-head">
+          <CompanySelect current={company} companies={companies} favIds={[...favSet]} />
+          <FavoriteToggle companyId={company.id} initial={favSet.has(company.id)} />
+        </div>
 
         {popular.length > 0 && (
           <section className="hsec">

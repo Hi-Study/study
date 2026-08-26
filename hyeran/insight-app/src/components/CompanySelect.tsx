@@ -7,9 +7,10 @@ import { CompanyLogo } from "@/components/PostCard";
 import type { Company } from "@/lib/types";
 
 // 기업 상세 상단: 현재 기업명(셀렉트) → 탭 시 다른 기업으로 전환
-export default function CompanySelect({ current, companies }: { current: Company; companies: Company[] }) {
+export default function CompanySelect({ current, companies, favIds = [] }: { current: Company; companies: Company[]; favIds?: string[] }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const favSet = new Set(favIds);
   const go = (slug: string) => {
     setOpen(false);
     if (slug !== current.slug) router.push(`/companies/${slug}`);
@@ -30,7 +31,7 @@ export default function CompanySelect({ current, companies }: { current: Company
           {companies.map((c) => (
             <button key={c.id} className="sheet-row" onClick={() => go(c.slug)}>
               <CompanyLogo company={c} />
-              <span className="sr-name">{c.name}</span>
+              <span className="sr-name">{c.name}{favSet.has(c.id) && <span className="sr-fav">★</span>}</span>
               {c.slug === current.slug && <Icon name="check" />}
             </button>
           ))}
