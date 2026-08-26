@@ -21,6 +21,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
   Bookmark,
   ChevronLeft,
+  ChevronRight,
   CornerDownLeft,
   ExternalLink,
   MessageSquare,
@@ -30,7 +31,7 @@ import {
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav, type RootStackParamList } from "@/navigation/types";
 import { dtype } from "@/theme";
-import { cleanBody, readingMinutes } from "@/lib/text";
+import { cleanBody } from "@/lib/text";
 import { safeImageUri } from "@/lib/image";
 import { splitInsightSections, isStructuredInsight } from "@/lib/summary";
 import { useReadingFontScale, getReadPos, setReadPos, clearReadPos } from "@/lib/readingPrefs";
@@ -107,7 +108,6 @@ export function ArticleDetailScreen({ route }: Props) {
 
   const a = q.data;
   const body = cleanBody(a.body);
-  const mins = readingMinutes(a.body);
 
   return (
     <View style={[styles.screen, { backgroundColor: c.surfacePage }]}>
@@ -143,7 +143,6 @@ export function ArticleDetailScreen({ route }: Props) {
           {/* 주제칩 · 읽기시간 · 공유·북마크 */}
           <View style={styles.metaTop}>
             {a.topic ? <TopicChip topic={a.topic} /> : null}
-            {mins ? <Text style={[styles.readTime, { color: c.textMuted }]}>{mins}분 읽기</Text> : null}
             <View style={{ flex: 1 }} />
             <Pressable
               onPress={() => Share.share({ message: `${a.title}\n${a.url}` }).catch(() => undefined)}
@@ -180,15 +179,22 @@ export function ArticleDetailScreen({ route }: Props) {
             </View>
           ) : null}
 
-          {/* 출처 + 작성일 */}
-          <View style={styles.source}>
+          {/* 출처 + 작성일 — 탭하면 기업 상세로 이동 */}
+          <Pressable
+            style={styles.source}
+            onPress={() =>
+              a.blog ? nav.navigate("BlogArticles", { blogId: a.blog_id, blogName: a.blog.name }) : undefined
+            }
+            disabled={!a.blog}
+          >
             <ServiceLogo name={a.blog?.name ?? "?"} brandColor={a.blog?.brand_color} homepage={a.blog?.homepage} blogKey={a.blog?.key} size={24} />
             <Text style={[styles.sourceText, { color: c.textSecondary }]}>
               {a.blog?.name ?? ""}
               {a.author ? ` · ${a.author}` : ""}
               {a.published_at ? ` · ${relativeDate(a.published_at)}` : ""}
             </Text>
-          </View>
+            {a.blog ? <ChevronRight size={16} color={c.textMuted} /> : null}
+          </Pressable>
 
           {/* 원문 보기 */}
           <Pressable

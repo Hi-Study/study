@@ -6,7 +6,6 @@ import { Bookmark, Eye, MessageSquare } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { TOPIC_META, dtype } from "@/theme";
-import { readingMinutes } from "@/lib/text";
 import { faviconDomain, faviconUrl } from "@/lib/brandIcon";
 import { safeImageUri } from "@/lib/image";
 import { useIsBookmarked, useToggleBookmark } from "@/data";
@@ -130,7 +129,6 @@ export function TopicChip({ topic }: { topic: Topic }) {
 function MetaLine({ article }: { article: ArticleWithBlog }) {
   const { theme } = useTheme();
   const c = theme.colors;
-  const mins = readingMinutes(article.body);
   return (
     <View style={styles.metaRow}>
       <ServiceLogo
@@ -143,7 +141,6 @@ function MetaLine({ article }: { article: ArticleWithBlog }) {
       <Text style={[styles.metaText, { color: c.textMuted }]} numberOfLines={1}>
         {article.blog?.name ?? ""}
         {article.published_at ? ` · ${relativeDate(article.published_at)}` : ""}
-        {mins ? ` · ${mins}분` : ""}
       </Text>
       <CardStats article={article} />
     </View>

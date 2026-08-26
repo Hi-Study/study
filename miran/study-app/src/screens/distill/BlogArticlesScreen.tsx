@@ -66,38 +66,39 @@ export function BlogArticlesScreen({ route }: Props) {
         <View style={styles.backBtn} />
       </View>
 
-      {/* 기업 전환 드롭다운 */}
-      <Modal visible={switchOpen} transparent animationType="fade" onRequestClose={() => setSwitchOpen(false)}>
+      {/* 기업 전환 — 바텀시트 */}
+      <Modal visible={switchOpen} transparent animationType="slide" onRequestClose={() => setSwitchOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setSwitchOpen(false)}>
-          <SafeAreaView edges={["top"]}>
-            <Pressable style={[styles.switchPanel, { backgroundColor: c.surfaceCard }]} onPress={() => {}}>
-              <View style={styles.switchHead}>
-                <Text style={[styles.switchTitle, { color: c.textPrimary }]}>기업 전환</Text>
-                <Pressable onPress={() => setSwitchOpen(false)} hitSlop={8}>
-                  <X size={20} color={c.textMuted} />
-                </Pressable>
-              </View>
-              <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
-                {allBlogs.map((b) => {
-                  const on = b.id === blogId;
-                  return (
-                    <Pressable
-                      key={b.id}
-                      style={styles.switchRow}
-                      onPress={() => {
-                        setSwitchOpen(false);
-                        if (!on) nav.replace("BlogArticles", { blogId: b.id, blogName: b.name });
-                      }}
-                    >
-                      <ServiceLogo name={b.name} brandColor={b.brand_color} homepage={b.homepage} blogKey={b.key} size={26} />
-                      <Text style={[styles.switchName, { color: on ? c.primary : c.textPrimary }]}>{b.name}</Text>
-                      {on ? <Check size={18} color={c.primary} /> : null}
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </Pressable>
-          </SafeAreaView>
+          <Pressable style={[styles.switchPanel, { backgroundColor: c.surfaceCard }]} onPress={() => {}}>
+            <View style={styles.grip}>
+              <View style={[styles.gripBar, { backgroundColor: c.hairline }]} />
+            </View>
+            <View style={styles.switchHead}>
+              <Text style={[styles.switchTitle, { color: c.textPrimary }]}>어떤 기업을 볼까요?</Text>
+              <Pressable onPress={() => setSwitchOpen(false)} hitSlop={8}>
+                <X size={20} color={c.textMuted} />
+              </Pressable>
+            </View>
+            <ScrollView style={{ maxHeight: 440 }} showsVerticalScrollIndicator={false}>
+              {allBlogs.map((b) => {
+                const on = b.id === blogId;
+                return (
+                  <Pressable
+                    key={b.id}
+                    style={styles.switchRow}
+                    onPress={() => {
+                      setSwitchOpen(false);
+                      if (!on) nav.replace("BlogArticles", { blogId: b.id, blogName: b.name });
+                    }}
+                  >
+                    <ServiceLogo name={b.name} brandColor={b.brand_color} homepage={b.homepage} blogKey={b.key} size={30} />
+                    <Text style={[styles.switchName, { color: on ? c.primary : c.textPrimary }]}>{b.name}</Text>
+                    {on ? <Check size={20} color={c.primary} /> : null}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </Pressable>
         </Pressable>
       </Modal>
 
@@ -229,20 +230,16 @@ const styles = StyleSheet.create({
   headerSelect: { flexDirection: "row", alignItems: "center", gap: 4, flex: 1, justifyContent: "center" },
   headerSelectText: { ...dtype.title, maxWidth: W * 0.6 },
 
-  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)" },
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
   switchPanel: {
-    marginHorizontal: 10,
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
-    padding: 16,
-    gap: 8,
-    shadowColor: "#000",
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 8,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 30,
   },
-  switchHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
+  grip: { alignItems: "center", paddingTop: 10, paddingBottom: 4 },
+  gripBar: { width: 40, height: 4, borderRadius: 2 },
+  switchHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   switchTitle: { ...dtype.title },
   switchRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 11 },
   switchName: { ...dtype.body, flex: 1 },

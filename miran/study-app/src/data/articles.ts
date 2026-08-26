@@ -118,13 +118,21 @@ export async function listArticlesFeed(
 ): Promise<{ rows: ArticleWithBlog[]; nextCursor: ArticleCursor | null }> {
   const popular = filter.sort === "popular";
   let q = supabase.from("articles").select(SELECT_WITH_BLOG).limit(PAGE_SIZE);
+  // 인기순: 조회수 → 좋아요 → 인사이트 수 → 최신순(같은 지표면 최근 글 먼저).
   q = popular
-    ? q.order("like_count", { ascending: false }).order("id", { ascending: false })
+    ? q
+        .order("view_count", { ascending: false })
+        .order("like_count", { ascending: false })
+        .order("opinion_count", { ascending: false })
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .order("id", { ascending: false })
     : q.order("published_at", { ascending: false, nullsFirst: false }).order("id", { ascending: false });
 
   if (filter.topic) q = q.eq("topic", filter.topic);
+  if (filter.topics && filter.topics.length > 0) q = q.in("topic", filter.topics);
   if (filter.blogId) q = q.eq("blog_id", filter.blogId);
   if (filter.blogIds && filter.blogIds.length > 0) q = q.in("blog_id", filter.blogIds);
+  if (filter.ids && filter.ids.length > 0) q = q.in("id", filter.ids);
   const search = filter.search?.replace(/[,(){}%*]/g, " ").trim();
   if (search) {
     q = q.or(`title.ilike.%${search}%,summary.ilike.%${search}%,tags.cs.{${search}}`);
@@ -166,8 +174,10 @@ export function useArticlesFeed(filter: ArticleFeedFilter = {}) {
 export async function countArticlesFeed(filter: ArticleFeedFilter = {}): Promise<number> {
   let q = supabase.from("articles").select("id", { count: "exact", head: true });
   if (filter.topic) q = q.eq("topic", filter.topic);
+  if (filter.topics && filter.topics.length > 0) q = q.in("topic", filter.topics);
   if (filter.blogId) q = q.eq("blog_id", filter.blogId);
   if (filter.blogIds && filter.blogIds.length > 0) q = q.in("blog_id", filter.blogIds);
+  if (filter.ids && filter.ids.length > 0) q = q.in("id", filter.ids);
   const search = filter.search?.replace(/[,(){}%*]/g, " ").trim();
   if (search) {
     q = q.or(`title.ilike.%${search}%,summary.ilike.%${search}%,tags.cs.{${search}}`);

@@ -8,12 +8,11 @@ import { FileText, Link2, PenLine, Search, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
-import { useOpinionsFeed, useBlogs, useCommunityPosts, type OpinionSort } from "@/data";
-import { dtype, TOPIC_META, TOPIC_ORDER } from "@/theme";
-import type { Topic } from "@/types/database";
+import { useOpinionsFeed, useBlogs, useCommunityPosts } from "@/data";
+import { dtype } from "@/theme";
 import type { CommunityPost } from "@/data/community";
 import { OpinionCard } from "@/components/distill/OpinionCard";
-import { BlogChipsBar } from "@/components/distill/BlogChipsBar";
+import { FilterSheet, type FilterValue } from "@/components/distill/FilterSheet";
 import { relativeDate } from "@/components/distill/ArticleCards";
 import { Avatar } from "@/components/Avatar";
 import { Loading, ErrorState, EmptyState } from "@/components";
@@ -27,32 +26,22 @@ export function DiscussScreen() {
 
   const [mainTab, setMainTab] = useState<MainTab>("insight");
   const [writeOpen, setWriteOpen] = useState(false);
-  const [sort, setSort] = useState<OpinionSort>("latest");
-  const [topic, setTopic] = useState<Topic | null>(null);
-  const [blogSel, setBlogSel] = useState<Set<string>>(new Set());
+  const [filter, setFilter] = useState<FilterValue>({ blogs: new Set(), topics: new Set(), sort: "latest" });
 
   const blogsQ = useBlogs();
-  const q = useOpinionsFeed(sort);
+  const q = useOpinionsFeed(filter.sort);
   const list = q.data ?? [];
   const communityQ = useCommunityPosts();
 
   const filtered = useMemo(() => {
     return list.filter((o) => {
-      if (topic && o.article?.topic !== topic) return false;
-      if (blogSel.size > 0 && !blogSel.has(o.article?.blog?.id ?? "")) return false;
+      if (filter.topics.size > 0 && !(o.article?.topic && filter.topics.has(o.article.topic))) return false;
+      if (filter.blogs.size > 0 && !filter.blogs.has(o.article?.blog?.id ?? "")) return false;
       return true;
     });
-  }, [list, topic, blogSel]);
+  }, [list, filter.topics, filter.blogs]);
 
   const countLabel = `${filtered.length.toLocaleString()}개`;
-
-  const toggleBlog = (id: string) =>
-    setBlogSel((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: c.surfacePage }]} edges={["top", "left", "right"]}>
@@ -81,46 +70,12 @@ export function DiscussScreen() {
 
       {mainTab === "insight" ? (
         <>
-          {/* 기업 드롭다운(피드와 동일) */}
-          <BlogChipsBar
-            blogs={blogsQ.data ?? []}
-            selected={blogSel}
-            onToggle={toggleBlog}
-            onClear={() => setBlogSel(new Set())}
-          />
+          {/* 컬리식 필터(피드와 동일) */}
+          <FilterSheet blogs={blogsQ.data ?? []} value={filter} onChange={setFilter} />
 
-          {/* 주제 칩 */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-            <Chip label="전체" active={topic === null} onPress={() => setTopic(null)} />
-            {TOPIC_ORDER.map((t) => (
-              <Chip
-                key={t}
-                label={TOPIC_META[t].label}
-                active={topic === t}
-                onPress={() => setTopic(topic === t ? null : t)}
-              />
-            ))}
-          </ScrollView>
-
-          {/* 개수(좌) + 정렬(우) */}
+          {/* 개수 */}
           <View style={styles.filterRow}>
             <Text style={[styles.countText, { color: c.textSecondary }]}>{countLabel}</Text>
-            <View style={[styles.sortSeg, { backgroundColor: c.surfaceSunken }]}>
-              {(["latest", "popular"] as const).map((s) => {
-                const on = sort === s;
-                return (
-                  <Pressable
-                    key={s}
-                    onPress={() => setSort(s)}
-                    style={[styles.sortBtn, on && { backgroundColor: c.surfaceCard }]}
-                  >
-                    <Text style={[styles.sortBtnText, { color: on ? c.primary : c.textMuted }]}>
-                      {s === "latest" ? "최신순" : "인기순"}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
           </View>
 
           {q.isLoading ? (
