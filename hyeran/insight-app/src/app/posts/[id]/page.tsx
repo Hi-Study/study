@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getReviewsForPost, getCommentsForReviews } from "@/lib/queries";
@@ -99,8 +100,17 @@ export default async function PostDetail({ params, searchParams }: { params: Pro
           <div className="tagrow">{post.tags.map((t) => <span className="tag" key={t}>{t}</span>)}</div>
         )}
         <div className="comprow" style={{ marginTop: 10 }}>
-          <CompanyLogo company={post.company} />
-          <span className="cname">{post.company?.name ?? (post.source === "direct" ? post.author?.name : "")}</span>
+          {post.company?.slug ? (
+            <Link href={`/companies/${post.company.slug}`} className="comprow-co">
+              <CompanyLogo company={post.company} />
+              <span className="cname">{post.company.name}</span>
+            </Link>
+          ) : (
+            <>
+              <CompanyLogo company={post.company} />
+              <span className="cname">{post.source === "direct" ? post.author?.name : ""}</span>
+            </>
+          )}
           <span className="meta mono" style={{ marginLeft: 8 }}>
             {new Date(post.published_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}
           </span>
@@ -124,7 +134,7 @@ export default async function PostDetail({ params, searchParams }: { params: Pro
       <ReviewSheet
         postId={post.id}
         initial={initial}
-        trigger={<button className="fab-cta">{mine ? "내 인사이트 수정" : "내 생각도 남겨볼까요?"}</button>}
+        trigger={<button className="fab-cta">내 생각도 남겨볼까요?</button>}
       />
     </div>
   );

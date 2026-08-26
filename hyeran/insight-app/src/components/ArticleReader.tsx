@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { summarizeSentence } from "@/lib/reader-actions";
+import { summarizeSentence, extractTerms } from "@/lib/reader-actions";
 import Icon from "@/components/Icon";
 
 type Hi = Record<number, string | null>; // block_idx → memo(없으면 null)
@@ -35,6 +35,8 @@ export default function ArticleReader({
   const [wordIdx, setWordIdx] = useState<number | null>(null); // 단어 담기 모달 대상
   const [savedWords, setSavedWords] = useState<Set<string>>(new Set()); // 이미 저장된 단어
   const [wordSel, setWordSel] = useState<Set<string>>(new Set());       // 이번에 선택한 단어
+  const [wordCands, setWordCands] = useState<string[]>([]);             // AI가 뽑은 후보 용어
+  const [wordLoading, setWordLoading] = useState(false);
   const [resumeIdx, setResumeIdx] = useState<number>(0); // 이어읽기 대상 블록
   const rootRef = useRef<HTMLDivElement>(null);
   const savedIdx = useRef(0);       // 마지막으로 저장한 블록
@@ -100,7 +102,12 @@ export default function ArticleReader({
   // 단어 담기 (문장 속 단어 → 단어장)
   const wordsOf = (text: string) =>
     [...new Set(text.split(/[\s,.·…"'“”‘’()[\]{}!?:;~\-—/\\|]+/).map((w) => w.trim()).filter((w) => w.length >= 2))].slice(0, 40);
-  const openWords = (i: number) => { setActive(null); setWordSel(new Set()); setWordIdx(i); };
+  const openWords = async (i: number) => {
+    setActive(null); setWordSel(new Set()); setWordCands([]); setWordLoading(true); setWordIdx(i);
+    const terms = await extractTerms(parseBlock(body[i]).text);
+    setWordCands(terms.length ? terms : wordsOf(parseBlock(body[i]).text).slice(0, 10)); // AI 실패 시 단순 분리 폴백
+    setWordLoading(false);
+  };
   const toggleWord = (term: string) => {
     if (savedWords.has(term)) return; // 이미 저장된 건 그대로
     setWordSel((s) => { const n = new Set(s); n.has(term) ? n.delete(term) : n.add(term); return n; });
@@ -221,13 +228,19 @@ export default function ArticleReader({
           <div className="memo-modal">
             <div className="mm-head"><Icon name="book" size="sm" /> 단어 담기</div>
             <div className="mm-quote">{parseBlock(body[wordIdx]).text}</div>
-            <div className="word-chips">
-              {wordsOf(parseBlock(body[wordIdx]).text).map((w) => (
-                <button key={w} className={`wchip${savedWords.has(w) ? " saved" : wordSel.has(w) ? " on" : ""}`} onClick={() => toggleWord(w)} disabled={savedWords.has(w)}>
-                  {w}{savedWords.has(w) ? " ✓" : ""}
-                </button>
-              ))}
-            </div>
+            {wordLoading ? (
+              <div className="ai-result">핵심 용어를 뽑고 있어요…</div>
+            ) : wordCands.length ? (
+              <div className="word-chips">
+                {wordCands.map((w) => (
+                  <button key={w} className={`wchip${savedWords.has(w) ? " saved" : wordSel.has(w) ? " on" : ""}`} onClick={() => toggleWord(w)} disabled={savedWords.has(w)}>
+                    {w}{savedWords.has(w) ? " ✓" : ""}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="ai-result">담을 만한 용어를 찾지 못했어요.</div>
+            )}
             <div className="mm-row">
               <span style={{ flex: 1 }} />
               <button className="sa" onClick={() => setWordIdx(null)}>닫기</button>
