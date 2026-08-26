@@ -71,8 +71,8 @@ export default function ReviewList({
   const toggleLike = async (c: ThreadComment) => {
     const liked = !c.liked;
     setComments((prev) => prev.map((x) => x.id === c.id ? { ...x, liked, like_count: x.like_count + (liked ? 1 : -1) } : x));
-    if (liked) await sb.from("comment_likes").insert({ comment_id: c.id, user_id: userId });
-    else await sb.from("comment_likes").delete().eq("comment_id", c.id).eq("user_id", userId);
+    if (liked) await sb.from("likes").insert({ target_type: "comment", target_id: c.id, user_id: userId });
+    else await sb.from("likes").delete().eq("target_type", "comment").eq("target_id", c.id).eq("user_id", userId);
   };
 
   // 컴포넌트가 아니라 렌더 함수로 호출 → 리렌더 시 리마운트 안 됨(입력창 포커스 유지)

@@ -21,8 +21,8 @@ export default function ReviewLike({ reviewId, initialCount = 0, initialLiked = 
     const next = !liked;
     setLiked(next);
     setCount((c) => c + (next ? 1 : -1));
-    if (next) await sb.from("review_likes").insert({ review_id: reviewId, user_id: user.id });
-    else await sb.from("review_likes").delete().eq("review_id", reviewId).eq("user_id", user.id);
+    if (next) await sb.from("likes").insert({ target_type: "review", target_id: reviewId, user_id: user.id });
+    else await sb.from("likes").delete().eq("target_type", "review").eq("target_id", reviewId).eq("user_id", user.id);
     setBusy(false);
   };
 

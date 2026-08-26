@@ -186,6 +186,20 @@ create table if not exists public.review_likes (
 create index if not exists review_likes_review_idx  on public.review_likes (review_id);
 create index if not exists review_likes_created_idx on public.review_likes (created_at desc);
 
+-- 범용 좋아요 (review_likes + comment_likes 통합) [008] — 신규 코드는 이 테이블 사용
+create table if not exists public.likes (
+  target_type text not null check (target_type in ('review','comment','community_post')),
+  target_id   uuid not null,
+  user_id     uuid not null references public.profiles(id) on delete cascade,
+  created_at  timestamptz not null default now(),
+  primary key (target_type, target_id, user_id)
+);
+create index if not exists likes_target_idx on public.likes (target_type, target_id);
+alter table public.likes enable row level security;
+create policy "likes read all"   on public.likes for select to authenticated using (true);
+create policy "likes insert own" on public.likes for insert to authenticated with check (user_id = auth.uid());
+create policy "likes delete own" on public.likes for delete to authenticated using (user_id = auth.uid());
+
 -- ============================================================
 -- 6) 유저별 상태: 북마크 / 기업 즐겨찾기 / 하이라이트 / 다읽음
 -- ============================================================

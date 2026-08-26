@@ -144,13 +144,13 @@ export async function getPost(id: string): Promise<Post | null> {
 async function attachReviewLikes(sb: Awaited<ReturnType<typeof createClient>>, reviews: Review[], userId: string): Promise<Review[]> {
   if (!reviews.length) return reviews;
   const ids = reviews.map((r) => r.id);
-  const { data, error } = await sb.from("review_likes").select("review_id, user_id").in("review_id", ids);
+  const { data, error } = await sb.from("likes").select("target_id, user_id").eq("target_type", "review").in("target_id", ids);
   if (error) return reviews.map((r) => ({ ...r, like_count: 0, liked: false }));
   const counts = new Map<string, number>();
   const mine = new Set<string>();
-  (data ?? []).forEach((l: { review_id: string; user_id: string }) => {
-    counts.set(l.review_id, (counts.get(l.review_id) ?? 0) + 1);
-    if (l.user_id === userId) mine.add(l.review_id);
+  (data ?? []).forEach((l: { target_id: string; user_id: string }) => {
+    counts.set(l.target_id, (counts.get(l.target_id) ?? 0) + 1);
+    if (l.user_id === userId) mine.add(l.target_id);
   });
   return reviews.map((r) => ({ ...r, like_count: counts.get(r.id) ?? 0, liked: mine.has(r.id) }));
 }
@@ -327,12 +327,12 @@ export async function getCommentsForReviews(reviewIds: string[], userId: string)
   const ids = comments.map((c) => c.id);
   const likeCounts = new Map<string, number>();
   const myLikes = new Set<string>();
-  // comment_likes 테이블 미적용 환경에서도 안전하게
-  const { data: likes, error } = await sb.from("comment_likes").select("comment_id, user_id").in("comment_id", ids);
+  // 범용 likes 에서 댓글 좋아요 집계 (테이블 없어도 안전하게)
+  const { data: likes, error } = await sb.from("likes").select("target_id, user_id").eq("target_type", "comment").in("target_id", ids);
   if (!error) {
-    (likes ?? []).forEach((l: { comment_id: string; user_id: string }) => {
-      likeCounts.set(l.comment_id, (likeCounts.get(l.comment_id) ?? 0) + 1);
-      if (l.user_id === userId) myLikes.add(l.comment_id);
+    (likes ?? []).forEach((l: { target_id: string; user_id: string }) => {
+      likeCounts.set(l.target_id, (likeCounts.get(l.target_id) ?? 0) + 1);
+      if (l.user_id === userId) myLikes.add(l.target_id);
     });
   }
   return comments.map((c) => ({ ...c, like_count: likeCounts.get(c.id) ?? 0, liked: myLikes.has(c.id) }));
