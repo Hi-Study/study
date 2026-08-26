@@ -1,18 +1,12 @@
-import { unstable_cache } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { createServiceClient } from "@/lib/supabase/service";
 import type { Company, CommunityPost, Post, Review, Word } from "@/lib/types";
 
-// 기업 목록 — 유저 무관 공용. 5분 캐시.
-export const getCompanies = unstable_cache(
-  async (): Promise<Company[]> => {
-    const sb = createServiceClient();
-    const { data } = await sb.from("companies").select("*").order("slug");
-    return (data as Company[]) ?? [];
-  },
-  ["companies"],
-  { revalidate: 300, tags: ["companies"] },
-);
+// 기업 목록
+export async function getCompanies(): Promise<Company[]> {
+  const sb = await createClient();
+  const { data } = await sb.from("companies").select("*").order("slug");
+  return (data as Company[]) ?? [];
+}
 
 // 인사이트 수를 각 글에 붙이기
 async function attachReviewCounts(sb: Awaited<ReturnType<typeof createClient>>, posts: Post[]): Promise<Post[]> {
@@ -24,25 +18,15 @@ async function attachReviewCounts(sb: Awaited<ReturnType<typeof createClient>>, 
   return posts.map((p) => ({ ...p, review_count: counts.get(p.id) ?? 0 }));
 }
 
-// 피드: 전체 최신순 (인사이트 수 포함, 조회수는 posts.view_count 컬럼) — 유저 무관 공용. 60초 캐시.
-export const getFeedPosts = unstable_cache(
-  async (): Promise<Post[]> => {
-    const sb = createServiceClient();
-    const { data } = await sb
-      .from("posts")
-      .select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)")
-      .order("published_at", { ascending: false });
-    const posts = (data as unknown as Post[]) ?? [];
-    if (!posts.length) return posts;
-    const ids = posts.map((p) => p.id);
-    const { data: cs } = await sb.from("reviews").select("post_id").in("post_id", ids).eq("is_draft", false);
-    const counts = new Map<string, number>();
-    (cs ?? []).forEach((r: { post_id: string }) => counts.set(r.post_id, (counts.get(r.post_id) ?? 0) + 1));
-    return posts.map((p) => ({ ...p, review_count: counts.get(p.id) ?? 0 }));
-  },
-  ["feed-posts"],
-  { revalidate: 60, tags: ["posts"] },
-);
+// 피드: 전체 최신순 (인사이트 수 포함, 조회수는 posts.view_count 컬럼)
+export async function getFeedPosts(): Promise<Post[]> {
+  const sb = await createClient();
+  const { data } = await sb
+    .from("posts")
+    .select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)")
+    .order("published_at", { ascending: false });
+  return attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
+}
 
 // id 목록 → 글(작성자·인사이트 수 포함) — 마이·북마크·하이라이트 공통
 export async function getPostsByIds(ids: string[]): Promise<Post[]> {
