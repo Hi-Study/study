@@ -18,34 +18,22 @@ async function attachReviewCounts(sb: Awaited<ReturnType<typeof createClient>>, 
   return posts.map((p) => ({ ...p, review_count: counts.get(p.id) ?? 0 }));
 }
 
-// 글별 읽음(완독) 수 붙이기 — 뷰수 대체 (통일 카드 메타)
-async function attachReadCounts(sb: Awaited<ReturnType<typeof createClient>>, posts: Post[]): Promise<Post[]> {
-  if (!posts.length) return posts;
-  const ids = posts.map((p) => p.id);
-  const { data } = await sb.from("reads").select("post_id").in("post_id", ids);
-  const counts = new Map<string, number>();
-  (data ?? []).forEach((r: { post_id: string }) => counts.set(r.post_id, (counts.get(r.post_id) ?? 0) + 1));
-  return posts.map((p) => ({ ...p, read_count: counts.get(p.id) ?? 0 }));
-}
-
-// 피드: 전체 최신순 (인사이트 수 + 읽음 수 포함)
+// 피드: 전체 최신순 (인사이트 수 포함, 조회수는 posts.view_count 컬럼)
 export async function getFeedPosts(): Promise<Post[]> {
   const sb = await createClient();
   const { data } = await sb
     .from("posts")
     .select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)")
     .order("published_at", { ascending: false });
-  const withReviews = await attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
-  return attachReadCounts(sb, withReviews);
+  return attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
 }
 
-// id 목록 → 글(작성자·인사이트 수·읽음 수 포함) — 마이·북마크·하이라이트 공통
+// id 목록 → 글(작성자·인사이트 수 포함) — 마이·북마크·하이라이트 공통
 export async function getPostsByIds(ids: string[]): Promise<Post[]> {
   if (!ids.length) return [];
   const sb = await createClient();
   const { data } = await sb.from("posts").select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)").in("id", ids);
-  const withReviews = await attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
-  return attachReadCounts(sb, withReviews);
+  return attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
 }
 
 // 오늘의 글: 최근 7일 글 중 (조회수 + 인사이트 수) 1위 1개. 최근 글이 없으면 전체에서 선정
@@ -220,7 +208,12 @@ export type HomeData = {
 };
 export async function getHomeData(userId: string): Promise<HomeData> {
   const sb = await createClient();
-  const posts = await getFeedPosts(); // company·author·review_count·read_count 포함
+  // 독립 조회는 병렬로 (왕복 지연 축소)
+  const [posts, feed, favs] = await Promise.all([
+    getFeedPosts(),               // company·author·review_count 포함
+    getInsightFeed(userId),       // 최근 인사이트 (③④ 폴백)
+    getFavoriteCompanyIds(userId),
+  ]);
   const now = Date.now();
   const days = (p: Post, d: number) => now - new Date(p.published_at).getTime() <= d * 86_400_000;
   const recentCmp = (a: Post, b: Post) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime();
@@ -236,7 +229,6 @@ export async function getHomeData(userId: string): Promise<HomeData> {
   posts.filter((p) => days(p, 14)).forEach((p) => (p.tags ?? []).forEach((t) => freq.set(t, (freq.get(t) ?? 0) + 1)));
   const keywords = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t]) => t);
 
-  const feed = await getInsightFeed(userId); // 최근 인사이트, 최신순 (③④ 폴백에 재사용)
   const recent30 = posts.filter((p) => days(p, 30));
   const engage = (p: Post) => (p.review_count ?? 0) * 2 + (p.view_count ?? 0);
 
@@ -277,8 +269,7 @@ export async function getHomeData(userId: string): Promise<HomeData> {
     recommended = take(scored.map((x) => x.p), 10);
   }
 
-  // ⑦ 즐겨찾기 기업 새 글: 기업별 최신 2개씩 (없으면 유도 배너)
-  const favs = await getFavoriteCompanyIds(userId);
+  // ⑦ 즐겨찾기 기업 새 글: 기업별 최신 2개씩 (없으면 유도 배너) — favs는 상단에서 병렬 조회됨
   const favEmpty = favs.size === 0;
   const favGroups: { company: Company | null; posts: Post[] }[] = [];
   if (!favEmpty) {
