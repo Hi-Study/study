@@ -2,14 +2,55 @@
 // DESIGN_GUIDE §6.5(아티클 카드)·§6.6(서비스 로고칩)·§6.7(주제칩) 기준.
 import React, { useMemo, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Bookmark, Eye, MessageSquare } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { TOPIC_META, dtype } from "@/theme";
 import { readingMinutes } from "@/lib/text";
 import { faviconDomain, faviconUrl } from "@/lib/brandIcon";
 import { safeImageUri } from "@/lib/image";
+import { useIsBookmarked, useToggleBookmark } from "@/data";
 import type { ArticleWithBlog } from "@/data/articles";
 import type { Topic } from "@/types/database";
+
+// 큰 수 축약(1200 → 1.2k).
+function fmtCount(n: number | null | undefined): string {
+  const v = n ?? 0;
+  return v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}k` : String(v);
+}
+
+// 조회수·인사이트 수 (카드 지표). — DESIGN_SYSTEM §5 카드
+function CardStats({ article }: { article: ArticleWithBlog }) {
+  const { theme } = useTheme();
+  const c = theme.colors;
+  return (
+    <View style={styles.statsRow}>
+      <Eye size={13} color={c.textMuted} />
+      <Text style={[styles.statText, { color: c.textMuted }]}>{fmtCount(article.view_count)}</Text>
+      <MessageSquare size={13} color={c.textMuted} style={{ marginLeft: 8 }} />
+      <Text style={[styles.statText, { color: c.textMuted }]}>{fmtCount(article.opinion_count)}</Text>
+    </View>
+  );
+}
+
+// 카드 북마크 토글 버튼.
+function CardBookmark({ articleId }: { articleId: string }) {
+  const { theme } = useTheme();
+  const c = theme.colors;
+  const bookmarked = useIsBookmarked(articleId);
+  const toggle = useToggleBookmark(articleId);
+  const on = bookmarked.data ?? false;
+  return (
+    <Pressable
+      onPress={() => toggle.mutate(!on)}
+      disabled={toggle.isPending}
+      hitSlop={8}
+      style={styles.bmBtn}
+    >
+      <Bookmark size={18} color={on ? c.primary : c.textMuted} fill={on ? c.primary : "transparent"} />
+    </Pressable>
+  );
+}
 
 // ---- 유틸 ----
 export function relativeDate(iso: string | null): string {
@@ -104,6 +145,7 @@ function MetaLine({ article }: { article: ArticleWithBlog }) {
         {article.published_at ? ` · ${relativeDate(article.published_at)}` : ""}
         {mins ? ` · ${mins}분` : ""}
       </Text>
+      <CardStats article={article} />
     </View>
   );
 }
@@ -132,6 +174,9 @@ export function ArticleCardH({
         {article.og_image ? (
           <Image source={{ uri: safeImageUri(article.og_image) }} style={styles.thumbImg} resizeMode="cover" />
         ) : null}
+        <View style={[styles.bmOverlay, { backgroundColor: c.surfaceCard }]}>
+          <CardBookmark articleId={article.id} />
+        </View>
       </View>
       <View style={styles.cardHBody}>
         {article.topic ? <TopicChip topic={article.topic} /> : null}
@@ -170,6 +215,9 @@ export function ArticleRow({
         {article.og_image ? (
           <Image source={{ uri: safeImageUri(article.og_image) }} style={styles.thumbImg} resizeMode="cover" />
         ) : null}
+        <View style={[styles.bmOverlay, { backgroundColor: c.surfaceCard }]}>
+          <CardBookmark articleId={article.id} />
+        </View>
       </View>
     </Pressable>
   );
@@ -197,6 +245,9 @@ export function FeaturedCard({
         {article.og_image ? (
           <Image source={{ uri: safeImageUri(article.og_image) }} style={styles.thumbImg} resizeMode="cover" />
         ) : null}
+        <View style={[styles.bmOverlay, { backgroundColor: c.surfaceCard }]}>
+          <CardBookmark articleId={article.id} />
+        </View>
       </View>
       <View style={styles.featuredBody}>
         {article.topic ? <TopicChip topic={article.topic} /> : null}
@@ -241,6 +292,9 @@ export function ArticleGridCard({
             size={34}
           />
         )}
+        <View style={[styles.bmOverlay, { backgroundColor: c.surfaceCard }]}>
+          <CardBookmark articleId={article.id} />
+        </View>
       </View>
       <View style={styles.gridBody}>
         {article.topic ? <TopicChip topic={article.topic} /> : null}
@@ -263,6 +317,17 @@ const styles = StyleSheet.create({
 
   metaRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
   metaText: { ...dtype.meta, flex: 1 },
+  statsRow: { flexDirection: "row", alignItems: "center", gap: 3 },
+  statText: { ...dtype.meta, fontWeight: "600" },
+
+  bmBtn: { width: 30, height: 30, alignItems: "center", justifyContent: "center" },
+  bmOverlay: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    borderRadius: 999,
+    opacity: 0.94,
+  },
 
   cardH: { borderRadius: 16, borderWidth: 1, overflow: "hidden" },
   thumbH: { width: "100%", aspectRatio: 16 / 9 },

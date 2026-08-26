@@ -42,6 +42,7 @@ import { bucketHeaders } from "@/lib/dateBucket";
 import { Avatar } from "@/components/Avatar";
 import { OpinionCard } from "@/components/distill/OpinionCard";
 import { ArticleRow, ServiceLogo, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
+import { ActivityCalendar, dayKey } from "@/components/distill/ActivityCalendar";
 import { Loading, EmptyState } from "@/components";
 
 type MyTab =
@@ -86,6 +87,15 @@ export function DistillMyPageScreen() {
   const toggleFav = useToggleBlogFavorite();
   const favSet = new Set(favsQ.data ?? []);
   const favCount = favsQ.data?.length ?? 0;
+
+  // 활동 캘린더 — 인사이트·하이라이트·댓글·단어 작성일을 점으로.
+  const activeDays = new Set<string>();
+  for (const arr of [opinionsQ.data, highlightsQ.data, commentsQ.data, wordsQ.data]) {
+    for (const x of (arr ?? []) as { created_at?: string | null }[]) {
+      const k = dayKey(x.created_at ?? "");
+      if (k) activeDays.add(k);
+    }
+  }
 
   const byTab = {
     opinions: opinionsQ,
@@ -242,6 +252,9 @@ export function DistillMyPageScreen() {
                 <ChevronRight size={18} color={c.textMuted} />
               </View>
             </Pressable>
+
+            {/* 활동 캘린더 */}
+            <ActivityCalendar activeDays={activeDays} />
 
             {/* 내 활동 — 세그먼트 탭 (가로 스크롤). 앱 설정(테마·로그아웃)은 상단 기어 → 설정 화면. */}
             <Text style={[styles.activityLabel, { color: c.textPrimary }]}>내 활동</Text>

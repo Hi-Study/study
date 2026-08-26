@@ -41,6 +41,7 @@ import {
   useIsBookmarked,
   useToggleBookmark,
   useMarkArticleRead,
+  incrementArticleView,
 } from "@/data";
 import { ServiceLogo, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
 import { ArticleHighlightSection } from "@/components/distill/ArticleHighlightSection";
@@ -71,6 +72,11 @@ export function ArticleDetailScreen({ route }: Props) {
   // 이어읽기 — 이전에 읽던 위치 불러오기(자동 스크롤 대신 '이어읽기' 버튼으로 이동).
   useEffect(() => {
     getReadPos(articleId).then(setResumeY);
+  }, [articleId]);
+
+  // 조회수 +1 (글 열람 시 1회).
+  useEffect(() => {
+    incrementArticleView(articleId).catch(() => undefined);
   }, [articleId]);
 
   // 인사이트 카드로 진입(focusOpinionId) → 의견 탭 열고 그 영역으로 스크롤.

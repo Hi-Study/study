@@ -608,3 +608,48 @@ create policy cposts_update_own on public.community_posts for update to authenti
 drop policy if exists cposts_delete_own on public.community_posts;
 create policy cposts_delete_own on public.community_posts for delete to authenticated
   using (author_id = auth.uid());
+
+-- ============================================================
+-- 21) 카드 지표 — 조회수(view_count) + 인사이트 수(opinion_count)
+--     · view_count: 글 열람 시 RPC(increment_article_view)로 +1 (앱은 articles 쓰기 불가 → SECURITY DEFINER)
+--     · opinion_count: opinions insert/delete 트리거로 유지(섹션 9 like_count 방식)
+-- ============================================================
+alter table public.articles add column if not exists view_count int not null default 0;
+alter table public.articles add column if not exists opinion_count int not null default 0;
+create index if not exists idx_articles_view on public.articles(view_count desc);
+
+-- 조회수 +1 (로그인 사용자 누구나 호출 가능, 서버 권한으로 articles 갱신)
+create or replace function public.increment_article_view(aid uuid)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update public.articles set view_count = view_count + 1 where id = aid;
+$$;
+grant execute on function public.increment_article_view(uuid) to authenticated;
+
+-- 인사이트(opinion) 수 유지
+create or replace function public.sync_article_opinion_count()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if (tg_op = 'INSERT') then
+    update public.articles set opinion_count = opinion_count + 1 where id = new.article_id;
+  elsif (tg_op = 'DELETE') then
+    update public.articles set opinion_count = greatest(0, opinion_count - 1) where id = old.article_id;
+  end if;
+  return null;
+end;
+$$;
+drop trigger if exists trg_article_opinion on public.opinions;
+create trigger trg_article_opinion
+  after insert or delete on public.opinions
+  for each row execute function public.sync_article_opinion_count();
+
+-- 기존 데이터 정합성 재계산(재실행 안전).
+update public.articles a
+  set opinion_count = (select count(*) from public.opinions o where o.article_id = a.id);

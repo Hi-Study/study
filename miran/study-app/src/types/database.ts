@@ -100,6 +100,8 @@ export interface Database {
           tags: string[];
           ai_summaries: Record<string, string>;
           like_count: number;
+          view_count: number;
+          opinion_count: number;
           submitted_by: string | null;
           created_at: string;
         };
@@ -117,6 +119,8 @@ export interface Database {
           tags?: string[];
           ai_summaries?: Record<string, string>;
           like_count?: number;
+          view_count?: number;
+          opinion_count?: number;
           submitted_by?: string | null;
           created_at?: string;
         };
@@ -614,6 +618,10 @@ export interface Database {
       trending_searches: {
         Args: { lim?: number };
         Returns: { term: string; cnt: number }[];
+      };
+      increment_article_view: {
+        Args: { aid: string };
+        Returns: undefined;
       };
     };
     Enums: Record<string, never>;

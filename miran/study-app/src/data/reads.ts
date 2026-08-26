@@ -1,4 +1,5 @@
 // distill 읽은 아티클(article_reads) — 다 읽음(스크롤 90%) 기록 + 마이 읽음 모아보기. 본인만.
+// (+ 조회수 증가 RPC: increment_article_view)
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/lib/supabase";
@@ -33,6 +34,12 @@ export async function listMyReads(uid: string): Promise<ArticleWithBlog[]> {
   return ((data ?? []) as unknown as { article: ArticleWithBlog | null }[])
     .map((r) => r.article)
     .filter((a): a is ArticleWithBlog => Boolean(a));
+}
+
+/** 조회수 +1 — 글 상세 진입 시 1회 호출(RPC, 서버 권한으로 articles.view_count 갱신). */
+export async function incrementArticleView(articleId: string): Promise<void> {
+  const { error } = await supabase.rpc("increment_article_view", { aid: articleId });
+  if (error) throw error;
 }
 
 // ---- hooks ----
