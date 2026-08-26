@@ -22,11 +22,12 @@ import {
 import type { BlogRow } from "@/types/tables";
 import type { ArticleWithBlog } from "@/data/articles";
 import { dtype } from "@/theme";
-import { ArticleCardH, ArticleRow, ServiceLogo } from "@/components/distill/ArticleCards";
+import { ArticleCardH, FeaturedCard, ServiceLogo } from "@/components/distill/ArticleCards";
 import { OpinionCard } from "@/components/distill/OpinionCard";
 import { Loading } from "@/components";
 
 const W = Dimensions.get("window").width;
+const HERO_CARD_W = Math.round(W * 0.86); // 관심글 큰 카드(좌우 스와이프, 다음 카드 살짝 노출)
 const CARD_W = Math.round(W * 0.62);
 const OPINION_W = Math.round(W * 0.82);
 const CELL_W = Math.round((W - 32) / 4.4);
@@ -135,12 +136,23 @@ export function DistillHomeScreen() {
         {recommended.length > 0 ? (
           <View style={styles.block}>
             <SectionHeader title={recoTitle} sub="읽은 글의 주제를 바탕으로 골랐어요" />
-            {recommended.slice(0, 4).map((a, i) => (
-              <View key={a.id}>
-                {i > 0 ? <View style={[styles.sep, { backgroundColor: c.hairline }]} /> : null}
-                <ArticleRow article={a} onPress={() => nav.navigate("ArticleDetail", { articleId: a.id })} />
-              </View>
-            ))}
+            <FlatList
+              data={recommended}
+              keyExtractor={(a) => a.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={HERO_CARD_W + 12}
+              decelerationRate="fast"
+              contentContainerStyle={styles.carouselRow}
+              renderItem={({ item }) => (
+                <View style={{ width: HERO_CARD_W }}>
+                  <FeaturedCard
+                    article={item}
+                    onPress={() => nav.navigate("ArticleDetail", { articleId: item.id })}
+                  />
+                </View>
+              )}
+            />
           </View>
         ) : null}
 
