@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { summarizeSentence } from "@/lib/reader-actions";
 import Icon from "@/components/Icon";
 
 type Hi = Record<number, string | null>; // block_idx → memo(없으면 null)
@@ -28,6 +29,11 @@ export default function ArticleReader({
   const [active, setActive] = useState<number | null>(null);
   const [memoIdx, setMemoIdx] = useState<number | null>(null); // 메모 모달 대상
   const [draft, setDraft] = useState("");
+  const [aiIdx, setAiIdx] = useState<number | null>(null);   // AI 요약 모달 대상
+  const [aiText, setAiText] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [wordIdx, setWordIdx] = useState<number | null>(null); // 단어 담기 모달 대상
+  const [savedWords, setSavedWords] = useState<Set<string>>(new Set());
   const [resumeIdx, setResumeIdx] = useState<number>(0); // 이어읽기 대상 블록
   const rootRef = useRef<HTMLDivElement>(null);
   const savedIdx = useRef(0);       // 마지막으로 저장한 블록
@@ -81,6 +87,26 @@ export default function ArticleReader({
   const resume = () => {
     document.getElementById(`blk-${resumeIdx}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
     setResumeIdx(0);
+  };
+
+  // AI 요약 (문장 → 한 줄 요약)
+  const openAi = async (i: number) => {
+    setActive(null); setAiIdx(i); setAiText(""); setAiLoading(true);
+    const out = await summarizeSentence(parseBlock(body[i]).text);
+    setAiText(out); setAiLoading(false);
+  };
+
+  // 단어 담기 (문장 속 단어 → 단어장)
+  const wordsOf = (text: string) =>
+    [...new Set(text.split(/[\s,.·…"'“”‘’()[\]{}!?:;~\-—/\\|]+/).map((w) => w.trim()).filter((w) => w.length >= 2))].slice(0, 40);
+  const openWords = (i: number) => { setActive(null); setWordIdx(i); };
+  const saveWord = async (term: string, i: number) => {
+    if (!userId || savedWords.has(term)) return;
+    setSavedWords((s) => new Set(s).add(term));
+    await sb.from("words").upsert(
+      { user_id: userId, term, post_id: postId, sentence_idx: i },
+      { onConflict: "user_id,term" },
+    );
   };
 
   const sb = createClient();
@@ -137,17 +163,12 @@ export default function ArticleReader({
 
             {active === i && (
               <div className="sent-actions">
-                {has(i) ? (
-                  <>
-                    <button className="sa" onClick={() => openMemo(i)}>{hi[i] ? "메모 보기·수정" : "메모 추가"}</button>
-                    <button className="sa danger" onClick={() => unhighlight(i)}>하이라이트 해제</button>
-                  </>
-                ) : (
-                  <>
-                    <button className="sa on" onClick={() => highlight(i)}>하이라이트</button>
-                    <button className="sa" onClick={() => { highlight(i); openMemo(i); }}>메모</button>
-                  </>
-                )}
+                {has(i)
+                  ? <button className="sa danger" onClick={() => unhighlight(i)}>하이라이트 해제</button>
+                  : <button className="sa on" onClick={() => highlight(i)}>하이라이트</button>}
+                <button className="sa" onClick={() => openMemo(i)}>메모</button>
+                <button className="sa" onClick={() => openAi(i)}>AI 요약</button>
+                <button className="sa" onClick={() => openWords(i)}>단어</button>
               </div>
             )}
           </div>
@@ -174,6 +195,36 @@ export default function ArticleReader({
               <button className="sa" onClick={() => setMemoIdx(null)}>취소</button>
               <button className="sa on" onClick={saveMemo}>저장</button>
             </div>
+          </div>
+        </>
+      )}
+
+      {aiIdx !== null && (
+        <>
+          <div className="scrim show" onClick={() => setAiIdx(null)} />
+          <div className="memo-modal">
+            <div className="mm-head"><Icon name="sparkle" size="sm" /> AI 요약</div>
+            <div className="mm-quote">{parseBlock(body[aiIdx]).text}</div>
+            <div className="ai-result">{aiLoading ? "요약 중…" : aiText}</div>
+            <div className="mm-row"><span style={{ flex: 1 }} /><button className="sa on" onClick={() => setAiIdx(null)}>닫기</button></div>
+          </div>
+        </>
+      )}
+
+      {wordIdx !== null && (
+        <>
+          <div className="scrim show" onClick={() => setWordIdx(null)} />
+          <div className="memo-modal">
+            <div className="mm-head"><Icon name="book" size="sm" /> 단어 담기</div>
+            <div className="mm-quote">{parseBlock(body[wordIdx]).text}</div>
+            <div className="word-chips">
+              {wordsOf(parseBlock(body[wordIdx]).text).map((w) => (
+                <button key={w} className={`wchip${savedWords.has(w) ? " on" : ""}`} onClick={() => saveWord(w, wordIdx)}>
+                  {w}{savedWords.has(w) && " ✓"}
+                </button>
+              ))}
+            </div>
+            <div className="mm-row"><span style={{ flex: 1 }} /><button className="sa on" onClick={() => setWordIdx(null)}>닫기</button></div>
           </div>
         </>
       )}

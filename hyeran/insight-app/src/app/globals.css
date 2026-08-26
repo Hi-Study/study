@@ -428,7 +428,7 @@ svg.i.lg{ width:26px; height:26px; }
 .art-cap{ font-size:12px; color:var(--text-sub); text-align:center; margin:-8px 0 16px; }
 .memo-ico{ flex:0 0 auto; width:22px; height:22px; margin-top:3px; border:none; border-radius:50%; background:var(--coral); color:#fff; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
 .reader-img{ display:block; max-width:100%; height:auto; border-radius:0; margin:6px 0 16px; }
-.sent-actions{ display:flex; gap:8px; align-items:center; margin:2px 0 12px; }
+.sent-actions{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:2px 0 12px; }
 .sa{ background:var(--surface); border:none; border-radius:var(--r-full); padding:6px 12px; font-size:12px; font-weight:600; color:var(--text-sub); cursor:pointer; font-family:var(--font); }
 .sa.on{ background:var(--ink); color:var(--on-ink); }
 .sa.danger{ color:var(--danger); }
@@ -437,6 +437,12 @@ svg.i.lg{ width:26px; height:26px; }
 .memo-modal .mm-head{ display:flex; align-items:center; gap:6px; font-size:15px; font-weight:600; margin-bottom:10px; }
 .memo-modal .mm-quote{ font-size:13px; color:var(--text-sub); line-height:1.5; border-left:2px solid var(--coral); padding-left:10px; margin-bottom:12px; }
 .memo-modal .mm-row{ display:flex; gap:8px; align-items:center; margin-top:12px; }
+/* AI 요약 결과 */
+.memo-modal .ai-result{ font-size:14px; line-height:1.6; color:var(--text); min-height:44px; }
+/* 단어 담기 칩 */
+.word-chips{ display:flex; flex-wrap:wrap; gap:7px; max-height:180px; overflow-y:auto; }
+.wchip{ background:var(--surface); border:1px solid var(--hairline); border-radius:var(--r-full); padding:6px 11px; font-size:13px; font-weight:600; color:var(--text); cursor:pointer; font-family:var(--font); }
+.wchip.on{ background:var(--ink); color:var(--on-ink); border-color:var(--ink); }
 /* ===== owner: delete confirm ===== */
 .btn-danger{ background:var(--danger); color:#fff; }
 .confirm-box{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:60; width:calc(min(var(--maxw),100vw) - 32px); background:var(--canvas); border:1px solid var(--hairline); border-radius:16px; padding:18px; box-shadow:0 12px 40px rgba(0,0,0,.26); }

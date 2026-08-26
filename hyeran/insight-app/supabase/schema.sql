@@ -242,6 +242,19 @@ create table if not exists public.reading_progress (
 );
 create index if not exists reading_progress_recent_idx on public.reading_progress (user_id, updated_at desc);
 
+-- 단어장 (리더 하이라이트 '단어' 옵션) [007]
+create table if not exists public.words (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references public.profiles(id) on delete cascade,
+  term         text not null,
+  meaning      text,
+  post_id      uuid references public.posts(id) on delete set null,
+  sentence_idx integer,
+  created_at   timestamptz not null default now(),
+  unique (user_id, term)
+);
+create index if not exists words_user_idx on public.words (user_id, created_at desc);
+
 -- ============================================================
 -- 7) 알림
 -- ============================================================
@@ -272,6 +285,7 @@ alter table public.comment_likes enable row level security;
 alter table public.review_likes  enable row level security;
 alter table public.post_views    enable row level security;
 alter table public.reading_progress enable row level security;
+alter table public.words         enable row level security;
 alter table public.bookmarks     enable row level security;
 alter table public.favorites     enable row level security;
 alter table public.highlights    enable row level security;
@@ -321,6 +335,10 @@ create policy "post_views update own" on public.post_views for update to authent
 create policy "reading_progress read own"   on public.reading_progress for select to authenticated using (user_id = auth.uid());
 create policy "reading_progress insert own" on public.reading_progress for insert to authenticated with check (user_id = auth.uid());
 create policy "reading_progress update own" on public.reading_progress for update to authenticated using (user_id = auth.uid());
+
+create policy "words read own"   on public.words for select to authenticated using (user_id = auth.uid());
+create policy "words insert own" on public.words for insert to authenticated with check (user_id = auth.uid());
+create policy "words delete own" on public.words for delete to authenticated using (user_id = auth.uid());
 
 -- 북마크 / 즐겨찾기 / 다읽음: 본인 것만 (읽기·쓰기 모두)
 create policy "bookmarks own" on public.bookmarks for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
