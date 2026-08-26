@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import FeedCard from "@/components/FeedCard";
+import PostRow from "@/components/PostRow";
 import { CompanyLogo } from "@/components/PostCard";
 import Icon from "@/components/Icon";
 import DragScroll from "@/components/DragScroll";
@@ -90,7 +90,7 @@ export default function FeedClient({
       <div style={{ height: 14 }} />
       {list.length ? (
         <div className="feed-list">
-          {list.map((p) => <FeedCard key={p.id} post={{ ...p, read: readSet.has(p.id), bookmarked: bmSet.has(p.id) }} />)}
+          {list.map((p) => <PostRow key={p.id} post={{ ...p, read: readSet.has(p.id), bookmarked: bmSet.has(p.id) }} />)}
         </div>
       ) : (
         <div className="empty"><div className="art" /><div className="msg">조건에 맞는 글이 없어요</div></div>
