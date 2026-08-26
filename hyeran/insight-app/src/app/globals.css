@@ -128,6 +128,9 @@ svg.i.lg{ width:26px; height:26px; }
 .see-all::after{ content:" ›"; }
 .src-link{ display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:600; color:var(--blue); white-space:nowrap; }
 .src-link svg{ width:14px; height:14px; }
+/* 피드 1열 리스트 (v3.0: 한 줄당 아티클 1개) */
+.feed-list{ display:flex; flex-direction:column; gap:28px; }
+.feed-list .fcard{ margin-bottom:0; }
 /* 인기 글 2열 그리드 */
 .pop-grid{ display:grid; grid-template-columns:1fr 1fr; column-gap:14px; row-gap:26px; }
 .pop-grid .fcard{ margin-bottom:0; }

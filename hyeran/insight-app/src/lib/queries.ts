@@ -48,12 +48,12 @@ export async function getPostsByIds(ids: string[]): Promise<Post[]> {
   return attachReadCounts(sb, withReviews);
 }
 
-// 오늘의 글: 최근 7일 글 중 (읽음 수 + 인사이트 수) 1위 1개. 최근 글이 없으면 전체에서 선정
+// 오늘의 글: 최근 7일 글 중 (조회수 + 인사이트 수) 1위 1개. 최근 글이 없으면 전체에서 선정
 export function pickTodayHero(posts: Post[]): Post | null {
   const cutoff = Date.now() - 7 * 86_400_000;
   const recent = posts.filter((p) => new Date(p.published_at).getTime() >= cutoff);
   const pool = recent.length ? recent : posts;
-  const score = (p: Post) => (p.read_count ?? 0) + (p.review_count ?? 0);
+  const score = (p: Post) => (p.view_count ?? 0) + (p.review_count ?? 0);
   return [...pool].sort((a, b) =>
     score(b) - score(a) ||
     new Date(b.published_at).getTime() - new Date(a.published_at).getTime())[0] ?? null;
@@ -238,7 +238,7 @@ export async function getHomeData(userId: string): Promise<HomeData> {
 
   const feed = await getInsightFeed(userId); // 최근 인사이트, 최신순 (③④ 폴백에 재사용)
   const recent30 = posts.filter((p) => days(p, 30));
-  const engage = (p: Post) => (p.review_count ?? 0) * 2 + (p.read_count ?? 0);
+  const engage = (p: Post) => (p.review_count ?? 0) * 2 + (p.view_count ?? 0);
 
   // ③ 인기 글: 인사이트 2개+ 글 상위. 부족하면 → "최근 인사이트가 올라온 글"
   const strong = recent30.filter((p) => (p.review_count ?? 0) >= 2).sort((a, b) => engage(b) - engage(a) || recentCmp(a, b));

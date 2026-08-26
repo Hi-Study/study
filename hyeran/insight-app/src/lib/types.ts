@@ -32,7 +32,8 @@ export interface Post {
   company?: Company | null;
   author?: { name: string; initial: string } | null; // 직접 등록 글 작성자
   review_count?: number;
-  read_count?: number; // 글별 읽음(완독) 수 — 뷰수 대체 (통일 카드 메타)
+  view_count?: number; // 글별 총 조회수 (posts.view_count) — 카드 대표 지표 [v3.0]
+  read_count?: number; // 글별 읽음(완독) 수 — 내부 지표(⑤ 상태·통계)
   read?: boolean; // 내가 다 읽은 글 (카드 배지용)
   bookmarked?: boolean; // 내가 북마크한 글 (카드 토글 초기값)
 }
