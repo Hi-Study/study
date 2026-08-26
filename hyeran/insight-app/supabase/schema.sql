@@ -158,7 +158,9 @@ create index if not exists reviews_recent_idx on public.reviews (created_at desc
 -- ============================================================
 create table if not exists public.comments (
   id uuid primary key default gen_random_uuid(),
-  review_id uuid not null references public.reviews(id) on delete cascade,
+  review_id uuid references public.reviews(id) on delete cascade,        -- 인사이트 댓글(기존)
+  target_type text not null default 'review',                            -- 범용: review | community_post [009]
+  target_id uuid,                                                        -- review_id 또는 community_posts.id
   author_id uuid not null references public.profiles(id) on delete cascade,
   parent_id uuid references public.comments(id) on delete cascade,  -- 대댓글(답글): 상위 댓글
   body text not null,
@@ -166,6 +168,23 @@ create table if not exists public.comments (
 );
 create index if not exists comments_review_idx on public.comments (review_id);
 create index if not exists comments_parent_idx on public.comments (parent_id);
+create index if not exists comments_target_idx on public.comments (target_type, target_id);
+
+-- 자유글 (커뮤니티) [009]
+create table if not exists public.community_posts (
+  id         uuid primary key default gen_random_uuid(),
+  author_id  uuid not null references public.profiles(id) on delete cascade,
+  title      text not null,
+  body       text not null default '',
+  media      text[] not null default '{}',
+  created_at timestamptz not null default now()
+);
+create index if not exists community_posts_recent_idx on public.community_posts (created_at desc);
+alter table public.community_posts enable row level security;
+create policy "cp read all"   on public.community_posts for select to authenticated using (true);
+create policy "cp insert own" on public.community_posts for insert to authenticated with check (auth.uid() = author_id);
+create policy "cp update own" on public.community_posts for update to authenticated using (auth.uid() = author_id);
+create policy "cp delete own" on public.community_posts for delete to authenticated using (auth.uid() = author_id);
 
 -- 댓글 좋아요
 create table if not exists public.comment_likes (

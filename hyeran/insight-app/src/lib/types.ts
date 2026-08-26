@@ -54,6 +54,20 @@ export interface Review {
   post?: { title: string; company?: Company | null; body?: string[] } | null;
 }
 
+// 커뮤니티 자유글 [v3.0]
+export interface CommunityPost {
+  id: string;
+  author_id: string;
+  title: string;
+  body: string;
+  media: string[];
+  created_at: string;
+  author?: { name: string; initial: string } | null;
+  like_count?: number;
+  liked?: boolean;
+  comment_count?: number;
+}
+
 export const CATEGORIES: Category[] = [
   "프로덕트", "UIUX", "디자인", "AI", "비즈니스", "데이터 분석",
   "프론트엔드", "백엔드", "데이터베이스", "보안", "모바일",

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Company, Post, Review } from "@/lib/types";
+import type { Company, CommunityPost, Post, Review } from "@/lib/types";
 
 // 기업 목록
 export async function getCompanies(): Promise<Company[]> {
@@ -335,6 +335,74 @@ export async function getCommentsForReviews(reviewIds: string[], userId: string)
       if (l.user_id === userId) myLikes.add(l.target_id);
     });
   }
+  return comments.map((c) => ({ ...c, like_count: likeCounts.get(c.id) ?? 0, liked: myLikes.has(c.id) }));
+}
+
+// ===== 커뮤니티 자유글 [v3.0] =====
+
+async function attachCommunityMeta(sb: Awaited<ReturnType<typeof createClient>>, posts: CommunityPost[], userId: string): Promise<CommunityPost[]> {
+  if (!posts.length) return posts;
+  const ids = posts.map((p) => p.id);
+  const [likesRes, cmtRes] = await Promise.all([
+    sb.from("likes").select("target_id, user_id").eq("target_type", "community_post").in("target_id", ids),
+    sb.from("comments").select("target_id").eq("target_type", "community_post").in("target_id", ids),
+  ]);
+  const likeCounts = new Map<string, number>(); const mine = new Set<string>();
+  (likesRes.data ?? []).forEach((l: { target_id: string; user_id: string }) => {
+    likeCounts.set(l.target_id, (likeCounts.get(l.target_id) ?? 0) + 1);
+    if (l.user_id === userId) mine.add(l.target_id);
+  });
+  const cmtCounts = new Map<string, number>();
+  (cmtRes.data ?? []).forEach((c: { target_id: string }) => cmtCounts.set(c.target_id, (cmtCounts.get(c.target_id) ?? 0) + 1));
+  return posts.map((p) => ({ ...p, like_count: likeCounts.get(p.id) ?? 0, liked: mine.has(p.id), comment_count: cmtCounts.get(p.id) ?? 0 }));
+}
+
+// 커뮤니티 피드 (최신순)
+export async function getCommunityFeed(userId: string): Promise<CommunityPost[]> {
+  const sb = await createClient();
+  const { data } = await sb.from("community_posts")
+    .select("*, author:profiles!community_posts_author_id_fkey(name, initial)")
+    .order("created_at", { ascending: false });
+  return attachCommunityMeta(sb, (data as unknown as CommunityPost[]) ?? [], userId);
+}
+
+// 내가 쓴 자유글 (마이용)
+export async function getMyCommunityPosts(userId: string): Promise<CommunityPost[]> {
+  const sb = await createClient();
+  const { data } = await sb.from("community_posts")
+    .select("*, author:profiles!community_posts_author_id_fkey(name, initial)")
+    .eq("author_id", userId).order("created_at", { ascending: false });
+  return attachCommunityMeta(sb, (data as unknown as CommunityPost[]) ?? [], userId);
+}
+
+// 자유글 1개
+export async function getCommunityPost(id: string, userId: string): Promise<CommunityPost | null> {
+  const sb = await createClient();
+  const { data } = await sb.from("community_posts")
+    .select("*, author:profiles!community_posts_author_id_fkey(name, initial)")
+    .eq("id", id).maybeSingle();
+  if (!data) return null;
+  const [p] = await attachCommunityMeta(sb, [data as unknown as CommunityPost], userId);
+  return p;
+}
+
+// 대상(자유글 등)에 달린 댓글 스레드 (범용)
+export async function getCommentsForTarget(targetType: string, targetId: string, userId: string): Promise<ThreadComment[]> {
+  const sb = await createClient();
+  const { data } = await sb.from("comments")
+    .select("id, target_id, parent_id, author_id, body, created_at, author:profiles!comments_author_id_fkey(name, initial)")
+    .eq("target_type", targetType).eq("target_id", targetId)
+    .order("created_at", { ascending: true });
+  const raw = (data as unknown as (ThreadComment & { target_id: string })[]) ?? [];
+  if (!raw.length) return [];
+  const comments = raw.map((c) => ({ ...c, review_id: c.target_id })); // ThreadComment 호환(review_id에 target_id 매핑)
+  const ids = comments.map((c) => c.id);
+  const likeCounts = new Map<string, number>(); const myLikes = new Set<string>();
+  const { data: likes } = await sb.from("likes").select("target_id, user_id").eq("target_type", "comment").in("target_id", ids);
+  (likes ?? []).forEach((l: { target_id: string; user_id: string }) => {
+    likeCounts.set(l.target_id, (likeCounts.get(l.target_id) ?? 0) + 1);
+    if (l.user_id === userId) myLikes.add(l.target_id);
+  });
   return comments.map((c) => ({ ...c, like_count: likeCounts.get(c.id) ?? 0, liked: myLikes.has(c.id) }));
 }
 
