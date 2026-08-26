@@ -22,6 +22,7 @@ import {
   type ArticleHighlightRow,
 } from "@/data";
 import { splitSentences, groupSentencesIntoBlocks, imageMarkerUrl } from "@/lib/text";
+import { safeImageUri } from "@/lib/image";
 import { HIGHLIGHT_COLORS, HIGHLIGHT_TEXT, highlightBg } from "@/lib/highlight";
 import { WordPickerSheet } from "@/components/distill/WordPickerSheet";
 
@@ -211,10 +212,11 @@ function BodyImage({ url }: { url: string }) {
   const { theme } = useTheme();
   const c = theme.colors;
   const [ratio, setRatio] = useState(16 / 9);
+  const uri = safeImageUri(url) ?? url; // 한글 등 비ASCII URL 인코딩
   useEffect(() => {
     let ok = true;
     Image.getSize(
-      url,
+      uri,
       (w, h) => {
         if (ok && w > 0 && h > 0) setRatio(w / h);
       },
@@ -223,10 +225,10 @@ function BodyImage({ url }: { url: string }) {
     return () => {
       ok = false;
     };
-  }, [url]);
+  }, [uri]);
   return (
     <Image
-      source={{ uri: url }}
+      source={{ uri }}
       style={[styles.bodyImage, { aspectRatio: ratio, backgroundColor: c.surfaceSunken }]}
       resizeMode="cover"
     />

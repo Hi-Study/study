@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
   gridScroll: { paddingRight: 8 },
   grid2row: { flexDirection: "column", flexWrap: "wrap", rowGap: ROW_GAP, columnGap: 10 },
   cell: { alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 2 },
-  cellText: { ...dtype.label, fontSize: 11.5, textAlign: "center" },
+  cellText: { fontSize: 11.5, lineHeight: 15, fontWeight: "700", textAlign: "center" },
 
   sep: { height: 1 },
 });

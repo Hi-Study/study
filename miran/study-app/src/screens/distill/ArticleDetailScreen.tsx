@@ -32,6 +32,7 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav, type RootStackParamList } from "@/navigation/types";
 import { dtype } from "@/theme";
 import { cleanBody, readingMinutes } from "@/lib/text";
+import { safeImageUri } from "@/lib/image";
 import { splitInsightSections, isStructuredInsight } from "@/lib/summary";
 import { useReadingFontScale, getReadPos, setReadPos, clearReadPos } from "@/lib/readingPrefs";
 import {
@@ -132,7 +133,7 @@ export function ArticleDetailScreen({ route }: Props) {
         {/* 히어로 */}
         <View style={[styles.hero, { backgroundColor: c.surfaceSunken }]}>
           {a.og_image ? (
-            <Image source={{ uri: a.og_image }} style={styles.heroImg} resizeMode="cover" />
+            <Image source={{ uri: safeImageUri(a.og_image) }} style={styles.heroImg} resizeMode="cover" />
           ) : null}
         </View>
 

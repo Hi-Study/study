@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 9,
   },
-  cellText: { ...dtype.label, fontSize: 13, flex: 1 },
+  cellText: { fontSize: 13, lineHeight: 18, fontWeight: "700", flex: 1 },
 
   done: { borderRadius: 12, paddingVertical: 14, alignItems: "center" },
   doneText: { ...dtype.cardTitle },

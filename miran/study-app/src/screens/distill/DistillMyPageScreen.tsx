@@ -59,7 +59,6 @@ const TABS: { key: MyTab; label: string }[] = [
   { key: "bookmarks", label: "북마크" },
   { key: "comments", label: "댓글" },
   { key: "reads", label: "읽음" },
-  { key: "drafts", label: "임시저장" },
   { key: "words", label: "단어장" },
 ];
 

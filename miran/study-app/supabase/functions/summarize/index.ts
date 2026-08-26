@@ -101,11 +101,22 @@ async function callGroq(text: string, system: string, model: string): Promise<st
   }
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function llmSummarize(text: string, system: string): Promise<string | null> {
-  for (const model of LLM_MODELS) {
-    const out = await callGroq(text, system, model);
-    if (out) return out;
-    console.error("[summarize] model fail:", lastLlmError);
+  // 모델 체인을 최대 3회 시도(레이트리밋 429 시 잠깐 대기 후 재시도).
+  for (let attempt = 0; attempt < 3; attempt++) {
+    for (const model of LLM_MODELS) {
+      const out = await callGroq(text, system, model);
+      if (out) return out;
+      console.error("[summarize] model fail:", lastLlmError);
+    }
+    // 마지막 실패가 레이트리밋이면 백오프 후 재시도, 아니면 중단.
+    if (lastLlmError && lastLlmError.includes("429") && attempt < 2) {
+      await sleep(1500 * (attempt + 1));
+      continue;
+    }
+    break;
   }
   return null;
 }
@@ -168,11 +179,14 @@ async function summarizeArticle(articleId: string, mode: Mode): Promise<string> 
     }
   }
   const fallback = [art.title, art.summary].filter(Boolean).join(" — ") || art.title;
-  const summary = (text ? await llmSummarize(text, CONTENT_SYS[mode]) : null) ?? fallback;
+  const llm = text ? await llmSummarize(text, CONTENT_SYS[mode]) : null;
 
-  const merged = { ...(art.ai_summaries ?? {}), [mode]: summary };
-  await supabase.from("articles").update({ ai_summaries: merged }).eq("id", articleId);
-  return summary;
+  // LLM 성공했을 때만 캐시 저장(폴백/제목은 캐시하지 않음 → 다음에 재시도해 제대로 채움).
+  if (llm) {
+    const merged = { ...(art.ai_summaries ?? {}), [mode]: llm };
+    await supabase.from("articles").update({ ai_summaries: merged }).eq("id", articleId);
+  }
+  return llm ?? fallback;
 }
 
 // distill 단어장 뜻풀이 → user_words.definition 저장. 실패 시 저장하지 않음(재시도 가능).

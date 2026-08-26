@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
 
   chips: { paddingVertical: 10, gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, borderWidth: 1 },
-  chipText: { ...dtype.label, fontSize: 13 },
+  chipText: { fontSize: 13, lineHeight: 18, fontWeight: "700" },
 
   sep: { height: 1 },
 });

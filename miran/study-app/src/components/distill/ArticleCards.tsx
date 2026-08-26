@@ -7,6 +7,7 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { TOPIC_META, dtype } from "@/theme";
 import { readingMinutes } from "@/lib/text";
 import { faviconDomain, faviconUrl } from "@/lib/brandIcon";
+import { safeImageUri } from "@/lib/image";
 import type { ArticleWithBlog } from "@/data/articles";
 import type { Topic } from "@/types/database";
 
@@ -129,7 +130,7 @@ export function ArticleCardH({
     >
       <View style={[styles.thumbH, { backgroundColor: c.surfaceSunken }]}>
         {article.og_image ? (
-          <Image source={{ uri: article.og_image }} style={styles.thumbImg} resizeMode="cover" />
+          <Image source={{ uri: safeImageUri(article.og_image) }} style={styles.thumbImg} resizeMode="cover" />
         ) : null}
       </View>
       <View style={styles.cardHBody}>
@@ -167,7 +168,7 @@ export function ArticleRow({
       </View>
       <View style={[styles.thumbRow, { backgroundColor: c.surfaceSunken }]}>
         {article.og_image ? (
-          <Image source={{ uri: article.og_image }} style={styles.thumbImg} resizeMode="cover" />
+          <Image source={{ uri: safeImageUri(article.og_image) }} style={styles.thumbImg} resizeMode="cover" />
         ) : null}
       </View>
     </Pressable>
@@ -194,7 +195,7 @@ export function FeaturedCard({
     >
       <View style={[styles.featuredThumb, { backgroundColor: c.surfaceSunken }]}>
         {article.og_image ? (
-          <Image source={{ uri: article.og_image }} style={styles.thumbImg} resizeMode="cover" />
+          <Image source={{ uri: safeImageUri(article.og_image) }} style={styles.thumbImg} resizeMode="cover" />
         ) : null}
       </View>
       <View style={styles.featuredBody}>
@@ -230,7 +231,7 @@ export function ArticleGridCard({
     >
       <View style={[styles.gridThumb, { backgroundColor: c.surfaceSunken }]}>
         {article.og_image ? (
-          <Image source={{ uri: article.og_image }} style={styles.thumbImg} resizeMode="cover" />
+          <Image source={{ uri: safeImageUri(article.og_image) }} style={styles.thumbImg} resizeMode="cover" />
         ) : (
           <ServiceLogo
             name={article.blog?.name ?? "?"}
