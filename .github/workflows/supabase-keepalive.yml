@@ -1,0 +1,35 @@
+name: Supabase Keep-Alive
+
+# 무료 플랜 Supabase는 7일간 활동이 없으면 프로젝트가 일시정지된다.
+# 매일 한 번 REST로 가벼운 조회를 보내 "활동"을 유지해 자동 일시정지를 막는다.
+# 아래 URL / anon(publishable) 키는 공개용 값이며 RLS로 보호된다
+# (배포 앱의 브라우저 번들에도 이미 그대로 노출되어 있음 — 새로 노출되는 비밀 아님).
+#
+# 주의: 이미 "일시정지된" 프로젝트는 이 핑으로 깨어나지 않는다.
+#       대시보드에서 한 번 Restore 한 뒤부터 이 워크플로가 재정지를 막아준다.
+
+on:
+  schedule:
+    - cron: "30 2 * * *"   # 매일 02:30 UTC (= 11:30 KST)
+  workflow_dispatch: {}      # 필요 시 Actions 탭에서 수동 실행
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Supabase to keep the project active
+        env:
+          SUPABASE_URL: https://tpqhtyszpzoouvfsnxct.supabase.co
+          SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRwcWh0eXN6cHpvb3V2ZnNueGN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMTMzNjEsImV4cCI6MjEwMDg4OTM2MX0.uahEIZFXdu1ewbMWkmOmo79GyHJH9lnGKbT-mhZI1E0
+        run: |
+          code=$(curl -s -o /tmp/out -w "%{http_code}" -m 30 \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "${SUPABASE_URL}/rest/v1/companies?select=id&limit=1")
+          echo "HTTP ${code}"
+          echo "Body: $(cat /tmp/out)"
+          if [ "${code}" != "200" ]; then
+            echo "::error::Supabase keep-alive 실패 (HTTP ${code}). 프로젝트가 일시정지 상태이거나 응답 이상 — 대시보드에서 Restore 필요."
+            exit 1
+          fi
+          echo "✅ Supabase 활동 유지 완료"
