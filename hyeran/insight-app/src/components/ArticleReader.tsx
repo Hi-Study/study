@@ -73,8 +73,8 @@ export default function ArticleReader({
       if (cur === savedIdx.current) return;
       savedIdx.current = cur;
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => {
-        createClient().from("reading_progress").upsert(
+      saveTimer.current = setTimeout(async () => {
+        await createClient().from("reading_progress").upsert(
           { user_id: userId, post_id: postId, block_idx: cur, updated_at: new Date().toISOString() },
           { onConflict: "user_id,post_id" },
         );
