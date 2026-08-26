@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Icon from "@/components/Icon";
 
@@ -28,10 +28,60 @@ export default function ArticleReader({
   const [active, setActive] = useState<number | null>(null);
   const [memoIdx, setMemoIdx] = useState<number | null>(null); // 메모 모달 대상
   const [draft, setDraft] = useState("");
+  const [resumeIdx, setResumeIdx] = useState<number>(0); // 이어읽기 대상 블록
+  const rootRef = useRef<HTMLDivElement>(null);
+  const savedIdx = useRef(0);       // 마지막으로 저장한 블록
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     createClient().auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
   }, []);
+
+  // 저장된 이어읽기 위치 로드
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      const { data } = await createClient()
+        .from("reading_progress").select("block_idx")
+        .eq("user_id", userId).eq("post_id", postId).maybeSingle();
+      const idx = (data as { block_idx?: number } | null)?.block_idx ?? 0;
+      savedIdx.current = idx;
+      if (idx > 2) setResumeIdx(idx); // 초반이면 이어읽기 불필요
+    })();
+  }, [userId, postId]);
+
+  // 스크롤 추적 → 현재 읽는 블록을 reading_progress에 저장 (원문 탭이 보일 때만)
+  useEffect(() => {
+    if (!userId) return;
+    const onScroll = () => {
+      const root = rootRef.current;
+      if (!root || root.offsetParent === null) return; // 인사이트 탭이면 숨김 → 스킵
+      const blocks = root.querySelectorAll<HTMLElement>("[data-blk]");
+      let cur = 0;
+      for (const b of blocks) {
+        if (b.getBoundingClientRect().top <= 140) cur = Number(b.dataset.blk);
+        else break;
+      }
+      // 이어읽기 지점을 지나면 FAB 숨김
+      if (resumeIdx && cur >= resumeIdx - 1) setResumeIdx(0);
+      if (cur === savedIdx.current) return;
+      savedIdx.current = cur;
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => {
+        createClient().from("reading_progress").upsert(
+          { user_id: userId, post_id: postId, block_idx: cur, updated_at: new Date().toISOString() },
+          { onConflict: "user_id,post_id" },
+        );
+      }, 700);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [userId, postId, resumeIdx]);
+
+  const resume = () => {
+    document.getElementById(`blk-${resumeIdx}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setResumeIdx(0);
+  };
 
   const sb = createClient();
   const has = (i: number) => Object.prototype.hasOwnProperty.call(hi, i);
@@ -64,17 +114,17 @@ export default function ArticleReader({
   };
 
   return (
-    <div className="article">
+    <div className="article" ref={rootRef}>
       <div className="reader-hint">문단을 탭하면 하이라이트하거나 메모를 남길 수 있어요</div>
       {body.map((s, i) => {
         if (s.startsWith(IMG)) {
           // eslint-disable-next-line @next/next/no-img-element
-          return <img key={i} className="reader-img" src={s.slice(IMG.length)} alt="" loading="lazy" />;
+          return <img key={i} id={`blk-${i}`} data-blk={i} className="reader-img" src={s.slice(IMG.length)} alt="" loading="lazy" />;
         }
         const { type, text } = parseBlock(s);
         const Tag = (TAGS[type] || "p") as keyof React.JSX.IntrinsicElements;
         return (
-          <div key={i}>
+          <div key={i} id={`blk-${i}`} data-blk={i}>
             <Tag className={`artblk art-${type}${has(i) ? " hl" : ""}`} onClick={() => setActive(active === i ? null : i)}>
               <span>{text}</span>
               {hi[i] && (
@@ -103,6 +153,12 @@ export default function ArticleReader({
           </div>
         );
       })}
+
+      {resumeIdx > 0 && (
+        <button className="fab-resume" onClick={resume}>
+          <Icon name="book" size="sm" /> 이어읽기
+        </button>
+      )}
 
       {memoIdx !== null && (
         <>
