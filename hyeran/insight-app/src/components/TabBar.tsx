@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Icon from "@/components/Icon";
 
@@ -14,14 +15,26 @@ const TABS = [
 export default function TabBar() {
   const pathname = usePathname();
   const router = useRouter();
-  const showFab = ["/home", "/feed", "/insight"].includes(pathname);
+  const [menu, setMenu] = useState(false);
+  const showFab = pathname === "/insight"; // v3.0: FAB는 인사이트 탭에만
+
+  const go = (href: string) => { setMenu(false); router.push(href); };
 
   return (
     <>
       {showFab && (
-        <button className="fab" onClick={() => router.push("/register")} aria-label="글 등록">
-          <Icon name="plus" size="lg" />
-        </button>
+        <>
+          {menu && <div className="scrim show" onClick={() => setMenu(false)} />}
+          {menu && (
+            <div className="fab-menu">
+              <button onClick={() => go("/register")}><Icon name="review" size="sm" /> 아티클 등록</button>
+              <button onClick={() => go("/community/new")}><Icon name="edit" size="sm" /> 자유글 작성</button>
+            </div>
+          )}
+          <button className={`fab${menu ? " open" : ""}`} onClick={() => setMenu((v) => !v)} aria-label="글 작성">
+            <Icon name={menu ? "x" : "plus"} size="lg" />
+          </button>
+        </>
       )}
       <nav className="tabbar">
         {TABS.map((t) => (
