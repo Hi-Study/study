@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getHomeData, getReadPostIds, getBookmarkedPostIds } from "@/lib/queries";
+import { getHomeData, getReadPostIds, getBookmarkedPostIds, getCompanies } from "@/lib/queries";
 import { FeatureCard, CompanyLogo } from "@/components/PostCard";
 import FeedCard from "@/components/FeedCard";
 import DragScroll from "@/components/DragScroll";
@@ -28,10 +28,11 @@ function hasMore(r: Review) { return [r.q1, r.q2, r.q3].filter((x) => x?.trim())
 export default async function HomePage() {
   const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
-  const [home, readIds, bmIds] = await Promise.all([
+  const [home, readIds, bmIds, companies] = await Promise.all([
     getHomeData(user!.id),
     getReadPostIds(user!.id),
     getBookmarkedPostIds(user!.id),
+    getCompanies(),
   ]);
   const mark = (p: Post) => ({ ...p, read: readIds.has(p.id), bookmarked: bmIds.has(p.id) });
   const swipe = (list: Post[]) => <DragScroll className="swipe">{list.map((p) => <FeedCard key={p.id} post={mark(p)} />)}</DragScroll>;
@@ -52,6 +53,20 @@ export default async function HomePage() {
         {/* ── 발견 존 ── */}
         {/* ① 오늘의 글 (헤더 없음) */}
         {home.hero && <section className="hsec"><FeatureCard post={mark(home.hero)} /></section>}
+
+        {/* ★ 기업 아이콘 그리드 → 기업 상세 */}
+        {companies.length > 0 && (
+          <section className="hsec">
+            <div className="co-grid">
+              {companies.map((c) => (
+                <Link key={c.id} href={`/companies/${c.slug}`} className="co-cell">
+                  <CompanyLogo company={c} />
+                  <span className="co-name">{c.name}</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* ② 인기 키워드 */}
         {home.keywords.length > 0 && (
