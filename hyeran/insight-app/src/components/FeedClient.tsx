@@ -5,8 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import PostRow from "@/components/PostRow";
 import { CompanyLogo } from "@/components/PostCard";
 import Icon from "@/components/Icon";
-import DragScroll from "@/components/DragScroll";
-import { CATEGORIES, readableText, type Category, type Company, type Post } from "@/lib/types";
+import { CATEGORIES, type Category, type Company, type Post } from "@/lib/types";
 
 // source: "all" | "favorites" | "direct" | companyId
 export default function FeedClient({
@@ -19,10 +18,19 @@ export default function FeedClient({
   const [source, setSource] = useState<string>(initialSource);
   const [cats, setCats] = useState<Set<Category>>(new Set(initialCategory ? [initialCategory as Category] : []));
   const [favSet, setFavSet] = useState<Set<string>>(new Set(favorites));
-  const [coSheet, setCoSheet] = useState(false);
-  const [catSheet, setCatSheet] = useState(false);
+
+  // 통합 필터 시트 (기업+카테고리 한 곳에서 고르고 [적용])
+  const [sheet, setSheet] = useState(false);
+  const [draftSource, setDraftSource] = useState("all");
+  const [draftCats, setDraftCats] = useState<Set<Category>>(new Set());
+
   const bmSet = useMemo(() => new Set(bookmarked), [bookmarked]);
   const readSet = useMemo(() => new Set(readIds), [readIds]);
+
+  const openSheet = () => { setDraftSource(source); setDraftCats(new Set(cats)); setSheet(true); };
+  const apply = () => { setSource(draftSource); setCats(new Set(draftCats)); setSheet(false); };
+  const reset = () => { setDraftSource("all"); setDraftCats(new Set()); };
+  const toggleDraftCat = (c: Category) => { const n = new Set(draftCats); n.has(c) ? n.delete(c) : n.add(c); setDraftCats(n); };
 
   const toggleFav = async (companyId: string) => {
     const next = new Set(favSet);
@@ -36,9 +44,6 @@ export default function FeedClient({
       else await sb.from("favorites").delete().eq("user_id", user.id).eq("company_id", companyId);
     }
   };
-  const toggleCat = (c: Category) => {
-    const n = new Set(cats); n.has(c) ? n.delete(c) : n.add(c); setCats(n);
-  };
 
   let list = posts;
   if (tab === "bookmark") list = list.filter((p) => bmSet.has(p.id));
@@ -47,9 +52,13 @@ export default function FeedClient({
   else if (source !== "all") list = list.filter((p) => p.company_id === source);
   if (cats.size) list = list.filter((p) => cats.has(p.category));
 
-  // 즐겨찾기 기업 먼저, 그다음 나머지
-  const orderedCompanies = [...companies.filter((c) => favSet.has(c.id)), ...companies.filter((c) => !favSet.has(c.id))];
-  const brandStyle = (c: Company) => ({ background: c.color, color: readableText(c.color), borderColor: "transparent" });
+  const companyName = (id: string) => companies.find((c) => c.id === id)?.name ?? "기업";
+  const sourceLabel =
+    source === "all" ? "기업"
+    : source === "favorites" ? "기업 · 즐겨찾기"
+    : source === "direct" ? "기업 · 직접등록"
+    : `기업 · ${companyName(source)}`;
+  const catLabel = cats.size === 0 ? "카테고리" : `카테고리 · ${cats.size}`;
 
   return (
     <>
@@ -59,33 +68,11 @@ export default function FeedClient({
         <button className={`utab ${tab === "bookmark" ? "on" : ""}`} onClick={() => setTab("bookmark")}>북마크</button>
       </div>
 
-      {/* 필터 1줄 — 출처(기업) : 셀렉트 · 전체 · 즐겨찾기 · 직접등록 · 기업칩(즐겨찾기 먼저) */}
-      <DragScroll className="cchips">
-        <button className="cchip sel-btn" onClick={() => setCoSheet(true)}>기업 <Icon name="chevron" size="sm" /></button>
-        <button className={`cchip ${source === "all" ? "on" : ""}`} onClick={() => setSource("all")}>전체</button>
-        {favSet.size > 0 && (
-          <button className={`cchip ${source === "favorites" ? "on" : ""}`} onClick={() => setSource(source === "favorites" ? "all" : "favorites")}>★ 즐겨찾기</button>
-        )}
-        <button className={`cchip ${source === "direct" ? "on" : ""}`} onClick={() => setSource(source === "direct" ? "all" : "direct")}>직접 등록</button>
-        {orderedCompanies.map((c) => {
-          const on = source === c.id;
-          const fav = favSet.has(c.id);
-          return (
-            <button key={c.id} className={`cchip brand ${on ? "sel" : ""}`} style={on ? brandStyle(c) : undefined} onClick={() => setSource(on ? "all" : c.id)}>
-              {fav && <span className="cchip-star" style={{ color: on ? readableText(c.color) : c.color }}>★</span>}{c.name}
-            </button>
-          );
-        })}
-      </DragScroll>
-
-      {/* 필터 2줄 — 카테고리 : 셀렉트 · 전체 · 11개 칩 */}
-      <DragScroll className="cchips" style={{ marginTop: 8 }}>
-        <button className="cchip sel-btn" onClick={() => setCatSheet(true)}>카테고리 <Icon name="chevron" size="sm" /></button>
-        <button className={`cchip ${cats.size === 0 ? "on" : ""}`} onClick={() => setCats(new Set())}>전체</button>
-        {CATEGORIES.map((c) => (
-          <button key={c} className={`cchip ${cats.has(c) ? "on" : ""}`} onClick={() => toggleCat(c)}>{c}</button>
-        ))}
-      </DragScroll>
+      {/* 필터 — 항목 칩 2개(기업·카테고리) → 통합 셀렉트 시트 */}
+      <div className="cchips">
+        <button className={`cchip sel-btn ${source !== "all" ? "on" : ""}`} onClick={openSheet}>{sourceLabel} <Icon name="chevron" size="sm" /></button>
+        <button className={`cchip sel-btn ${cats.size ? "on" : ""}`} onClick={openSheet}>{catLabel} <Icon name="chevron" size="sm" /></button>
+      </div>
 
       <div style={{ height: 14 }} />
       {list.length ? (
@@ -96,37 +83,43 @@ export default function FeedClient({
         <div className="empty"><div className="art" /><div className="msg">조건에 맞는 글이 없어요</div></div>
       )}
 
-      {/* 기업 선택 시트 (+ 즐겨찾기 설정) */}
-      {coSheet && <div className="scrim show" onClick={() => setCoSheet(false)} />}
-      <div className={`drawer ${coSheet ? "show" : ""}`}>
+      {/* 통합 필터 시트 */}
+      {sheet && <div className="scrim show" onClick={() => setSheet(false)} />}
+      <div className={`drawer ${sheet ? "show" : ""}`}>
         <div className="handle" />
-        <div className="dhead">기업 선택<button className="iconbtn" style={{ marginLeft: "auto" }} onClick={() => setCoSheet(false)}><Icon name="x" /></button></div>
-        <div className="dbody">
-          <button className="sheet-row" onClick={() => { setSource("all"); setCoSheet(false); }}>
-            <span className="sr-name">전체 기업</span>{source === "all" && <Icon name="check" size="sm" />}
+        <div className="dhead">필터<button className="iconbtn" style={{ marginLeft: "auto" }} onClick={() => setSheet(false)}><Icon name="x" /></button></div>
+        <div className="dbody" style={{ maxHeight: "60vh", overflowY: "auto" }}>
+          <div className="filter-sec-label">기업</div>
+          <button className="sheet-row" onClick={() => setDraftSource("all")}>
+            <span className="sr-name">전체 기업</span>{draftSource === "all" && <Icon name="check" size="sm" />}
+          </button>
+          {favSet.size > 0 && (
+            <button className="sheet-row" onClick={() => setDraftSource("favorites")}>
+              <span className="sr-name">★ 즐겨찾기만</span>{draftSource === "favorites" && <Icon name="check" size="sm" />}
+            </button>
+          )}
+          <button className="sheet-row" onClick={() => setDraftSource("direct")}>
+            <span className="sr-name">직접 등록</span>{draftSource === "direct" && <Icon name="check" size="sm" />}
           </button>
           {companies.map((c) => (
             <div key={c.id} className="sheet-row">
-              <span className="sr-tap" onClick={() => { setSource(c.id); setCoSheet(false); }}>
-                <CompanyLogo company={c} /><span className="sr-name">{c.name}</span>
+              <span className="sr-tap" onClick={() => setDraftSource(c.id)}>
+                <CompanyLogo company={c} /><span className="sr-name">{c.name}</span>{draftSource === c.id && <Icon name="check" size="sm" />}
               </span>
               <button className={`startoggle ${favSet.has(c.id) ? "on" : ""}`} onClick={() => toggleFav(c.id)} aria-label="즐겨찾기"><Icon name="star" /></button>
             </div>
           ))}
-        </div>
-      </div>
 
-      {/* 카테고리 선택 시트 (다중) */}
-      {catSheet && <div className="scrim show" onClick={() => setCatSheet(false)} />}
-      <div className={`drawer ${catSheet ? "show" : ""}`}>
-        <div className="handle" />
-        <div className="dhead">카테고리<button className="submit" onClick={() => setCatSheet(false)}>적용</button></div>
-        <div className="dbody">
-          {CATEGORIES.map((c) => (
-            <button key={c} className="sheet-row" onClick={() => toggleCat(c)}>
-              <span className="sr-name">{c}</span>{cats.has(c) && <Icon name="check" size="sm" />}
-            </button>
-          ))}
+          <div className="filter-sec-label">카테고리</div>
+          <div className="cat-grid">
+            {CATEGORIES.map((c) => (
+              <button key={c} className={`cchip ${draftCats.has(c) ? "on" : ""}`} onClick={() => toggleDraftCat(c)}>{c}</button>
+            ))}
+          </div>
+        </div>
+        <div className="dfoot">
+          <button className="ghost" onClick={reset}>초기화</button>
+          <button className="submit" onClick={apply}>적용</button>
         </div>
       </div>
     </>
