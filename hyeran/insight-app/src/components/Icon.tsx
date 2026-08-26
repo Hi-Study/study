@@ -23,6 +23,8 @@ const PATHS: Record<string, string> = {
   heart: '<path d="M12 20s-6.5-4.2-9-8C1.3 9.3 2.6 5.8 6 5.8c2 0 3.2 1.3 4 2.5.8-1.2 2-2.5 4-2.5 3.4 0 4.7 3.5 3 6.2-2.5 3.8-9 8-9 8z"/>',
   chevron: '<path d="M6 9l6 6 6-6"/>',
   check: '<path d="M20 6L9 17l-5-5"/>',
+  share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>',
+  book: '<path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2z"/><path d="M4 5v14"/>',
 };
 
 export default function Icon({ name, size = "" }: { name: string; size?: "sm" | "lg" | "" }) {
