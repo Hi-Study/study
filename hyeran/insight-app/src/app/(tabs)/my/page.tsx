@@ -37,7 +37,7 @@ export default async function MyPage() {
       <div className="appbar">
         <span className="title">마이</span>
         <span className="spacer" />
-        <Link href="/search" className="iconbtn" aria-label="검색"><Icon name="search" /></Link>
+        <Link href="/settings" className="iconbtn" aria-label="설정"><Icon name="gear" /></Link>
       </div>
       <div className="pad">
         <div className="profile">

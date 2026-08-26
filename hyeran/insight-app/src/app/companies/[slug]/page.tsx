@@ -43,8 +43,10 @@ export default async function CompanyPage({ params }: { params: Promise<{ slug: 
       </div>
       <div className="pad">
         <div className="co-head">
-          <CompanySelect current={company} companies={companies} favIds={[...favSet]} />
-          <FavoriteToggle companyId={company.id} initial={favSet.has(company.id)} />
+          <CompanySelect
+            current={company} companies={companies} favIds={[...favSet]}
+            favorite={<FavoriteToggle companyId={company.id} initial={favSet.has(company.id)} />}
+          />
         </div>
 
         {popular.length > 0 && (

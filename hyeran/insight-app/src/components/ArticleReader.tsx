@@ -33,7 +33,8 @@ export default function ArticleReader({
   const [aiText, setAiText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [wordIdx, setWordIdx] = useState<number | null>(null); // 단어 담기 모달 대상
-  const [savedWords, setSavedWords] = useState<Set<string>>(new Set());
+  const [savedWords, setSavedWords] = useState<Set<string>>(new Set()); // 이미 저장된 단어
+  const [wordSel, setWordSel] = useState<Set<string>>(new Set());       // 이번에 선택한 단어
   const [resumeIdx, setResumeIdx] = useState<number>(0); // 이어읽기 대상 블록
   const rootRef = useRef<HTMLDivElement>(null);
   const savedIdx = useRef(0);       // 마지막으로 저장한 블록
@@ -99,14 +100,17 @@ export default function ArticleReader({
   // 단어 담기 (문장 속 단어 → 단어장)
   const wordsOf = (text: string) =>
     [...new Set(text.split(/[\s,.·…"'“”‘’()[\]{}!?:;~\-—/\\|]+/).map((w) => w.trim()).filter((w) => w.length >= 2))].slice(0, 40);
-  const openWords = (i: number) => { setActive(null); setWordIdx(i); };
-  const saveWord = async (term: string, i: number) => {
-    if (!userId || savedWords.has(term)) return;
-    setSavedWords((s) => new Set(s).add(term));
-    await sb.from("words").upsert(
-      { user_id: userId, term, post_id: postId, sentence_idx: i },
-      { onConflict: "user_id,term" },
-    );
+  const openWords = (i: number) => { setActive(null); setWordSel(new Set()); setWordIdx(i); };
+  const toggleWord = (term: string) => {
+    if (savedWords.has(term)) return; // 이미 저장된 건 그대로
+    setWordSel((s) => { const n = new Set(s); n.has(term) ? n.delete(term) : n.add(term); return n; });
+  };
+  const saveSelected = async () => {
+    if (!userId || wordSel.size === 0 || wordIdx === null) return;
+    const rows = [...wordSel].map((term) => ({ user_id: userId, term, post_id: postId, sentence_idx: wordIdx }));
+    setSavedWords((s) => new Set([...s, ...wordSel]));
+    setWordIdx(null);
+    await sb.from("words").upsert(rows, { onConflict: "user_id,term" });
   };
 
   const sb = createClient();
@@ -219,12 +223,16 @@ export default function ArticleReader({
             <div className="mm-quote">{parseBlock(body[wordIdx]).text}</div>
             <div className="word-chips">
               {wordsOf(parseBlock(body[wordIdx]).text).map((w) => (
-                <button key={w} className={`wchip${savedWords.has(w) ? " on" : ""}`} onClick={() => saveWord(w, wordIdx)}>
-                  {w}{savedWords.has(w) && " ✓"}
+                <button key={w} className={`wchip${savedWords.has(w) ? " saved" : wordSel.has(w) ? " on" : ""}`} onClick={() => toggleWord(w)} disabled={savedWords.has(w)}>
+                  {w}{savedWords.has(w) ? " ✓" : ""}
                 </button>
               ))}
             </div>
-            <div className="mm-row"><span style={{ flex: 1 }} /><button className="sa on" onClick={() => setWordIdx(null)}>닫기</button></div>
+            <div className="mm-row">
+              <span style={{ flex: 1 }} />
+              <button className="sa" onClick={() => setWordIdx(null)}>닫기</button>
+              <button className="sa on" onClick={saveSelected} disabled={wordSel.size === 0}>저장{wordSel.size > 0 ? ` ${wordSel.size}` : ""}</button>
+            </div>
           </div>
         </>
       )}

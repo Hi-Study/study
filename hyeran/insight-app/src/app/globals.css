@@ -134,13 +134,23 @@ svg.i.lg{ width:26px; height:26px; }
 .src-link svg{ width:14px; height:14px; }
 /* 기업 상세 상단: 기업명 셀렉트 + 즐겨찾기(옆) */
 .co-head{ display:flex; align-items:center; gap:6px; padding:4px 0 14px; }
-.co-head .startoggle{ width:38px; height:38px; }
-.co-head .startoggle svg{ width:25px; height:25px; }
 .co-select{ display:flex; align-items:center; gap:10px; background:none; border:none; padding:0; cursor:pointer; font-family:var(--font); }
 .co-select .clogo{ width:34px; height:34px; border-radius:11px; }
 .co-select-name{ font-size:22px; font-weight:700; letter-spacing:-.5px; color:var(--text); }
-.co-select > svg.i{ color:var(--text-sub); width:18px; height:18px; }
+.co-select .co-chev{ display:flex; margin-left:2px; }
+.co-select .co-chev svg{ color:var(--text-sub); width:18px; height:18px; }
 .sr-fav{ color:var(--coral); margin-left:6px; font-size:12px; }
+/* 설정 페이지 */
+.set-list{ margin-top:20px; }
+.set-sec{ font-size:12px; font-weight:700; color:var(--text-sub); margin:18px 0 6px; }
+.set-row{ display:flex; align-items:center; justify-content:space-between; padding:14px 2px; border-bottom:1px solid var(--hairline); font-size:14.5px; color:var(--text); }
+.set-val{ color:var(--text-sub); font-size:13.5px; }
+/* 검색 카테고리 카드 */
+.cat-cards{ display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
+.cat-card{ display:flex; align-items:center; justify-content:center; aspect-ratio:1.7 / 1; border-radius:14px; font-size:13.5px; font-weight:700; text-align:center; padding:6px; }
+/* 단어 담기: 저장됨 상태 */
+.wchip.saved{ opacity:.5; cursor:default; }
+.wchip:disabled{ cursor:default; }
 /* 홈 기업 아이콘 그리드 (2줄 · 한 화면에 ~5개 → 나머지 스와이프) → 기업 상세 */
 .co-grid{ display:grid; grid-auto-flow:column; grid-template-rows:repeat(2, auto); gap:16px 0; overflow-x:auto; margin:0 -15px; padding:2px 15px 4px; scroll-snap-type:x proximity; }
 .co-grid::-webkit-scrollbar{ height:0; }
@@ -415,8 +425,9 @@ svg.i.lg{ width:26px; height:26px; }
 .filter-sec-label{ font-size:12px; font-weight:700; color:var(--text-sub); margin:14px 0 8px; }
 .cat-grid{ display:flex; flex-wrap:wrap; gap:8px; padding-bottom:4px; }
 .dfoot{ display:flex; gap:10px; padding:12px 15px calc(12px + env(safe-area-inset-bottom)); border-top:1px solid var(--hairline); }
-.dfoot .ghost{ flex:0 0 auto; background:var(--surface); border:none; border-radius:var(--r-full); padding:12px 20px; font-size:14px; font-weight:700; color:var(--text-sub); font-family:var(--font); cursor:pointer; }
-.dfoot .submit{ flex:1; }
+.dfoot .ghost{ flex:0 0 auto; background:var(--surface); border:none; border-radius:var(--r-full); padding:13px 20px; font-size:14px; font-weight:700; color:var(--text-sub); font-family:var(--font); cursor:pointer; }
+.dfoot .submit{ flex:1; background:var(--coral); color:#fff; border:none; border-radius:var(--r-full); padding:13px 20px; font-size:15px; font-weight:700; font-family:var(--font); cursor:pointer; }
+.dfoot .submit:active{ opacity:.9; }
 /* 마이 상단: 이번 달 인사이트 수 + 캘린더 */
 .my-head{ display:flex; gap:14px; align-items:stretch; margin:6px 0 18px; }
 .mh-count-box{ flex:1; display:flex; flex-direction:column; justify-content:center; background:var(--surface); border-radius:var(--r-card); padding:16px; }
@@ -495,7 +506,7 @@ svg.i.lg{ width:26px; height:26px; }
 .artblk{ cursor:pointer; border-radius:2px; transition:background .12s; display:flex; align-items:flex-start; gap:6px; }
 .artblk > span{ flex:1; min-width:0; }
 .artblk:active{ background:var(--surface); }
-.artblk.hl{ box-shadow:inset 0 -0.5em 0 rgba(255,74,40,.16); }
+.artblk.hl{ background:rgba(255,74,40,.16); border-radius:3px; box-shadow:0 0 0 3px rgba(255,74,40,.16); }
 /* 블록 타입별 타이포 (원문 구조 보존) */
 .art-p{ font-size:16px; line-height:1.78; color:var(--charcoal); margin:0 0 15px; }
 .art-h2{ font-size:20px; font-weight:700; line-height:1.35; letter-spacing:-.4px; color:var(--text); margin:26px 0 12px; }

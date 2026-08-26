@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import PostRow from "@/components/PostRow";
 import Icon from "@/components/Icon";
-import type { Company, Post } from "@/lib/types";
+import { CATEGORIES, CAT_COLOR, readableText, type Company, type Post } from "@/lib/types";
 
 const RISING = ["OKR", "리텐션", "온보딩", "디자인시스템", "RAG", "LLM", "실험", "생산성", "아키텍처", "AI"];
 // 추천 검색어(문장·질문형) — 보여줄 문구(label)와 실제 검색어(q)
@@ -90,6 +91,15 @@ export default function SearchClient({ posts, companies, readIds, bookmarked, in
               <span className="rank-n">{i + 1}</span>{t}
             </button>
           ))}
+
+          <div className="sec-title" style={{ marginTop: 22 }}>카테고리로 둘러보기</div>
+          <div className="cat-cards">
+            {CATEGORIES.map((c) => (
+              <Link key={c} href={`/feed?category=${encodeURIComponent(c)}`} className="cat-card" style={{ background: CAT_COLOR[c], color: readableText(CAT_COLOR[c]) }}>
+                {c}
+              </Link>
+            ))}
+          </div>
         </>
       )}
     </div>
