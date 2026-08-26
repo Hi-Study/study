@@ -11,7 +11,7 @@ import { useArticlesFeed, useArticlesFeedCount, useBlogs } from "@/data";
 import { dtype, TOPIC_META, TOPIC_ORDER } from "@/theme";
 import type { Topic } from "@/types/database";
 import { ArticleRow } from "@/components/distill/ArticleCards";
-import { BlogDropdown } from "@/components/distill/BlogDropdown";
+import { BlogChipsBar } from "@/components/distill/BlogChipsBar";
 import { Loading, ErrorState, EmptyState } from "@/components";
 
 export function FeedScreen() {
@@ -53,7 +53,7 @@ export function FeedScreen() {
       </View>
 
       {/* 최상단 기업 드롭다운(무신사식 — 눌러서 리스트 펼침) */}
-      <BlogDropdown
+      <BlogChipsBar
         blogs={blogsQ.data ?? []}
         selected={blogSel}
         onToggle={toggleBlog}

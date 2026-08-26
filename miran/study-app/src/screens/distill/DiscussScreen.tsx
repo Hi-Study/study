@@ -13,7 +13,7 @@ import { dtype, TOPIC_META, TOPIC_ORDER } from "@/theme";
 import type { Topic } from "@/types/database";
 import type { CommunityPost } from "@/data/community";
 import { OpinionCard } from "@/components/distill/OpinionCard";
-import { BlogDropdown } from "@/components/distill/BlogDropdown";
+import { BlogChipsBar } from "@/components/distill/BlogChipsBar";
 import { relativeDate } from "@/components/distill/ArticleCards";
 import { Avatar } from "@/components/Avatar";
 import { Loading, ErrorState, EmptyState } from "@/components";
@@ -82,7 +82,7 @@ export function DiscussScreen() {
       {mainTab === "insight" ? (
         <>
           {/* 기업 드롭다운(피드와 동일) */}
-          <BlogDropdown
+          <BlogChipsBar
             blogs={blogsQ.data ?? []}
             selected={blogSel}
             onToggle={toggleBlog}

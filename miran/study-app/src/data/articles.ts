@@ -104,8 +104,10 @@ export interface ArticleCursor {
 }
 export interface ArticleFeedFilter {
   topic?: Topic;
+  topics?: Topic[]; // 카테고리 다중선택
   blogId?: string;
   blogIds?: string[]; // 홈 서비스 다중선택 필터(여러 기업 동시)
+  ids?: string[]; // 특정 글 id로 제한(북마크한 글만 보기 등)
   search?: string;
   sort?: "latest" | "popular"; // 기본 latest
 }
