@@ -110,9 +110,17 @@ create table if not exists public.posts (
   ai_summary jsonb not null default '{}'::jsonb,  -- {problem, solution, learning}
   body jsonb not null default '[]'::jsonb,         -- 원문 문장 배열 (파싱 성공 시)
   parsed boolean not null default false,           -- 원문 파싱 여부 (하이라이트 가능 여부)
+  view_count integer not null default 0,           -- 총 조회수 (상세 진입 시 +1, 카드 대표 지표) [006]
   published_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
+
+-- 조회수 원자적 증가 (RLS 우회) [006]
+create or replace function public.increment_view_count(p_post_id uuid)
+returns void language sql security definer set search_path = public as $$
+  update public.posts set view_count = view_count + 1 where id = p_post_id;
+$$;
+grant execute on function public.increment_view_count(uuid) to authenticated;
 -- 최신순 정렬 / 필터 인덱스
 create index if not exists posts_published_idx on public.posts (published_at desc);
 create index if not exists posts_company_idx on public.posts (company_id);
@@ -224,6 +232,16 @@ create table if not exists public.post_views (
 );
 create index if not exists post_views_recent_idx on public.post_views (user_id, viewed_at desc);
 
+-- 이어읽기 진행률 (마지막으로 읽던 본문 블록 인덱스) [006]
+create table if not exists public.reading_progress (
+  user_id    uuid not null references public.profiles(id) on delete cascade,
+  post_id    uuid not null references public.posts(id)    on delete cascade,
+  block_idx  integer not null default 0,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, post_id)
+);
+create index if not exists reading_progress_recent_idx on public.reading_progress (user_id, updated_at desc);
+
 -- ============================================================
 -- 7) 알림
 -- ============================================================
@@ -253,6 +271,7 @@ alter table public.comments      enable row level security;
 alter table public.comment_likes enable row level security;
 alter table public.review_likes  enable row level security;
 alter table public.post_views    enable row level security;
+alter table public.reading_progress enable row level security;
 alter table public.bookmarks     enable row level security;
 alter table public.favorites     enable row level security;
 alter table public.highlights    enable row level security;
@@ -298,6 +317,10 @@ create policy "review_likes delete own" on public.review_likes for delete to aut
 create policy "post_views read own"   on public.post_views for select to authenticated using (user_id = auth.uid());
 create policy "post_views insert own" on public.post_views for insert to authenticated with check (user_id = auth.uid());
 create policy "post_views update own" on public.post_views for update to authenticated using (user_id = auth.uid());
+
+create policy "reading_progress read own"   on public.reading_progress for select to authenticated using (user_id = auth.uid());
+create policy "reading_progress insert own" on public.reading_progress for insert to authenticated with check (user_id = auth.uid());
+create policy "reading_progress update own" on public.reading_progress for update to authenticated using (user_id = auth.uid());
 
 -- 북마크 / 즐겨찾기 / 다읽음: 본인 것만 (읽기·쓰기 모두)
 create policy "bookmarks own" on public.bookmarks for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
