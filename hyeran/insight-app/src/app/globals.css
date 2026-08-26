@@ -9,7 +9,7 @@
   --text:#161616; --text-sub:#6B7280; --text-mute:#9AA0AB;
   /* accent — coral 단일 포인트, blue는 링크/정보로 강등 */
   --coral:#FF4A28; --coral-soft:#FFF0EC;
-  --blue:#056DFF;
+  --blue:#056DFF; --orange:#F97316; --lime:#3E9E4F; --sky:#0EA5E9;
   /* hero card (양 테마 공통 다크 포스터) */
   --hero-bg:#161616; --hero-fg:#FFFFFF;
   /* semantic */
@@ -424,13 +424,17 @@ svg.i.lg{ width:26px; height:26px; }
 
 /* 피드 통합 필터 시트 */
 .filter-sec-label{ font-size:12px; font-weight:700; color:var(--text-sub); margin:14px 0 8px; }
-.sheet-divider{ height:1px; background:var(--hairline); margin:8px 0; }
-.co-opt{ cursor:pointer; }
-.sheet-row.sel{ background:rgba(255,74,40,.08); border-radius:10px; }
-.sheet-row.sel .sr-name{ font-weight:700; color:var(--coral); }
-.co-check{ flex:0 0 auto; width:20px; display:flex; justify-content:center; }
-.co-check.on svg{ color:var(--coral); }
-.co-opt .startoggle{ margin-left:0; }
+.sheet-divider{ height:1px; background:var(--hairline); margin:6px 0; }
+.opt-row{ display:flex; align-items:center; gap:12px; padding:13px 2px; border-bottom:1px solid var(--hairline); cursor:pointer; }
+.opt-row .clogo{ width:30px; height:30px; flex:0 0 auto; }
+.opt-label{ font-size:15px; color:var(--text); }
+.opt-row .startoggle{ margin-left:8px; }
+.radio{ width:20px; height:20px; border-radius:50%; border:2px solid var(--hairline); flex:0 0 auto; position:relative; }
+.radio.on{ border-color:var(--coral); }
+.radio.on::after{ content:""; position:absolute; inset:3px; border-radius:50%; background:var(--coral); }
+.checkbox{ width:20px; height:20px; border-radius:6px; border:2px solid var(--hairline); flex:0 0 auto; display:flex; align-items:center; justify-content:center; }
+.checkbox.on{ background:var(--coral); border-color:var(--coral); }
+.checkbox.on svg{ color:#fff; width:13px; height:13px; }
 .cat-grid{ display:flex; flex-wrap:wrap; gap:8px; padding-bottom:4px; }
 .dfoot{ display:flex; gap:10px; padding:12px 15px calc(12px + env(safe-area-inset-bottom)); border-top:1px solid var(--hairline); }
 .dfoot .ghost{ flex:0 0 auto; background:var(--surface); border:none; border-radius:var(--r-full); padding:13px 20px; font-size:14px; font-weight:700; color:var(--text-sub); font-family:var(--font); cursor:pointer; }
@@ -575,6 +579,7 @@ svg.i.lg{ width:26px; height:26px; }
 .cmt-sec{ margin-top:14px; padding-top:13px; border-top:1px solid var(--hairline); }
 .cmt-title{ font-size:13px; font-weight:700; margin-bottom:10px; }
 .cmt-input{ display:flex; gap:8px; margin-bottom:14px; }
+.cmt-input.bottom{ margin-bottom:0; margin-top:14px; }
 .cmt-input input{ flex:1; min-width:0; border:1px solid var(--hairline); border-radius:var(--r-input); padding:10px 12px; font-size:13px; font-family:var(--font); background:var(--canvas); color:var(--text); outline:none; }
 .cmt-input input:focus{ border-color:var(--ink); }
 .cmt-send{ flex:0 0 auto; border:none; border-radius:var(--r-full); background:var(--ink); color:var(--on-ink); font-size:13px; font-weight:600; padding:0 16px; cursor:pointer; }

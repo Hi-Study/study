@@ -109,29 +109,33 @@ export default function FeedClient({
         <div className="dbody" style={{ height: "58vh", overflowY: "auto" }}>
           {sheetTab === "company" ? (
             <>
-              <button className={`sheet-row ${dSpecial === "all" && !dCoIds.size ? "sel" : ""}`} onClick={() => pickSpecial("all")}>
-                <span className="sr-name">전체</span>{dSpecial === "all" && !dCoIds.size && <Icon name="check" size="sm" />}
-              </button>
+              {/* 라디오 (단일 선택) */}
+              <div className="opt-row" onClick={() => pickSpecial("all")}>
+                <span className={`radio ${dSpecial === "all" && !dCoIds.size ? "on" : ""}`} />
+                <span className="opt-label">전체</span>
+              </div>
               {favSet.size > 0 && (
-                <button className={`sheet-row ${dSpecial === "favorites" ? "sel" : ""}`} onClick={() => pickSpecial("favorites")}>
-                  <span className="sr-name">★ 즐겨찾기</span>{dSpecial === "favorites" && <Icon name="check" size="sm" />}
-                </button>
+                <div className="opt-row" onClick={() => pickSpecial("favorites")}>
+                  <span className={`radio ${dSpecial === "favorites" ? "on" : ""}`} />
+                  <span className="opt-label">★ 즐겨찾기</span>
+                </div>
               )}
-              <button className={`sheet-row ${dSpecial === "direct" ? "sel" : ""}`} onClick={() => pickSpecial("direct")}>
-                <span className="sr-name">직접 등록</span>{dSpecial === "direct" && <Icon name="check" size="sm" />}
-              </button>
+              <div className="opt-row" onClick={() => pickSpecial("direct")}>
+                <span className={`radio ${dSpecial === "direct" ? "on" : ""}`} />
+                <span className="opt-label">직접 등록</span>
+              </div>
 
               <div className="sheet-divider" />
 
+              {/* 체크박스 (기업 다중 선택) */}
               {orderedCompanies.map((c) => {
                 const sel = dCoIds.has(c.id);
                 return (
-                  <div key={c.id} className={`sheet-row co-opt ${sel ? "sel" : ""}`} onClick={() => toggleCo(c.id)}>
+                  <div key={c.id} className="opt-row" onClick={() => toggleCo(c.id)}>
+                    <span className={`checkbox ${sel ? "on" : ""}`}>{sel && <Icon name="check" size="sm" />}</span>
                     <CompanyLogo company={c} />
-                    <span className="sr-name">{c.name}</span>
+                    <span className="opt-label">{c.name}</span>
                     <button className={`startoggle ${favSet.has(c.id) ? "on" : ""}`} onClick={(e) => { e.stopPropagation(); toggleFav(c.id); }} aria-label="즐겨찾기"><Icon name="star" /></button>
-                    <span style={{ flex: 1 }} />
-                    <span className={`co-check ${sel ? "on" : ""}`}>{sel && <Icon name="check" size="sm" />}</span>
                   </div>
                 );
               })}

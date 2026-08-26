@@ -80,15 +80,15 @@ export default function CommentThread({
   return (
     <div className="cmt-sec">
       <div className="cmt-title">댓글 및 토론 {comments.length}</div>
-      <div className="cmt-input">
+      {roots.map((c) => (
+        <div key={c.id}>{row(c)}{repliesOf(c.id).map((rc) => row(rc, true))}</div>
+      ))}
+      {replyTo && <div className="cmt-replybar">↳ {replyTo.name}님에게 답글<button className="reply-cancel" onClick={() => setReplyTo(null)}>취소</button></div>}
+      <div className="cmt-input bottom">
         <input value={draft} placeholder={replyTo ? `${replyTo.name}님에게 답글` : "댓글을 남겨주세요…"}
           onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") send(); }} />
         <button className="cmt-send" disabled={busy} onClick={send}>등록</button>
       </div>
-      {replyTo && <div className="cmt-replybar">↳ {replyTo.name}님에게 답글<button className="reply-cancel" onClick={() => setReplyTo(null)}>취소</button></div>}
-      {roots.map((c) => (
-        <div key={c.id}>{row(c)}{repliesOf(c.id).map((rc) => row(rc, true))}</div>
-      ))}
     </div>
   );
 }

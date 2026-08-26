@@ -109,15 +109,15 @@ export default function ReviewList({
         <div className="rev-acts"><ReviewLike reviewId={r.id} initialCount={r.like_count ?? 0} initialLiked={r.liked ?? false} /></div>
         <div className="cmt-sec">
           <div className="cmt-title">댓글 및 토론 {countFor(r.id)}</div>
-          <div className="cmt-input">
+          {rootsOf(r.id).map((c) => (
+            <div key={c.id}>{commentRow(c, r.author_id, r.id, false)}{repliesOf(c.id).map((rc) => commentRow(rc, r.author_id, r.id, true))}</div>
+          ))}
+          {rt && <div className="cmt-replybar">↳ {rt.name}님에게 답글<button className="reply-cancel" onClick={() => setReplyTo((x) => ({ ...x, [r.id]: null }))}>취소</button></div>}
+          <div className="cmt-input bottom">
             <input value={drafts[r.id] ?? ""} placeholder={rt ? `${rt.name}님에게 답글` : "인사이트에 대한 의견을 남겨주세요…"}
               onChange={(e) => setDrafts((d) => ({ ...d, [r.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === "Enter") send(r.id, r.author_id); }} />
             <button className="cmt-send" disabled={busy} onClick={() => send(r.id, r.author_id)}>등록</button>
           </div>
-          {rt && <div className="cmt-replybar">↳ {rt.name}님에게 답글<button className="reply-cancel" onClick={() => setReplyTo((x) => ({ ...x, [r.id]: null }))}>취소</button></div>}
-          {rootsOf(r.id).map((c) => (
-            <div key={c.id}>{commentRow(c, r.author_id, r.id, false)}{repliesOf(c.id).map((rc) => commentRow(rc, r.author_id, r.id, true))}</div>
-          ))}
         </div>
       </div>
     );
