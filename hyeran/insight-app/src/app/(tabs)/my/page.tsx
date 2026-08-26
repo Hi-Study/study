@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCommentedPosts, getReadPostIds, getHighlightedPosts, getPostsByIds, getBookmarkedPostIds, getViewedPosts, getMyCommunityPosts, getMyWords, getMyReviewDates } from "@/lib/queries";
+import Icon from "@/components/Icon";
 import MyPostsClient from "@/components/MyPostsClient";
 import MyHeader from "@/components/MyHeader";
 import LogoutButton from "@/components/LogoutButton";
@@ -32,7 +34,11 @@ export default async function MyPage() {
 
   return (
     <>
-      <div className="appbar"><span className="title">마이</span></div>
+      <div className="appbar">
+        <span className="title">마이</span>
+        <span className="spacer" />
+        <Link href="/search" className="iconbtn" aria-label="검색"><Icon name="search" /></Link>
+      </div>
       <div className="pad">
         <div className="profile">
           <span className="avatar lg">{profile?.initial ?? "?"}</span>

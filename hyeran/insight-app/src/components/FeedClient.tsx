@@ -97,7 +97,7 @@ export default function FeedClient({
             카테고리{draftCats.size ? ` ${draftCats.size}` : ""}
           </button>
         </div>
-        <div className="dbody" style={{ maxHeight: "56vh", overflowY: "auto" }}>
+        <div className="dbody" style={{ height: "58vh", overflowY: "auto" }}>
           {sheetTab === "company" ? (
             <>
               <button className="sheet-row" onClick={() => setDraftSource("all")}>

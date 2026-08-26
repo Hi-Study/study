@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getInsightFeed, getCommunityFeed } from "@/lib/queries";
 import InsightClient from "@/components/InsightClient";
+import Icon from "@/components/Icon";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +16,11 @@ export default async function InsightPage() {
 
   return (
     <>
-      <div className="appbar"><span className="title">인사이트</span></div>
+      <div className="appbar">
+        <span className="title">인사이트</span>
+        <span className="spacer" />
+        <Link href="/search" className="iconbtn" aria-label="검색"><Icon name="search" /></Link>
+      </div>
       <div className="pad">
         <InsightClient all={all} community={community} />
       </div>

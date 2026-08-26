@@ -21,9 +21,7 @@ function SecHead({ title, sub, href }: { title: string; sub?: string; href?: str
   );
 }
 
-function firstAnswer(r: Review) { return r.q1?.trim() || r.q2?.trim() || r.q3?.trim() || ""; }
-// 답변이 2개 이상이면(=더 볼 내용이 있으면) 미니 카드에 … 로 표시
-function hasMore(r: Review) { return [r.q1, r.q2, r.q3].filter((x) => x?.trim()).length > 1; }
+const RQ = ["인상 깊은 부분", "업무 적용", "인사이터에게 질문"] as const;
 
 export default async function HomePage() {
   const sb = await createClient();
@@ -106,7 +104,13 @@ export default async function HomePage() {
                     <span className="ins-mini-name">{r.author?.name ?? "인사이터"}</span>
                   </div>
                   <div className="ins-mini-post">{r.post?.title}</div>
-                  <div className="ins-mini-body">{firstAnswer(r)}{hasMore(r) && <span className="ins-more-dots"> …</span>}</div>
+                  <div className="ins-mini-qa">
+                    {RQ.map((label, i) => {
+                      const a = [r.q1, r.q2, r.q3][i]?.trim();
+                      if (!a) return null;
+                      return <div className="imq" key={i}><span className="imq-q">{label}</span><span className="imq-a">{a}</span></div>;
+                    })}
+                  </div>
                   <div className="ins-mini-foot">
                     <span className={r.liked ? "on" : ""}><Icon name="heart" size="sm" />{r.like_count ?? 0}</span>
                     <span><Icon name="comment" size="sm" />{r.comment_count ?? 0}</span>

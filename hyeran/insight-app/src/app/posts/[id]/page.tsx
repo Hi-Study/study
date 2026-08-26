@@ -52,7 +52,7 @@ export default async function PostDetail({ params, searchParams }: { params: Pro
 
       {post.parsed && post.body.length > 0 ? (
         <>
-          <div className="sec-head">
+          <div className="sec-head" style={{ marginTop: 26 }}>
             <span className="sec-title">원문</span>
             {post.url && (
               <a className="src-link" href={post.url} target="_blank" rel="noreferrer"><Icon name="ext" size="sm" />원문 링크</a>
