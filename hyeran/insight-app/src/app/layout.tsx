@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import SideNav from "@/components/SideNav";
 
 export const metadata: Metadata = {
   title: "인사이트",
@@ -26,6 +27,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <SideNav />
         <div className="app-shell">{children}</div>
       </body>
     </html>

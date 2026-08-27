@@ -48,6 +48,30 @@ button{ font-family:var(--font); cursor:pointer; }
 .mono{ font-family:var(--mono); font-variant-numeric:tabular-nums; }
 
 .app-shell{ max-width:var(--maxw); margin:0 auto; min-height:100vh; background:var(--bg); position:relative; }
+
+/* ===== 데스크톱 (≥900px): 좌측 사이드바 + 넓은 콘텐츠 (모바일 무영향) ===== */
+.sidenav{ display:none; }
+@media (min-width:900px){
+  .app-shell{ max-width:1000px; padding-left:240px; }
+  /* 로그인 화면은 사이드바 없이 중앙 정렬 */
+  .app-shell:has(.login){ max-width:var(--maxw); padding-left:0; }
+  .sidenav{ display:flex; flex-direction:column; gap:3px; position:fixed; top:0; height:100vh; width:240px;
+    left:max(0px, calc((100vw - 1000px) / 2)); padding:22px 16px; border-right:1px solid var(--hairline); background:var(--bg); z-index:40; }
+  .sidenav-logo{ font-size:21px; font-weight:800; letter-spacing:-.5px; margin:2px 8px 18px; }
+  .sidenav-logo .dot{ color:var(--coral); }
+  .sidenav-item{ display:flex; align-items:center; gap:13px; padding:11px 12px; border-radius:12px; color:var(--text-sub); font-weight:600; font-size:15px; }
+  .sidenav-item:hover{ background:var(--surface); }
+  .sidenav-item.on{ background:var(--surface); color:var(--text); }
+  .sidenav-item svg{ width:22px; height:22px; }
+
+  .tabbar{ display:none; }
+  .fab{ left:auto; right:24px; bottom:24px; margin-left:0; }
+  .fab-cta{ left:calc(50% + 120px); }
+
+  /* 피드 2열 */
+  .feed-list{ display:grid; grid-template-columns:1fr 1fr; column-gap:22px; }
+  .feed-list .lrow{ border-bottom:1px solid var(--hairline); }
+}
 .screen{ padding-bottom:80px; }
 .pad{ padding:0 15px; }
 
