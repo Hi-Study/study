@@ -412,7 +412,6 @@ function OpinionsSection({ articleId }: { articleId: string }) {
   const c = theme.colors;
   const q = useOpinions(articleId);
   const list = q.data ?? [];
-  const [open, setOpen] = useState<Record<string, boolean>>({});
 
   if (list.length === 0) {
     return (
@@ -428,7 +427,6 @@ function OpinionsSection({ articleId }: { articleId: string }) {
     <View style={styles.opinions}>
       <Text style={[styles.opinionsTitle, { color: c.textPrimary }]}>인사이트 {list.length}</Text>
       {list.map((o) => {
-        const isOpen = !!open[o.id];
         return (
           <View
             key={o.id}
@@ -440,21 +438,9 @@ function OpinionsSection({ articleId }: { articleId: string }) {
                 {o.author?.name ?? "게스트"}
               </Text>
             </View>
-            <InsightBody insight={o.insight} compact={!isOpen} />
-
-            <Pressable
-              onPress={() => setOpen((p) => ({ ...p, [o.id]: !p[o.id] }))}
-              style={styles.opinionExpand}
-              hitSlop={6}
-            >
-              <MessageSquare size={14} color={c.primary} />
-              <Text style={[styles.opinionExpandText, { color: c.primary }]}>
-                {isOpen ? "댓글 접기" : "댓글 · 좋아요"}
-              </Text>
-            </Pressable>
-
-            {/* 이동 없이 인라인으로 좋아요·댓글·대댓글 */}
-            {isOpen ? <OpinionThread opinionId={o.id} /> : null}
+            {/* 인사이트 전체 내용 항상 펼침 + 좋아요/댓글(인라인) */}
+            <InsightBody insight={o.insight} />
+            <OpinionThread opinionId={o.id} />
           </View>
         );
       })}

@@ -170,7 +170,9 @@ export function ArticleCardH({
       <View style={[styles.thumbH, { backgroundColor: c.surfaceSunken }]}>
         {article.og_image ? (
           <Image source={{ uri: safeImageUri(article.og_image) }} style={styles.thumbImg} resizeMode="cover" />
-        ) : null}
+        ) : (
+          <ServiceLogo name={article.blog?.name ?? "?"} brandColor={article.blog?.brand_color} homepage={article.blog?.homepage} blogKey={article.blog?.key} size={34} />
+        )}
         <View style={[styles.bmOverlay, { backgroundColor: c.surfaceCard }]}>
           <CardBookmark articleId={article.id} />
         </View>
@@ -211,7 +213,9 @@ export function ArticleRow({
       <View style={[styles.thumbRow, { backgroundColor: c.surfaceSunken }]}>
         {article.og_image ? (
           <Image source={{ uri: safeImageUri(article.og_image) }} style={styles.thumbImg} resizeMode="cover" />
-        ) : null}
+        ) : (
+          <ServiceLogo name={article.blog?.name ?? "?"} brandColor={article.blog?.brand_color} homepage={article.blog?.homepage} blogKey={article.blog?.key} size={34} />
+        )}
         <View style={[styles.bmOverlay, { backgroundColor: c.surfaceCard }]}>
           <CardBookmark articleId={article.id} />
         </View>
@@ -241,7 +245,9 @@ export function FeaturedCard({
       <View style={[styles.featuredThumb, { backgroundColor: c.surfaceSunken }]}>
         {article.og_image ? (
           <Image source={{ uri: safeImageUri(article.og_image) }} style={styles.thumbImg} resizeMode="cover" />
-        ) : null}
+        ) : (
+          <ServiceLogo name={article.blog?.name ?? "?"} brandColor={article.blog?.brand_color} homepage={article.blog?.homepage} blogKey={article.blog?.key} size={34} />
+        )}
         <View style={[styles.bmOverlay, { backgroundColor: c.surfaceCard }]}>
           <CardBookmark articleId={article.id} />
         </View>

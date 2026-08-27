@@ -5,12 +5,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { qk } from "@/lib/queryKeys";
 import { useUid } from "@/auth/AuthProvider";
+import type { Insight } from "@/lib/insight";
 
 export interface CommunityPost {
   id: string;
   author_id: string | null;
   title: string;
   body: string;
+  insight: Insight | Record<string, never>;
   like_count: number;
   created_at: string;
   author: { name: string; role_title: string | null } | null;
@@ -36,11 +38,16 @@ export function useCommunityPosts() {
 // ---- 작성 ----
 export async function createCommunityPost(
   uid: string,
-  input: { title: string; body: string },
+  input: { title: string; body?: string; insight?: Insight },
 ): Promise<string> {
   const { data, error } = await supabase
     .from("community_posts")
-    .insert({ author_id: uid, title: input.title, body: input.body })
+    .insert({
+      author_id: uid,
+      title: input.title,
+      body: input.body ?? "",
+      insight: (input.insight ?? {}) as unknown as Record<string, unknown>,
+    })
     .select("id")
     .single();
   if (error) throw error;
@@ -51,7 +58,8 @@ export function useCreateCommunityPost() {
   const uid = useUid();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { title: string; body: string }) => createCommunityPost(uid, input),
+    mutationFn: (input: { title: string; body?: string; insight?: Insight }) =>
+      createCommunityPost(uid, input),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.communityPosts() }),
   });
 }

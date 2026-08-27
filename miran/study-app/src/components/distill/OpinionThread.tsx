@@ -2,7 +2,7 @@
 //   글 상세 '의견' 탭에서 이동 없이 펼쳐 쓰기 위해 컴포넌트로 분리.
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { Heart, Pencil, Send, Trash2 } from "lucide-react-native";
+import { Heart, MessageSquare, Pencil, Send, Trash2 } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useUid } from "@/auth/AuthProvider";
@@ -123,8 +123,8 @@ export function CommentItem({
   );
 }
 
-// 의견 하나의 좋아요 + 댓글 스레드 + 입력(인라인).
-export function OpinionThread({ opinionId }: { opinionId: string }) {
+// 의견 하나의 좋아요 + 댓글 스레드 + 입력(인라인). hideLike: 카드가 이미 좋아요를 보이면 숨김.
+export function OpinionThread({ opinionId, hideLike }: { opinionId: string; hideLike?: boolean }) {
   const { theme } = useTheme();
   const c = theme.colors;
   const uid = useUid();
@@ -145,20 +145,25 @@ export function OpinionThread({ opinionId }: { opinionId: string }) {
 
   return (
     <View style={styles.thread}>
-      <Pressable
-        onPress={() => toggleLike.mutate(liked.data ?? false)}
-        disabled={toggleLike.isPending}
-        hitSlop={6}
-        style={[
-          styles.likeRow,
-          { borderColor: liked.data ? c.danger : c.hairline, backgroundColor: liked.data ? c.hotTint : "transparent" },
-        ]}
-      >
-        <Heart size={15} color={liked.data ? c.danger : c.textMuted} fill={liked.data ? c.danger : "transparent"} />
-        <Text style={[styles.likeText, { color: liked.data ? c.danger : c.textSecondary }]}>좋아요</Text>
-      </Pressable>
-
-      <Text style={[styles.discussTitle, { color: c.textSecondary }]}>토론 {comments.length}</Text>
+      {!hideLike ? (
+        <View style={styles.actionsRow}>
+          <Pressable
+            onPress={() => toggleLike.mutate(liked.data ?? false)}
+            disabled={toggleLike.isPending}
+            hitSlop={6}
+            style={styles.actionBtn}
+          >
+            <Heart size={17} color={liked.data ? c.danger : c.textMuted} fill={liked.data ? c.danger : "transparent"} />
+            <Text style={[styles.actionText, { color: liked.data ? c.danger : c.textSecondary }]}>좋아요</Text>
+          </Pressable>
+          <View style={styles.actionBtn}>
+            <MessageSquare size={17} color={c.textMuted} />
+            <Text style={[styles.actionText, { color: c.textSecondary }]}>댓글 {comments.length}</Text>
+          </View>
+        </View>
+      ) : (
+        <Text style={[styles.discussTitle, { color: c.textSecondary }]}>댓글 {comments.length}</Text>
+      )}
       {comments.map((cm) => (
         <CommentItem
           key={cm.id}
@@ -207,6 +212,9 @@ const styles = StyleSheet.create({
   },
   likeText: { ...dtype.label, fontSize: 13 },
   discussTitle: { ...dtype.label, fontSize: 12.5, fontWeight: "800" },
+  actionsRow: { flexDirection: "row", alignItems: "center", gap: 18, paddingVertical: 4 },
+  actionBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
+  actionText: { fontSize: 13, lineHeight: 18, fontWeight: "700" },
 
   comment: { flexDirection: "row", gap: 10 },
   reply: { marginLeft: 32 },

@@ -22,7 +22,6 @@ import {
   useMyBookmarks,
   useMyComments,
   useMyReads,
-  useMyDrafts,
   useBlogs,
   useProfile,
   useFavoriteBlogIds,
@@ -34,7 +33,6 @@ import {
   type UserWordRow,
   type MyCommentRow,
   type ArticleWithBlog,
-  type OpinionDraftRow,
 } from "@/data";
 import { dtype } from "@/theme";
 import { highlightBg } from "@/lib/highlight";
@@ -51,7 +49,6 @@ type MyTab =
   | "bookmarks"
   | "comments"
   | "reads"
-  | "drafts"
   | "words";
 
 const TABS: { key: MyTab; label: string }[] = [
@@ -77,7 +74,6 @@ export function DistillMyPageScreen() {
   const bookmarksQ = useMyBookmarks();
   const commentsQ = useMyComments();
   const readsQ = useMyReads();
-  const draftsQ = useMyDrafts();
   const wordsQ = useMyWords();
 
   // 관심 기업(즐겨찾기) 관리 모달.
@@ -103,7 +99,6 @@ export function DistillMyPageScreen() {
     bookmarks: bookmarksQ,
     comments: commentsQ,
     reads: readsQ,
-    drafts: draftsQ,
     words: wordsQ,
   } as const;
   const activeQ = byTab[tab];
@@ -112,24 +107,15 @@ export function DistillMyPageScreen() {
     | MyHighlightRow
     | ArticleWithBlog
     | MyCommentRow
-    | OpinionDraftRow
     | UserWordRow
   >;
 
-  // 날짜별 그룹 헤더 — 의견·하이라이트·댓글·단어·임시저장(날짜 있는 탭).
+  // 날짜별 그룹 헤더 — 의견·하이라이트·댓글·단어(날짜 있는 탭).
   const dated =
-    tab === "opinions" ||
-    tab === "highlights" ||
-    tab === "comments" ||
-    tab === "words" ||
-    tab === "drafts";
+    tab === "opinions" || tab === "highlights" || tab === "comments" || tab === "words";
   const headers = dated
     ? bucketHeaders(
-        data.map((it) =>
-          tab === "drafts"
-            ? (it as OpinionDraftRow).updated_at
-            : (it as { created_at?: string }).created_at ?? null,
-        ),
+        data.map((it) => (it as { created_at?: string }).created_at ?? null),
         Date.now(),
       )
     : [];
@@ -140,7 +126,6 @@ export function DistillMyPageScreen() {
     bookmarks: { title: "북마크한 글이 없어요", hint: "글 상세에서 북마크를 눌러 저장해보세요" },
     comments: { title: "남긴 댓글이 없어요", hint: "의견에 답글을 달아보세요" },
     reads: { title: "읽은 글이 없어요", hint: "글을 끝까지 읽으면 여기 모여요" },
-    drafts: { title: "임시저장한 독후감이 없어요", hint: "의견 작성 중 임시저장하면 여기서 이어써요" },
     words: { title: "저장한 단어가 없어요", hint: "글에서 문장을 길게 눌러 단어를 담아보세요" },
   };
 
@@ -178,13 +163,6 @@ export function DistillMyPageScreen() {
               <CommentRow
                 row={item as MyCommentRow}
                 onPress={(opinionId) => nav.navigate("OpinionDetail", { opinionId })}
-              />
-            );
-          } else if (tab === "drafts") {
-            body = (
-              <DraftRow
-                row={item as OpinionDraftRow}
-                onPress={(articleId) => nav.navigate("CreateOpinion", { articleId })}
               />
             );
           } else {
@@ -441,48 +419,6 @@ function CommentRow({
   );
 }
 
-// 임시저장 카드 — "작성중" 배지 + 독후감 미리보기 + 출처 글(탭하면 이어쓰기).
-function DraftRow({
-  row,
-  onPress,
-}: {
-  row: OpinionDraftRow;
-  onPress: (articleId: string) => void;
-}) {
-  const { theme } = useTheme();
-  const c = theme.colors;
-  const preview =
-    row.insight?.core?.trim() ||
-    row.insight?.apply?.trim() ||
-    row.insight?.quote?.trim() ||
-    "작성 중인 독후감";
-  return (
-    <Pressable
-      onPress={() => onPress(row.article_id)}
-      style={({ pressed }) => [
-        styles.commentCard,
-        { backgroundColor: c.surfaceCard, borderColor: c.hairline, opacity: pressed ? 0.95 : 1 },
-      ]}
-    >
-      <View style={styles.commentHead}>
-        <View style={[styles.draftBadge, { backgroundColor: c.hotTint }]}>
-          <Text style={[styles.draftBadgeText, { color: c.hot }]}>작성중</Text>
-        </View>
-        <Text style={[styles.commentDate, { color: c.textMuted }]}>
-          {relativeDate(row.updated_at)}
-        </Text>
-      </View>
-      <Text style={[styles.commentText, { color: c.textPrimary }]} numberOfLines={3}>
-        {preview}
-      </Text>
-      {row.article ? (
-        <Text style={[styles.commentSource, { color: c.textMuted }]} numberOfLines={1}>
-          {row.article.title}
-        </Text>
-      ) : null}
-    </Pressable>
-  );
-}
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },

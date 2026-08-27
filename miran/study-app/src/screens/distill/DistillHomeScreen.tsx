@@ -187,7 +187,7 @@ export function DistillHomeScreen() {
                 <Pressable
                   key={t}
                   style={[styles.tagChip, { backgroundColor: c.surfaceCard, borderColor: c.hairline }]}
-                  onPress={() => nav.navigate("Search")}
+                  onPress={() => nav.navigate("Search", { q: t })}
                 >
                   <Text style={[styles.tagText, { color: c.textSecondary }]}>#{t}</Text>
                 </Pressable>

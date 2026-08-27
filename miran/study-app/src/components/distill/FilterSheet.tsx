@@ -80,9 +80,9 @@ export function FilterSheet({
     <>
       {/* 드롭다운 칩 바 */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipBar}>
-        <FilterChip label={sortLabel} active={false} onPress={() => openAt("sort")} />
         <FilterChip label={blogLabel} active={value.blogs.size > 0} onPress={() => openAt("blog")} />
         <FilterChip label={topicLabel} active={value.topics.size > 0} onPress={() => openAt("topic")} />
+        <FilterChip label={sortLabel} active={value.sort !== "latest"} onPress={() => openAt("sort")} />
       </ScrollView>
 
       {/* 필터 바텀시트 */}

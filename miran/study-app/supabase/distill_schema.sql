@@ -653,3 +653,8 @@ create trigger trg_article_opinion
 -- 기존 데이터 정합성 재계산(재실행 안전).
 update public.articles a
   set opinion_count = (select count(*) from public.opinions o where o.article_id = a.id);
+
+-- ============================================================
+-- 22) 커뮤니티 자유글에 감상문(insight) 항목 — 인사이트와 동일 구조로 작성.
+-- ============================================================
+alter table public.community_posts add column if not exists insight jsonb not null default '{}';

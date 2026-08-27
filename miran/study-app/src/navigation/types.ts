@@ -44,7 +44,7 @@ export type RootStackParamList = {
   CreateCommunityPost: undefined;
   DistillNotifications: undefined;
   InsighterProfile: { userId: string };
-  Search: undefined;
+  Search: { q?: string } | undefined;
 };
 
 export type RootNav = NativeStackNavigationProp<RootStackParamList>;

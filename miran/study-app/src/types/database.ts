@@ -275,6 +275,7 @@ export interface Database {
           author_id: string | null;
           title: string;
           body: string;
+          insight: Record<string, unknown>;
           like_count: number;
           created_at: string;
         };
@@ -283,6 +284,7 @@ export interface Database {
           author_id?: string | null;
           title: string;
           body: string;
+          insight?: Record<string, unknown>;
           like_count?: number;
           created_at?: string;
         };

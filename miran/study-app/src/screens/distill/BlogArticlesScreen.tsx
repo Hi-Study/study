@@ -52,7 +52,7 @@ export function BlogArticlesScreen({ route }: Props) {
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: c.surfacePage }]} edges={["top", "left", "right"]}>
-      {/* 헤더 — 기업명 셀렉트로 다른 기업 전환 */}
+      {/* 헤더 — 기업명 셀렉트(현대백화점식 큰 볼드 + ∨)로 다른 기업 전환 */}
       <View style={styles.header}>
         <Pressable onPress={() => nav.goBack()} hitSlop={8} style={styles.backBtn}>
           <ChevronLeft size={24} color={c.textPrimary} />
@@ -61,9 +61,8 @@ export function BlogArticlesScreen({ route }: Props) {
           <Text style={[styles.headerSelectText, { color: c.textPrimary }]} numberOfLines={1}>
             {blogName}
           </Text>
-          <ChevronDown size={18} color={c.textMuted} />
+          <ChevronDown size={24} color={c.textPrimary} />
         </Pressable>
-        <View style={styles.backBtn} />
       </View>
 
       {/* 기업 전환 — 바텀시트 */}
@@ -225,10 +224,10 @@ function Chip({ label, active, onPress }: { label: string; active: boolean; onPr
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 8 },
+  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingBottom: 4 },
   backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  headerSelect: { flexDirection: "row", alignItems: "center", gap: 4, flex: 1, justifyContent: "center" },
-  headerSelectText: { ...dtype.title, maxWidth: W * 0.6 },
+  headerSelect: { flexDirection: "row", alignItems: "center", gap: 4, flex: 1 },
+  headerSelectText: { ...dtype.titleL, fontWeight: "800", maxWidth: W * 0.72 },
 
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
   switchPanel: {

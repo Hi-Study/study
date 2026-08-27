@@ -7,6 +7,7 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { dtype } from "@/theme";
 import { Avatar } from "@/components/Avatar";
 import { ServiceLogo, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
+import { InsightBody } from "@/components/distill/InsightBody";
 import type { OpinionFeedItem } from "@/data/opinions";
 
 export function OpinionCard({
@@ -57,15 +58,9 @@ export function OpinionCard({
         </View>
       </View>
 
-      {/* 핵심 인사이트 */}
-      <Text style={[styles.core, { color: c.textPrimary }]} numberOfLines={4}>
-        {opinion.insight.core}
-      </Text>
-      {opinion.insight.apply ? (
-        <Text style={[styles.apply, { color: c.textSecondary }]} numberOfLines={2}>
-          접목 · {opinion.insight.apply}
-        </Text>
-      ) : null}
+      {/* 인사이트 — 타이틀+내용(핵심만 미리보기) */}
+      <InsightBody insight={opinion.insight} compact />
+
 
       {/* 출처 글 */}
       {a ? (

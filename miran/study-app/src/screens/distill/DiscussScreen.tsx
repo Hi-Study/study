@@ -13,6 +13,7 @@ import { dtype } from "@/theme";
 import type { CommunityPost } from "@/data/community";
 import { OpinionCard } from "@/components/distill/OpinionCard";
 import { FilterSheet, type FilterValue } from "@/components/distill/FilterSheet";
+import { InsightBody, type InsightData } from "@/components/distill/InsightBody";
 import { relativeDate } from "@/components/distill/ArticleCards";
 import { Avatar } from "@/components/Avatar";
 import { Loading, ErrorState, EmptyState } from "@/components";
@@ -205,9 +206,13 @@ function CommunityCard({ post }: { post: CommunityPost }) {
       <Text style={[styles.cTitle, { color: c.textPrimary }]} numberOfLines={2}>
         {post.title}
       </Text>
-      <Text style={[styles.cBody, { color: c.textSecondary }]} numberOfLines={3}>
-        {post.body}
-      </Text>
+      {post.insight && (post.insight as { core?: string }).core ? (
+        <InsightBody insight={post.insight as InsightData} />
+      ) : post.body ? (
+        <Text style={[styles.cBody, { color: c.textSecondary }]} numberOfLines={3}>
+          {post.body}
+        </Text>
+      ) : null}
     </View>
   );
 }

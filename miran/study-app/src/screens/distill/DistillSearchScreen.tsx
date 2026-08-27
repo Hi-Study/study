@@ -5,7 +5,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronLeft, Clock, Search, Sparkles, TrendingUp, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
-import { useRootNav } from "@/navigation/types";
+import { useRoute, type RouteProp } from "@react-navigation/native";
+import { useRootNav, type RootStackParamList } from "@/navigation/types";
 import {
   useArticlesFeed,
   usePopularTags,
@@ -22,7 +23,8 @@ export function DistillSearchScreen() {
   const { theme } = useTheme();
   const c = theme.colors;
   const nav = useRootNav();
-  const [query, setQuery] = useState("");
+  const route = useRoute<RouteProp<RootStackParamList, "Search">>();
+  const [query, setQuery] = useState(route.params?.q ?? "");
   const { recents, add, remove, clear } = useRecentSearches();
   const recommended = useRecommendedKeywords(10);
   const popular = usePopularTags();

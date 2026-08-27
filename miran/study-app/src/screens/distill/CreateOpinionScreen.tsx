@@ -1,5 +1,5 @@
 // distill 의견 남기기 — 구조화 "핵심 인사이트"(core 필수 + 인용·해석·적용·사례·질문).
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -16,7 +16,7 @@ import { ChevronLeft } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav, type RootStackParamList } from "@/navigation/types";
-import { useCreateOpinion, useDraft, useUpsertDraft, useDeleteDraft } from "@/data";
+import { useCreateOpinion } from "@/data";
 import { cleanInsight, EMPTY_INSIGHT, type Insight } from "@/lib/insight";
 import { dtype } from "@/theme";
 
@@ -67,47 +67,16 @@ export function CreateOpinionScreen({ route }: Props) {
   const c = theme.colors;
   const nav = useRootNav();
   const create = useCreateOpinion(articleId);
-  const draftQ = useDraft(articleId);
-  const upsertDraft = useUpsertDraft(articleId);
-  const deleteDraft = useDeleteDraft(articleId);
 
   const [insight, setInsight] = useState<Insight>({ ...EMPTY_INSIGHT });
   const set = (patch: Partial<Insight>) => setInsight((p) => ({ ...p, ...patch }));
 
-  // 임시저장 불러오기 — 최초 로드 시 1회만 채운다.
-  const loadedRef = useRef(false);
-  useEffect(() => {
-    if (!loadedRef.current && draftQ.data) {
-      loadedRef.current = true;
-      setInsight({ ...EMPTY_INSIGHT, ...draftQ.data });
-    }
-  }, [draftQ.data]);
-
-  const hasContent = [
-    insight.core,
-    insight.quote,
-    insight.interpretation,
-    insight.apply,
-    insight.similar,
-    ...insight.questions,
-  ].some((s) => s.trim().length > 0);
-
   const canSave = insight.core.trim().length > 0 && !create.isPending;
-
-  const saveDraft = () => {
-    if (!hasContent || upsertDraft.isPending) return;
-    upsertDraft.mutate(insight, { onSuccess: () => nav.goBack() });
-  };
 
   const save = () => {
     const clean = cleanInsight(insight);
     if (!clean) return;
-    create.mutate(clean, {
-      onSuccess: () => {
-        deleteDraft.mutate(); // 발행되면 임시저장 제거
-        nav.goBack();
-      },
-    });
+    create.mutate(clean, { onSuccess: () => nav.goBack() });
   };
 
   return (
@@ -120,17 +89,7 @@ export function CreateOpinionScreen({ route }: Props) {
         <Pressable onPress={() => nav.goBack()} hitSlop={8} style={styles.hBtn}>
           <ChevronLeft size={24} color={c.textPrimary} />
         </Pressable>
-        <Text style={[styles.hTitle, { color: c.textPrimary }]}>독후감 쓰기</Text>
-        <Pressable
-          onPress={saveDraft}
-          disabled={!hasContent || upsertDraft.isPending}
-          hitSlop={8}
-          style={styles.hBtnWide}
-        >
-          <Text style={[styles.draft, { color: hasContent ? c.textSecondary : c.textMuted }]}>
-            임시저장
-          </Text>
-        </Pressable>
+        <Text style={[styles.hTitle, { color: c.textPrimary }]}>인사이트 쓰기</Text>
         <Pressable onPress={save} disabled={!canSave} hitSlop={8} style={styles.hBtn}>
           <Text style={[styles.save, { color: canSave ? c.primary : c.textMuted }]}>저장</Text>
         </Pressable>

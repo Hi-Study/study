@@ -1,6 +1,6 @@
 // distill 알림 (회의록 §알림) — 즐겨찾기 기업 새 글 · 내 의견 댓글 · 대댓글. 진입 시 읽음 처리.
-import React, { useEffect, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   ChevronLeft,
@@ -48,13 +48,30 @@ export function DistillNotificationsScreen() {
   const markAll = useMarkAllNotificationsRead();
   const { prefs, toggle } = useNotifPrefs();
   const [showSettings, setShowSettings] = useState(false);
-  const list = (q.data ?? []).filter((n) => prefs[n.kind]);
+  const [tab, setTab] = useState<"all" | "new_article" | "comment">("all");
 
-  // 진입 시 읽음 처리(회의록 §알림). 한 번만.
+  const list = (q.data ?? []).filter((n) => prefs[n.kind]);
+  const filtered = useMemo(
+    () =>
+      list.filter((n) =>
+        tab === "all" ? true : tab === "new_article" ? n.kind === "new_article" : n.kind === "comment" || n.kind === "reply",
+      ),
+    [list, tab],
+  );
+  // 진입 시점에 안 읽었던 알림 id 스냅샷(읽음처리 후에도 이번 세션엔 '새 알림'으로 유지).
+  const initialUnread = useRef<Set<string>>(new Set());
+  const captured = useRef(false);
   useEffect(() => {
-    markAll.mutate();
+    if (!captured.current && q.data) {
+      captured.current = true;
+      initialUnread.current = new Set(q.data.filter((n) => !n.read).map((n) => n.id));
+      markAll.mutate(); // 진입 시 읽음 처리(회의록 §알림)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [q.data]);
+
+  const unread = filtered.filter((n) => initialUnread.current.has(n.id));
+  const read = filtered.filter((n) => !initialUnread.current.has(n.id));
 
   const open = (n: AppNotificationRow) => {
     if (n.kind === "new_article" && n.article_id) {
@@ -94,51 +111,86 @@ export function DistillNotificationsScreen() {
         </View>
       ) : null}
 
+      {/* 종류 탭 */}
+      <View style={styles.tabs}>
+        {([
+          ["all", "전체"],
+          ["new_article", "새 글"],
+          ["comment", "댓글"],
+        ] as const).map(([k, label]) => {
+          const on = tab === k;
+          return (
+            <Pressable
+              key={k}
+              onPress={() => setTab(k)}
+              style={[
+                styles.tabChip,
+                { backgroundColor: on ? c.primary : c.surfaceCard, borderColor: on ? c.primary : c.hairline },
+              ]}
+            >
+              <Text style={[styles.tabText, { color: on ? c.actionOn : c.textSecondary }]}>{label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       {q.isLoading ? (
         <Loading label="불러오는 중…" />
       ) : q.isError ? (
         <ErrorState onRetry={() => q.refetch()} />
-      ) : list.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <EmptyState title="새 알림이 없어요" hint="기업을 즐겨찾기하면 새 글 알림을 받아요" />
       ) : (
-        <FlatList
-          data={list}
-          keyExtractor={(n) => n.id}
+        <ScrollView
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
-          refreshing={q.isRefetching}
-          onRefresh={() => q.refetch()}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => open(item)}
-              style={({ pressed }) => [
-                styles.row,
-                {
-                  backgroundColor: item.read ? c.surfaceCard : c.primaryTint,
-                  borderColor: c.hairline,
-                  opacity: pressed ? 0.95 : 1,
-                },
-              ]}
-            >
-              <View style={[styles.iconWrap, { backgroundColor: c.surfaceSunken }]}>
-                <KindIcon kind={item.kind} color={c.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.label, { color: c.textSecondary }]}>{KIND_LABEL[item.kind]}</Text>
-                {item.title ? (
-                  <Text style={[styles.title, { color: c.textPrimary }]} numberOfLines={2}>
-                    {item.title}
-                  </Text>
-                ) : null}
-                <Text style={[styles.time, { color: c.textMuted }]}>{relativeDate(item.created_at)}</Text>
-              </View>
-              {!item.read ? <View style={[styles.dot, { backgroundColor: c.primary }]} /> : null}
-            </Pressable>
-          )}
-          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        />
+        >
+          {unread.length > 0 ? (
+            <>
+              <Text style={[styles.sectionLabel, { color: c.textPrimary }]}>새 알림</Text>
+              {unread.map((item) => (
+                <NotiRow key={item.id} item={item} isNew onPress={() => open(item)} />
+              ))}
+            </>
+          ) : null}
+          {read.length > 0 ? (
+            <>
+              <Text style={[styles.sectionLabel, { color: c.textPrimary, marginTop: unread.length > 0 ? 22 : 0 }]}>
+                지난 알림
+              </Text>
+              {read.map((item) => (
+                <NotiRow key={item.id} item={item} onPress={() => open(item)} />
+              ))}
+            </>
+          ) : null}
+        </ScrollView>
       )}
     </SafeAreaView>
+  );
+}
+
+function NotiRow({ item, isNew, onPress }: { item: AppNotificationRow; isNew?: boolean; onPress: () => void }) {
+  const { theme } = useTheme();
+  const c = theme.colors;
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, { opacity: pressed ? 0.9 : 1 }]}
+    >
+      <View style={[styles.iconWrap, { backgroundColor: isNew ? c.primaryTint : c.surfaceSunken }]}>
+        <KindIcon kind={item.kind} color={isNew ? c.primary : c.textMuted} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.label, { color: c.textSecondary }]}>{KIND_LABEL[item.kind]}</Text>
+        {item.title ? (
+          <Text style={[styles.title, { color: c.textPrimary }]} numberOfLines={2}>
+            {item.title}
+          </Text>
+        ) : null}
+        <Text style={[styles.time, { color: c.textMuted }]}>{relativeDate(item.created_at)}</Text>
+      </View>
+      {isNew ? <View style={[styles.dot, { backgroundColor: c.hot }]} /> : null}
+    </Pressable>
   );
 }
 
@@ -160,8 +212,13 @@ const styles = StyleSheet.create({
   settingRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4 },
   settingLabel: { ...dtype.body },
 
-  listContent: { padding: 16 },
-  row: { flexDirection: "row", gap: 12, alignItems: "center", borderWidth: 1, borderRadius: 16, padding: 14 },
+  tabs: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 10 },
+  tabChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 7 },
+  tabText: { fontSize: 13, lineHeight: 18, fontWeight: "700" },
+
+  listContent: { paddingHorizontal: 16, paddingBottom: 24 },
+  sectionLabel: { ...dtype.title, fontSize: 15, marginBottom: 8 },
+  row: { flexDirection: "row", gap: 12, alignItems: "center", paddingVertical: 12 },
   iconWrap: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   label: { ...dtype.meta, fontWeight: "700" },
   title: { ...dtype.bodyS, fontWeight: "600", marginTop: 3, lineHeight: 20 },
