@@ -43,6 +43,11 @@ export function useSession(): SessionState {
       try {
         const { data } = await supabase.auth.getSession();
         if (!mounted) return;
+        // 개발 모드(Expo Go 등): 세션이 없으면 구글 로그인 대신 익명 세션으로 둘러보기.
+        if (!data.session && __DEV__) {
+          await supabase.auth.signInAnonymously();
+          return; // onAuthStateChange 가 세션을 반영
+        }
         setState({ status: "ready", session: data.session, error: null });
       } catch (err) {
         if (!mounted) return;

@@ -75,8 +75,9 @@ function Gate() {
     );
   }
   // 세션이 없거나 '익명(게스트) 세션'이면 → 로그인 화면(구글).
-  //   예전 익명 로그인 세션이 기기에 남아 있으면 로그인 화면을 건너뛰던 문제를 방지.
-  if (!session || session.user.is_anonymous) {
+  //   ⚠️ 단, 개발 모드(Expo Go 등, __DEV__)에서는 익명 세션도 허용 — 구글 로그인 없이 화면 확인용.
+  //   운영 빌드(__DEV__=false)에서는 종전대로 익명이면 로그인 화면.
+  if (!session || (session.user.is_anonymous && !__DEV__)) {
     return <LoginScreen />;
   }
 
