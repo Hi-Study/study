@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { CATEGORIES, type Category } from "@/lib/types";
 
@@ -180,6 +180,7 @@ export async function registerPost(url: string, q1: string, q2: string, q3: stri
     post_id: post.id, author_id: user.id, q1: q1.trim(), q2: q2.trim(), q3: q3.trim(), is_draft: false,
   });
 
+  revalidateTag("posts"); // 캐시된 글 목록 즉시 갱신
   revalidatePath("/home");
   revalidatePath("/feed");
   revalidatePath("/insight");

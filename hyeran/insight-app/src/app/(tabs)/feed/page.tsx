@@ -22,6 +22,7 @@ export default async function FeedPage({ searchParams }: { searchParams: Promise
       <div className="appbar">
         <span className="logo"><span className="name">INSIGHT</span><span className="dot">.</span></span>
         <span className="spacer" />
+        <Link href="/search" className="iconbtn" aria-label="검색"><Icon name="search" /></Link>
         <Link href="/notifications" className="iconbtn" aria-label="알림"><Icon name="bell" /></Link>
       </div>
       <div className="pad">

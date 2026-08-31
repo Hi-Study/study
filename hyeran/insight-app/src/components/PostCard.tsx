@@ -68,7 +68,7 @@ export function FeatureCard({ post }: { post: Post }) {
         <h2 className="feat-title">{post.title}</h2>
         <div className="feat-foot">
           <span className="feat-src">{label}</span>
-          <span className="feat-cnt"><Icon name="eye" size="sm" />{post.read_count ?? 0}</span>
+          <span className="feat-cnt"><Icon name="eye" size="sm" />{post.view_count ?? 0}</span>
           <span className="feat-cnt"><Icon name="review" size="sm" />{post.review_count ?? 0}</span>
         </div>
       </div>

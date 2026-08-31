@@ -10,7 +10,7 @@ export default async function NotificationsPage() {
 
   const { data } = await sb
     .from("notifications")
-    .select("id, type, title, body, read, created_at")
+    .select("id, type, title, body, read, created_at, post_id")
     .eq("user_id", user!.id)
     .order("created_at", { ascending: false })
     .limit(50);

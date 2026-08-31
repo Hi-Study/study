@@ -35,33 +35,18 @@ export default function ReviewList({
   const [replyTo, setReplyTo] = useState<Record<string, ReplyTo | null>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
-  const [showOthers, setShowOthers] = useState(false);
-  const [justPosted, setJustPosted] = useState(false);
   const sb = createClient();
 
-  // 게시 직후 자동 펼침
+  // 특정 인사이트로 포커싱 → 스크롤·강조 (v3.0: 접힘 없이 항상 전부 노출)
   useEffect(() => {
-    try {
-      if (sessionStorage.getItem(`posted-${postId}`)) {
-        sessionStorage.removeItem(`posted-${postId}`);
-        setJustPosted(true); setShowOthers(true);
-      }
-    } catch {}
-  }, [postId]);
-
-  // 인사이트 탭에서 특정 인사이트로 포커싱 → 펼치고 스크롤
-  useEffect(() => {
-    if (focusReviewId && others.some((o) => o.id === focusReviewId)) setShowOthers(true);
-  }, [focusReviewId, others]);
-  useEffect(() => {
-    if (!focusReviewId || !showOthers) return;
+    if (!focusReviewId) return;
     const el = document.getElementById(`rv-${focusReviewId}`);
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "start" });
     el.classList.add("rv-focus");
     const t = setTimeout(() => el.classList.remove("rv-focus"), 2200);
     return () => clearTimeout(t);
-  }, [focusReviewId, showOthers]);
+  }, [focusReviewId]);
 
   const rootsOf = (rid: string) => comments.filter((c) => c.review_id === rid && !c.parent_id);
   const repliesOf = (id: string) => comments.filter((c) => c.parent_id === id);
@@ -86,8 +71,8 @@ export default function ReviewList({
   const toggleLike = async (c: ThreadComment) => {
     const liked = !c.liked;
     setComments((prev) => prev.map((x) => x.id === c.id ? { ...x, liked, like_count: x.like_count + (liked ? 1 : -1) } : x));
-    if (liked) await sb.from("comment_likes").insert({ comment_id: c.id, user_id: userId });
-    else await sb.from("comment_likes").delete().eq("comment_id", c.id).eq("user_id", userId);
+    if (liked) await sb.from("likes").insert({ target_type: "comment", target_id: c.id, user_id: userId });
+    else await sb.from("likes").delete().eq("target_type", "comment").eq("target_id", c.id).eq("user_id", userId);
   };
 
   // 컴포넌트가 아니라 렌더 함수로 호출 → 리렌더 시 리마운트 안 됨(입력창 포커스 유지)
@@ -124,15 +109,15 @@ export default function ReviewList({
         <div className="rev-acts"><ReviewLike reviewId={r.id} initialCount={r.like_count ?? 0} initialLiked={r.liked ?? false} /></div>
         <div className="cmt-sec">
           <div className="cmt-title">댓글 및 토론 {countFor(r.id)}</div>
-          <div className="cmt-input">
+          {rootsOf(r.id).map((c) => (
+            <div key={c.id}>{commentRow(c, r.author_id, r.id, false)}{repliesOf(c.id).map((rc) => commentRow(rc, r.author_id, r.id, true))}</div>
+          ))}
+          {rt && <div className="cmt-replybar">↳ {rt.name}님에게 답글<button className="reply-cancel" onClick={() => setReplyTo((x) => ({ ...x, [r.id]: null }))}>취소</button></div>}
+          <div className="cmt-input bottom">
             <input value={drafts[r.id] ?? ""} placeholder={rt ? `${rt.name}님에게 답글` : "인사이트에 대한 의견을 남겨주세요…"}
               onChange={(e) => setDrafts((d) => ({ ...d, [r.id]: e.target.value }))} onKeyDown={(e) => { if (e.key === "Enter") send(r.id, r.author_id); }} />
             <button className="cmt-send" disabled={busy} onClick={() => send(r.id, r.author_id)}>등록</button>
           </div>
-          {rt && <div className="cmt-replybar">↳ {rt.name}님에게 답글<button className="reply-cancel" onClick={() => setReplyTo((x) => ({ ...x, [r.id]: null }))}>취소</button></div>}
-          {rootsOf(r.id).map((c) => (
-            <div key={c.id}>{commentRow(c, r.author_id, r.id, false)}{repliesOf(c.id).map((rc) => commentRow(rc, r.author_id, r.id, true))}</div>
-          ))}
         </div>
       </div>
     );
@@ -140,26 +125,15 @@ export default function ReviewList({
 
   return (
     <>
-      {/* 최상위 CTA / 내 인사이트 */}
-      {mine ? reviewCard(mine, true) : (
-        <ReviewSheet postId={postId} initial={myInitial} trigger={<div className="cta-primary">내 생각도 남겨볼까요?</div>} />
+      {/* v3.0: 인사이트 탭 — 내 인사이트 먼저, 그다음 전부 노출(접힘 없음) */}
+      {mine && reviewCard(mine, true)}
+      {others.map((r) => reviewCard(r, false))}
+      {!mine && others.length === 0 && (
+        <div className="empty sm">
+          <div className="msg">아직 인사이트가 없어요</div>
+          <div className="sub">첫 인사이트를 남겨보세요</div>
+        </div>
       )}
-
-      {/* 등록된 인사이트 — 기본 접힘 (은은한 서브 버튼) */}
-      {others.length > 0 && (
-        !showOthers ? (
-          <button className="ins-more-btn" onClick={() => setShowOthers(true)}>
-            등록된 인사이트 {others.length}개 보기 <Icon name="chevron" size="sm" />
-          </button>
-        ) : (
-          <>
-            {justPosted && <div className="posted-hint">이제 다른 인사이터들의 생각을 볼 차례예요</div>}
-            {others.map((r) => reviewCard(r, false))}
-            <button className="ins-more-btn open" onClick={() => setShowOthers(false)}>접기 <Icon name="chevron" size="sm" /></button>
-          </>
-        )
-      )}
-
     </>
   );
 }

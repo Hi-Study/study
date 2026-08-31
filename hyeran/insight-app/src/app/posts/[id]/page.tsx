@@ -1,15 +1,19 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getReviewsForPost, getCommentsForReviews } from "@/lib/queries";
-import { CAT_COLOR, type Post } from "@/lib/types";
+import { CAT_COLOR, coverImage, type Post } from "@/lib/types";
 import { CompanyLogo } from "@/components/PostCard";
 import Icon from "@/components/Icon";
 import BackButton from "@/components/BackButton";
 import BookmarkButton from "@/components/BookmarkButton";
+import ShareButton from "@/components/ShareButton";
 import ReviewList from "@/components/ReviewList";
+import ReviewSheet from "@/components/ReviewSheet";
 import PostOwnerMenu from "@/components/PostOwnerMenu";
 import ReadTracker from "@/components/ReadTracker";
 import ArticleReader from "@/components/ArticleReader";
+import DetailTabs from "@/components/DetailTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +23,6 @@ export default async function PostDetail({ params, searchParams }: { params: Pro
   const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
 
-  // 병렬 조회 (상세 열람 속도)
   const [postRes, reviews, bmRes, mineRes, readRes, hlRes] = await Promise.all([
     sb.from("posts").select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)").eq("id", id).single(),
     getReviewsForPost(id, user!.id),
@@ -36,36 +39,82 @@ export default async function PostDetail({ params, searchParams }: { params: Pro
   const isOwner = post.source === "direct" && post.author_id === user!.id;
   const highlights = (hlRes.data ?? []) as { sentence_idx: number; memo: string | null }[];
   const comments = await getCommentsForReviews(reviews.map((r) => r.id), user!.id);
+  const cover = coverImage(post);
+
+  // 원문 탭
+  const original = (
+    <>
+      <div className="ai-card">
+        <div className="lab"><Icon name="sparkle" size="sm" /> AI 요약</div>
+        <div className="ai-q"><div className="q">무슨 문제를 다뤘나</div><div className="a">{post.ai_summary.problem}</div></div>
+        <div className="ai-q"><div className="q">어떻게 해결했나</div><div className="a">{post.ai_summary.solution}</div></div>
+        <div className="ai-q"><div className="q">기획 관점에서 무엇을 배울 수 있나</div><div className="a">{post.ai_summary.learning}</div></div>
+      </div>
+
+      {post.parsed && post.body.length > 0 ? (
+        <>
+          <div className="sec-head" style={{ marginTop: 26 }}>
+            <span className="sec-title">원문</span>
+            {post.url && (
+              <a className="src-link" href={post.url} target="_blank" rel="noreferrer"><Icon name="ext" size="sm" />원문 링크</a>
+            )}
+          </div>
+          <ArticleReader postId={post.id} body={post.body} initial={highlights} />
+        </>
+      ) : (
+        <a className="linkcard" href={post.url ?? "#"} target="_blank" rel="noreferrer">
+          <Icon name="ext" size="sm" />
+          <div className="txt">원문은 이 링크에서 확인하세요<br />{post.url}</div>
+        </a>
+      )}
+    </>
+  );
+
+  // 인사이트 탭
+  const insights = (
+    <>
+      <div id="insights" className="ins-anchor" />
+      <ReviewList postId={post.id} reviews={reviews} comments={comments} userId={user!.id} myInitial={initial} focusReviewId={focusReviewId} />
+    </>
+  );
 
   return (
-    <div style={{ paddingBottom: 40 }}>
+    <div style={{ paddingBottom: 96 }}>
       <div className="appbar">
         <BackButton />
         <span className="spacer" />
         {isOwner && (
-          <PostOwnerMenu
-            postId={post.id}
-            reviewCount={reviews.length}
-            commentCount={reviews.reduce((s, r) => s + (r.comment_count ?? 0), 0)}
-          />
+          <PostOwnerMenu postId={post.id} reviewCount={reviews.length} commentCount={reviews.reduce((s, r) => s + (r.comment_count ?? 0), 0)} />
         )}
+        <ShareButton title={post.title} />
         <BookmarkButton postId={post.id} initial={!!bm} />
       </div>
       <ReadTracker postId={post.id} alreadyRead={!!readRes.data} />
+
+      {cover && <div className="d-thumb" style={{ backgroundImage: `url("${cover}")` }} />}
+
       <div className="pad">
-        <div style={{ height: 3, width: 28, background: CAT_COLOR[post.category], borderRadius: 2, marginBottom: 12 }} />
+        <div style={{ height: 3, width: 28, background: CAT_COLOR[post.category], borderRadius: 2, margin: "14px 0 12px" }} />
         <h1 className="d-title">{post.title}</h1>
-        <div className="comprow" style={{ marginTop: 0 }}>
-          <CompanyLogo company={post.company} />
-          <span className="cname">{post.company?.name ?? (post.source === "direct" ? post.author?.name : "")}</span>
-          <span className="meta mono" style={{ marginLeft: 8 }}>
-            {new Date(post.published_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}
-          </span>
-          <a href="#insights" className="ins-jump"><Icon name="review" size="sm" />인사이트 {reviews.length}</a>
-        </div>
         {post.tags.length > 0 && (
           <div className="tagrow">{post.tags.map((t) => <span className="tag" key={t}>{t}</span>)}</div>
         )}
+        <div className="comprow" style={{ marginTop: 10 }}>
+          {post.company?.slug ? (
+            <Link href={`/companies/${post.company.slug}`} className="comprow-co">
+              <CompanyLogo company={post.company} />
+              <span className="cname">{post.company.name}</span>
+            </Link>
+          ) : (
+            <>
+              <CompanyLogo company={post.company} />
+              <span className="cname">{post.source === "direct" ? post.author?.name : ""}</span>
+            </>
+          )}
+          <span className="meta mono" style={{ marginLeft: 8 }}>
+            {new Date(post.published_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}
+          </span>
+        </div>
 
         {post.source === "direct" && (
           <div className="author-card">
@@ -78,42 +127,15 @@ export default async function PostDetail({ params, searchParams }: { params: Pro
           </div>
         )}
 
-        <div className="ai-card">
-          <div className="lab"><Icon name="sparkle" size="sm" /> AI 요약</div>
-          <div className="ai-q"><div className="q">무슨 문제를 다뤘나</div><div className="a">{post.ai_summary.problem}</div></div>
-          <div className="ai-q"><div className="q">어떻게 해결했나</div><div className="a">{post.ai_summary.solution}</div></div>
-          <div className="ai-q"><div className="q">기획 관점에서 무엇을 배울 수 있나</div><div className="a">{post.ai_summary.learning}</div></div>
-        </div>
-
-        {post.parsed && post.body.length > 0 ? (
-          <>
-            <div className="sec-head">
-              <span className="sec-title">원문</span>
-              {post.url && (
-                <a className="src-link" href={post.url} target="_blank" rel="noreferrer">
-                  <Icon name="ext" size="sm" />원문 링크
-                </a>
-              )}
-            </div>
-            <ArticleReader postId={post.id} body={post.body} initial={highlights} />
-          </>
-        ) : (
-          <a className="linkcard" href={post.url ?? "#"} target="_blank" rel="noreferrer">
-            <Icon name="ext" size="sm" />
-            <div className="txt">원문은 이 링크에서 확인하세요<br />{post.url}</div>
-          </a>
-        )}
-
-        <div id="insights" className="ins-anchor" />
-        <ReviewList
-          postId={post.id}
-          reviews={reviews}
-          comments={comments}
-          userId={user!.id}
-          myInitial={initial}
-          focusReviewId={focusReviewId}
-        />
+        <DetailTabs original={original} insights={insights} insightCount={reviews.length} defaultTab={focusReviewId ? "insight" : "original"} />
       </div>
+
+      {/* 상시 플로팅 CTA */}
+      <ReviewSheet
+        postId={post.id}
+        initial={initial}
+        trigger={<button className="fab-cta">내 생각도 남겨볼까요?</button>}
+      />
     </div>
   );
 }

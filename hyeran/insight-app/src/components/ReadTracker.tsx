@@ -16,6 +16,8 @@ export default function ReadTracker({ postId, alreadyRead }: { postId: string; a
         { user_id: user.id, post_id: postId, viewed_at: new Date().toISOString() },
         { onConflict: "user_id,post_id" },
       );
+      // 총 조회수 +1 (RPC, 함수 없으면 조용히 무시)
+      await sb.rpc("increment_view_count", { p_post_id: postId });
     })();
   }, [postId]);
 

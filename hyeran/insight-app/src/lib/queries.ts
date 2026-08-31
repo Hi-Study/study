@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Company, Post, Review } from "@/lib/types";
+import type { Company, CommunityPost, Post, Review, Word } from "@/lib/types";
 
 // 기업 목록
 export async function getCompanies(): Promise<Company[]> {
@@ -18,42 +18,30 @@ async function attachReviewCounts(sb: Awaited<ReturnType<typeof createClient>>, 
   return posts.map((p) => ({ ...p, review_count: counts.get(p.id) ?? 0 }));
 }
 
-// 글별 읽음(완독) 수 붙이기 — 뷰수 대체 (통일 카드 메타)
-async function attachReadCounts(sb: Awaited<ReturnType<typeof createClient>>, posts: Post[]): Promise<Post[]> {
-  if (!posts.length) return posts;
-  const ids = posts.map((p) => p.id);
-  const { data } = await sb.from("reads").select("post_id").in("post_id", ids);
-  const counts = new Map<string, number>();
-  (data ?? []).forEach((r: { post_id: string }) => counts.set(r.post_id, (counts.get(r.post_id) ?? 0) + 1));
-  return posts.map((p) => ({ ...p, read_count: counts.get(p.id) ?? 0 }));
-}
-
-// 피드: 전체 최신순 (인사이트 수 + 읽음 수 포함)
+// 피드: 전체 최신순 (인사이트 수 포함, 조회수는 posts.view_count 컬럼)
 export async function getFeedPosts(): Promise<Post[]> {
   const sb = await createClient();
   const { data } = await sb
     .from("posts")
     .select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)")
     .order("published_at", { ascending: false });
-  const withReviews = await attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
-  return attachReadCounts(sb, withReviews);
+  return attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
 }
 
-// id 목록 → 글(작성자·인사이트 수·읽음 수 포함) — 마이·북마크·하이라이트 공통
+// id 목록 → 글(작성자·인사이트 수 포함) — 마이·북마크·하이라이트 공통
 export async function getPostsByIds(ids: string[]): Promise<Post[]> {
   if (!ids.length) return [];
   const sb = await createClient();
   const { data } = await sb.from("posts").select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)").in("id", ids);
-  const withReviews = await attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
-  return attachReadCounts(sb, withReviews);
+  return attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
 }
 
-// 오늘의 글: 최근 7일 글 중 (읽음 수 + 인사이트 수) 1위 1개. 최근 글이 없으면 전체에서 선정
+// 오늘의 글: 최근 7일 글 중 (조회수 + 인사이트 수) 1위 1개. 최근 글이 없으면 전체에서 선정
 export function pickTodayHero(posts: Post[]): Post | null {
   const cutoff = Date.now() - 7 * 86_400_000;
   const recent = posts.filter((p) => new Date(p.published_at).getTime() >= cutoff);
   const pool = recent.length ? recent : posts;
-  const score = (p: Post) => (p.read_count ?? 0) + (p.review_count ?? 0);
+  const score = (p: Post) => (p.view_count ?? 0) + (p.review_count ?? 0);
   return [...pool].sort((a, b) =>
     score(b) - score(a) ||
     new Date(b.published_at).getTime() - new Date(a.published_at).getTime())[0] ?? null;
@@ -144,13 +132,13 @@ export async function getPost(id: string): Promise<Post | null> {
 async function attachReviewLikes(sb: Awaited<ReturnType<typeof createClient>>, reviews: Review[], userId: string): Promise<Review[]> {
   if (!reviews.length) return reviews;
   const ids = reviews.map((r) => r.id);
-  const { data, error } = await sb.from("review_likes").select("review_id, user_id").in("review_id", ids);
+  const { data, error } = await sb.from("likes").select("target_id, user_id").eq("target_type", "review").in("target_id", ids);
   if (error) return reviews.map((r) => ({ ...r, like_count: 0, liked: false }));
   const counts = new Map<string, number>();
   const mine = new Set<string>();
-  (data ?? []).forEach((l: { review_id: string; user_id: string }) => {
-    counts.set(l.review_id, (counts.get(l.review_id) ?? 0) + 1);
-    if (l.user_id === userId) mine.add(l.review_id);
+  (data ?? []).forEach((l: { target_id: string; user_id: string }) => {
+    counts.set(l.target_id, (counts.get(l.target_id) ?? 0) + 1);
+    if (l.user_id === userId) mine.add(l.target_id);
   });
   return reviews.map((r) => ({ ...r, like_count: counts.get(r.id) ?? 0, liked: mine.has(r.id) }));
 }
@@ -220,7 +208,12 @@ export type HomeData = {
 };
 export async function getHomeData(userId: string): Promise<HomeData> {
   const sb = await createClient();
-  const posts = await getFeedPosts(); // company·author·review_count·read_count 포함
+  // 독립 조회는 병렬로 (왕복 지연 축소)
+  const [posts, feed, favs] = await Promise.all([
+    getFeedPosts(),               // company·author·review_count 포함
+    getInsightFeed(userId),       // 최근 인사이트 (③④ 폴백)
+    getFavoriteCompanyIds(userId),
+  ]);
   const now = Date.now();
   const days = (p: Post, d: number) => now - new Date(p.published_at).getTime() <= d * 86_400_000;
   const recentCmp = (a: Post, b: Post) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime();
@@ -236,9 +229,8 @@ export async function getHomeData(userId: string): Promise<HomeData> {
   posts.filter((p) => days(p, 14)).forEach((p) => (p.tags ?? []).forEach((t) => freq.set(t, (freq.get(t) ?? 0) + 1)));
   const keywords = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t]) => t);
 
-  const feed = await getInsightFeed(userId); // 최근 인사이트, 최신순 (③④ 폴백에 재사용)
   const recent30 = posts.filter((p) => days(p, 30));
-  const engage = (p: Post) => (p.review_count ?? 0) * 2 + (p.read_count ?? 0);
+  const engage = (p: Post) => (p.review_count ?? 0) * 2 + (p.view_count ?? 0);
 
   // ③ 인기 글: 인사이트 2개+ 글 상위. 부족하면 → "최근 인사이트가 올라온 글"
   const strong = recent30.filter((p) => (p.review_count ?? 0) >= 2).sort((a, b) => engage(b) - engage(a) || recentCmp(a, b));
@@ -277,8 +269,7 @@ export async function getHomeData(userId: string): Promise<HomeData> {
     recommended = take(scored.map((x) => x.p), 10);
   }
 
-  // ⑦ 즐겨찾기 기업 새 글: 기업별 최신 2개씩 (없으면 유도 배너)
-  const favs = await getFavoriteCompanyIds(userId);
+  // ⑦ 즐겨찾기 기업 새 글: 기업별 최신 2개씩 (없으면 유도 배너) — favs는 상단에서 병렬 조회됨
   const favEmpty = favs.size === 0;
   const favGroups: { company: Company | null; posts: Post[] }[] = [];
   if (!favEmpty) {
@@ -327,15 +318,98 @@ export async function getCommentsForReviews(reviewIds: string[], userId: string)
   const ids = comments.map((c) => c.id);
   const likeCounts = new Map<string, number>();
   const myLikes = new Set<string>();
-  // comment_likes 테이블 미적용 환경에서도 안전하게
-  const { data: likes, error } = await sb.from("comment_likes").select("comment_id, user_id").in("comment_id", ids);
+  // 범용 likes 에서 댓글 좋아요 집계 (테이블 없어도 안전하게)
+  const { data: likes, error } = await sb.from("likes").select("target_id, user_id").eq("target_type", "comment").in("target_id", ids);
   if (!error) {
-    (likes ?? []).forEach((l: { comment_id: string; user_id: string }) => {
-      likeCounts.set(l.comment_id, (likeCounts.get(l.comment_id) ?? 0) + 1);
-      if (l.user_id === userId) myLikes.add(l.comment_id);
+    (likes ?? []).forEach((l: { target_id: string; user_id: string }) => {
+      likeCounts.set(l.target_id, (likeCounts.get(l.target_id) ?? 0) + 1);
+      if (l.user_id === userId) myLikes.add(l.target_id);
     });
   }
   return comments.map((c) => ({ ...c, like_count: likeCounts.get(c.id) ?? 0, liked: myLikes.has(c.id) }));
+}
+
+// ===== 커뮤니티 자유글 [v3.0] =====
+
+async function attachCommunityMeta(sb: Awaited<ReturnType<typeof createClient>>, posts: CommunityPost[], userId: string): Promise<CommunityPost[]> {
+  if (!posts.length) return posts;
+  const ids = posts.map((p) => p.id);
+  const [likesRes, cmtRes] = await Promise.all([
+    sb.from("likes").select("target_id, user_id").eq("target_type", "community_post").in("target_id", ids),
+    sb.from("comments").select("target_id").eq("target_type", "community_post").in("target_id", ids),
+  ]);
+  const likeCounts = new Map<string, number>(); const mine = new Set<string>();
+  (likesRes.data ?? []).forEach((l: { target_id: string; user_id: string }) => {
+    likeCounts.set(l.target_id, (likeCounts.get(l.target_id) ?? 0) + 1);
+    if (l.user_id === userId) mine.add(l.target_id);
+  });
+  const cmtCounts = new Map<string, number>();
+  (cmtRes.data ?? []).forEach((c: { target_id: string }) => cmtCounts.set(c.target_id, (cmtCounts.get(c.target_id) ?? 0) + 1));
+  return posts.map((p) => ({ ...p, like_count: likeCounts.get(p.id) ?? 0, liked: mine.has(p.id), comment_count: cmtCounts.get(p.id) ?? 0 }));
+}
+
+// 커뮤니티 피드 (최신순)
+export async function getCommunityFeed(userId: string): Promise<CommunityPost[]> {
+  const sb = await createClient();
+  const { data } = await sb.from("community_posts")
+    .select("*, author:profiles!community_posts_author_id_fkey(name, initial)")
+    .order("created_at", { ascending: false });
+  return attachCommunityMeta(sb, (data as unknown as CommunityPost[]) ?? [], userId);
+}
+
+// 내가 쓴 자유글 (마이용)
+export async function getMyCommunityPosts(userId: string): Promise<CommunityPost[]> {
+  const sb = await createClient();
+  const { data } = await sb.from("community_posts")
+    .select("*, author:profiles!community_posts_author_id_fkey(name, initial)")
+    .eq("author_id", userId).order("created_at", { ascending: false });
+  return attachCommunityMeta(sb, (data as unknown as CommunityPost[]) ?? [], userId);
+}
+
+// 자유글 1개
+export async function getCommunityPost(id: string, userId: string): Promise<CommunityPost | null> {
+  const sb = await createClient();
+  const { data } = await sb.from("community_posts")
+    .select("*, author:profiles!community_posts_author_id_fkey(name, initial)")
+    .eq("id", id).maybeSingle();
+  if (!data) return null;
+  const [p] = await attachCommunityMeta(sb, [data as unknown as CommunityPost], userId);
+  return p;
+}
+
+// 대상(자유글 등)에 달린 댓글 스레드 (범용)
+export async function getCommentsForTarget(targetType: string, targetId: string, userId: string): Promise<ThreadComment[]> {
+  const sb = await createClient();
+  const { data } = await sb.from("comments")
+    .select("id, target_id, parent_id, author_id, body, created_at, author:profiles!comments_author_id_fkey(name, initial)")
+    .eq("target_type", targetType).eq("target_id", targetId)
+    .order("created_at", { ascending: true });
+  const raw = (data as unknown as (ThreadComment & { target_id: string })[]) ?? [];
+  if (!raw.length) return [];
+  const comments = raw.map((c) => ({ ...c, review_id: c.target_id })); // ThreadComment 호환(review_id에 target_id 매핑)
+  const ids = comments.map((c) => c.id);
+  const likeCounts = new Map<string, number>(); const myLikes = new Set<string>();
+  const { data: likes } = await sb.from("likes").select("target_id, user_id").eq("target_type", "comment").in("target_id", ids);
+  (likes ?? []).forEach((l: { target_id: string; user_id: string }) => {
+    likeCounts.set(l.target_id, (likeCounts.get(l.target_id) ?? 0) + 1);
+    if (l.user_id === userId) myLikes.add(l.target_id);
+  });
+  return comments.map((c) => ({ ...c, like_count: likeCounts.get(c.id) ?? 0, liked: myLikes.has(c.id) }));
+}
+
+// 내 단어장
+export async function getMyWords(userId: string): Promise<Word[]> {
+  const sb = await createClient();
+  const { data } = await sb.from("words").select("id, term, meaning, post_id, created_at")
+    .eq("user_id", userId).order("created_at", { ascending: false });
+  return (data as Word[]) ?? [];
+}
+
+// 내가 인사이트 남긴 날짜(ISO) — 마이 캘린더/이번 달 카운트용
+export async function getMyReviewDates(userId: string): Promise<string[]> {
+  const sb = await createClient();
+  const { data } = await sb.from("reviews").select("created_at").eq("author_id", userId).eq("is_draft", false);
+  return (data ?? []).map((r: { created_at: string }) => r.created_at);
 }
 
 // 즐겨찾기한 기업 slug 집합

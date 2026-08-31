@@ -32,7 +32,8 @@ export interface Post {
   company?: Company | null;
   author?: { name: string; initial: string } | null; // 직접 등록 글 작성자
   review_count?: number;
-  read_count?: number; // 글별 읽음(완독) 수 — 뷰수 대체 (통일 카드 메타)
+  view_count?: number; // 글별 총 조회수 (posts.view_count) — 카드 대표 지표 [v3.0]
+  read_count?: number; // 글별 읽음(완독) 수 — 내부 지표(⑤ 상태·통계)
   read?: boolean; // 내가 다 읽은 글 (카드 배지용)
   bookmarked?: boolean; // 내가 북마크한 글 (카드 토글 초기값)
 }
@@ -51,6 +52,29 @@ export interface Review {
   like_count?: number;
   liked?: boolean;
   post?: { title: string; company?: Company | null; body?: string[] } | null;
+}
+
+// 단어장 [v3.0]
+export interface Word {
+  id: string;
+  term: string;
+  meaning: string | null;
+  post_id: string | null;
+  created_at: string;
+}
+
+// 커뮤니티 자유글 [v3.0]
+export interface CommunityPost {
+  id: string;
+  author_id: string;
+  title: string;
+  body: string;
+  media: string[];
+  created_at: string;
+  author?: { name: string; initial: string } | null;
+  like_count?: number;
+  liked?: boolean;
+  comment_count?: number;
 }
 
 export const CATEGORIES: Category[] = [

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CompanyLogo } from "@/components/PostCard";
 import Icon from "@/components/Icon";
 import ReviewLike from "@/components/ReviewLike";
-import type { Review } from "@/lib/types";
+import type { Review, CommunityPost } from "@/lib/types";
 
 const RQ = ["인상 깊은 부분", "업무 적용", "인사이터에게 질문"] as const;
 
@@ -57,23 +57,48 @@ function ReviewCard({ r }: { r: Review }) {
   );
 }
 
-export default function InsightClient({ all, bookmarked }: { all: Review[]; bookmarked: Review[] }) {
-  const [tab, setTab] = useState<"all" | "bookmark">("all");
-  const list = tab === "all" ? all : bookmarked;
-  const empty = tab === "all"
-    ? "첫 인사이트를 남겨보세요"
-    : "북마크한 글에 남겨진 인사이트가 없어요";
+// 커뮤니티 자유글 카드 → 자유글 상세
+function CommunityCard({ p }: { p: CommunityPost }) {
+  const img = p.media.find((m) => !/\.(mp4|webm|mov)$/i.test(m));
+  return (
+    <Link href={`/community/${p.id}`} className="cpost-card">
+      <div className="cpost-main">
+        <div className="cpost-head">
+          <span className="avatar sm">{p.author?.initial ?? "?"}</span>
+          <span className="irow-name">{p.author?.name ?? "인사이터"}</span>
+          <span className="irow-date">{new Date(p.created_at).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}</span>
+        </div>
+        <div className="cpost-title">{p.title}</div>
+        {p.body && <div className="cpost-body">{p.body}</div>}
+        <div className="ins-foot">
+          <span style={{ flex: 1 }} />
+          <span className="rlike"><Icon name="heart" size="sm" />{p.like_count ?? 0}</span>
+          <span className="ins-cmt"><Icon name="comment" size="sm" />{p.comment_count ?? 0}</span>
+        </div>
+      </div>
+      {img && <span className="cpost-thumb" style={{ backgroundImage: `url("${img}")` }} />}
+    </Link>
+  );
+}
+
+export default function InsightClient({ all, community }: { all: Review[]; community: CommunityPost[] }) {
+  const [tab, setTab] = useState<"insight" | "community">("insight");
 
   return (
     <>
       <div className="utabs">
-        <button className={`utab ${tab === "all" ? "on" : ""}`} onClick={() => setTab("all")}>전체</button>
-        <button className={`utab ${tab === "bookmark" ? "on" : ""}`} onClick={() => setTab("bookmark")}>북마크</button>
+        <button className={`utab ${tab === "insight" ? "on" : ""}`} onClick={() => setTab("insight")}>인사이트</button>
+        <button className={`utab ${tab === "community" ? "on" : ""}`} onClick={() => setTab("community")}>커뮤니티</button>
       </div>
-      {list.length ? (
-        list.map((r) => <ReviewCard key={r.id} r={r} />)
+
+      {tab === "insight" ? (
+        all.length
+          ? all.map((r) => <ReviewCard key={r.id} r={r} />)
+          : <div className="empty"><div className="art" /><div className="msg">첫 인사이트를 남겨보세요</div></div>
       ) : (
-        <div className="empty"><div className="art" /><div className="msg">{empty}</div></div>
+        community.length
+          ? community.map((p) => <CommunityCard key={p.id} p={p} />)
+          : <div className="empty"><div className="art" /><div className="msg">첫 자유글을 남겨보세요</div><div className="sub">우측 하단 + 버튼으로 작성할 수 있어요</div></div>
       )}
     </>
   );
