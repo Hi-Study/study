@@ -42,8 +42,10 @@ export type RootStackParamList = {
   OpinionDetail: { opinionId: string };
   CreateArticle: undefined;
   CreateCommunityPost: undefined;
+  CommunityPostDetail: { postId: string };
   DistillNotifications: undefined;
   InsighterProfile: { userId: string };
+  DayActivity: { date: string }; // 'YYYY-MM-DD' — 마이 활동 캘린더에서 날짜 탭
   Search: { q?: string } | undefined;
 };
 

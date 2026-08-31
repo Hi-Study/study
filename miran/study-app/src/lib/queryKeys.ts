@@ -40,7 +40,10 @@ export const qk = {
   opinionsFeed: (sort?: "latest" | "popular") =>
     sort ? (["opinions", "feed", sort] as const) : (["opinions", "feed"] as const),
   opinion: (opinionId: string) => ["opinion", opinionId] as const,
-  opinionComments: (opinionId: string) => ["opinion-comments", opinionId] as const,
+  // 댓글 스레드 — 인사이트(opinion)와 커뮤니티 자유글(community)이 같은 테이블을 쓴다.
+  threadComments: (kind: "opinion" | "community", id: string) =>
+    ["thread-comments", kind, id] as const,
+  opinionComments: (opinionId: string) => ["thread-comments", "opinion", opinionId] as const,
   articleHighlights: (articleId: string, uid?: string) =>
     uid
       ? (["article-highlights", articleId, uid] as const)
@@ -54,6 +57,7 @@ export const qk = {
   myComments: (uid: string) => ["my-comments", uid] as const,
   appNotifications: (uid: string) => ["app-notifications", uid] as const,
   communityPosts: () => ["community-posts"] as const,
+  communityPost: (postId: string) => ["community-post", postId] as const,
   myCommunityPosts: (uid: string) => ["community-posts", "mine", uid] as const,
   appNotificationsUnread: (uid: string) => ["app-notifications", "unread", uid] as const,
   reads: (uid: string) => ["reads", uid] as const,

@@ -32,7 +32,7 @@ export type Topic =
   | "infra"
   | "career";
 export type CollectMethod = "rss_full" | "rss_scrape" | "nuxt" | "listscrape";
-export type ReactionTarget = "opinion" | "comment" | "article";
+export type ReactionTarget = "opinion" | "comment" | "article" | "community";
 
 export interface Database {
   public: {
@@ -149,10 +149,12 @@ export interface Database {
         Relationships: [];
       };
       // ---- distill: 토론(의견 대댓글) ----
+      // 댓글 스레드 — 의견(opinion_id) 또는 커뮤니티 자유글(community_post_id) 중 하나에 달린다(스키마 §23).
       opinion_comments: {
         Row: {
           id: string;
-          opinion_id: string;
+          opinion_id: string | null;
+          community_post_id: string | null;
           parent_id: string | null;
           author_id: string | null;
           text: string;
@@ -161,7 +163,8 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          opinion_id: string;
+          opinion_id?: string | null;
+          community_post_id?: string | null;
           parent_id?: string | null;
           author_id?: string | null;
           text: string;
@@ -277,6 +280,7 @@ export interface Database {
           body: string;
           insight: Record<string, unknown>;
           like_count: number;
+          comment_count: number;
           created_at: string;
         };
         Insert: {
@@ -286,6 +290,7 @@ export interface Database {
           body: string;
           insight?: Record<string, unknown>;
           like_count?: number;
+          comment_count?: number;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["community_posts"]["Insert"]>;

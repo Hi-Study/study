@@ -1,5 +1,6 @@
 // distill 검색 탭 (회의록 §검색) — 검색 전: 최근 검색어 · 추천 검색어 · 급상승 검색어 / 검색 후: 결과.
-import React, { useState } from "react";
+//   검색 결과에는 피드와 같은 필터를 붙인다. 단 기업도 카테고리와 **동일한 칩 디자인**(variant="chips").
+import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronLeft, Clock, Search, Sparkles, TrendingUp, X } from "lucide-react-native";
@@ -9,6 +10,8 @@ import { useRoute, type RouteProp } from "@react-navigation/native";
 import { useRootNav, type RootStackParamList } from "@/navigation/types";
 import {
   useArticlesFeed,
+  useArticlesFeedCount,
+  useBlogs,
   usePopularTags,
   useRecommendedKeywords,
   useTrendingSearches,
@@ -17,6 +20,7 @@ import {
 import { useRecentSearches } from "@/lib/recentSearches";
 import { dtype } from "@/theme";
 import { ArticleRow } from "@/components/distill/ArticleCards";
+import { FilterSheet, emptyFilter, type FilterValue } from "@/components/distill/FilterSheet";
 import { Loading, ErrorState, EmptyState } from "@/components";
 
 export function DistillSearchScreen() {
@@ -31,9 +35,22 @@ export function DistillSearchScreen() {
   const trendingQ = useTrendingSearches(10);
   const logSearch = useLogSearch();
 
+  // 결과 필터(기업·카테고리·정렬) — 피드와 동일한 컴포넌트, 칩 형태.
+  const [filter, setFilter] = useState<FilterValue>(emptyFilter);
+  const blogsQ = useBlogs();
+
   const q = query.trim();
   const active = q.length > 0;
-  const feed = useArticlesFeed(active ? { search: q } : {});
+  const baseFilter = useMemo(
+    () => ({
+      search: q,
+      ...(filter.topics.size > 0 ? { topics: [...filter.topics] } : {}),
+      ...(filter.blogIds.size > 0 ? { blogIds: [...filter.blogIds] } : {}),
+    }),
+    [q, filter.topics, filter.blogIds],
+  );
+  const feed = useArticlesFeed(active ? { ...baseFilter, sort: filter.sort } : {});
+  const countQ = useArticlesFeedCount(active ? baseFilter : {});
   const rows = feed.data?.pages.flatMap((p) => p.rows) ?? [];
 
   const submit = (term: string) => {
@@ -176,27 +193,47 @@ export function DistillSearchScreen() {
             </View>
           ) : null}
         </ScrollView>
-      ) : feed.isLoading ? (
-        <Loading label="검색 중…" />
-      ) : feed.isError ? (
-        <ErrorState onRetry={() => feed.refetch()} />
-      ) : rows.length === 0 ? (
-        <EmptyState title="결과가 없어요" hint="다른 검색어를 시도해보세요" />
       ) : (
-        <FlatList
-          data={rows}
-          keyExtractor={(a) => a.id}
-          renderItem={({ item }) => (
-            <ArticleRow article={item} onPress={() => nav.navigate("ArticleDetail", { articleId: item.id })} />
+        <>
+          {/* 결과 필터 — [기업 ▾] [카테고리 ▾] [정렬 ▾] (전부 같은 칩 디자인) */}
+          <FilterSheet
+            blogs={blogsQ.data ?? []}
+            value={filter}
+            onChange={setFilter}
+            variant="chips"
+          />
+          <View style={styles.countRow}>
+            <Text style={[styles.countText, { color: c.textSecondary }]}>
+              {countQ.data != null ? `${countQ.data.toLocaleString()}개` : ""}
+            </Text>
+          </View>
+
+          {feed.isLoading ? (
+            <Loading label="검색 중…" />
+          ) : feed.isError ? (
+            <ErrorState onRetry={() => feed.refetch()} />
+          ) : rows.length === 0 ? (
+            <EmptyState title="결과가 없어요" hint="검색어나 필터를 바꿔보세요" />
+          ) : (
+            <FlatList
+              data={rows}
+              keyExtractor={(a) => a.id}
+              renderItem={({ item }) => (
+                <ArticleRow
+                  article={item}
+                  onPress={() => nav.navigate("ArticleDetail", { articleId: item.id })}
+                />
+              )}
+              ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: c.hairline }]} />}
+              contentContainerStyle={styles.listContent}
+              keyboardShouldPersistTaps="handled"
+              onEndReachedThreshold={0.5}
+              onEndReached={() => {
+                if (feed.hasNextPage && !feed.isFetchingNextPage) feed.fetchNextPage();
+              }}
+            />
           )}
-          ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: c.hairline }]} />}
-          contentContainerStyle={styles.listContent}
-          keyboardShouldPersistTaps="handled"
-          onEndReachedThreshold={0.5}
-          onEndReached={() => {
-            if (feed.hasNextPage && !feed.isFetchingNextPage) feed.fetchNextPage();
-          }}
-        />
+        </>
       )}
     </SafeAreaView>
   );
@@ -228,6 +265,9 @@ const styles = StyleSheet.create({
   rankRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 9 },
   rankNum: { ...dtype.cardTitle, width: 18 },
   rankText: { ...dtype.body, flex: 1 },
+
+  countRow: { paddingHorizontal: 16, paddingTop: 2, paddingBottom: 8 },
+  countText: { ...dtype.label, fontSize: 13 },
 
   listContent: { paddingHorizontal: 16, paddingBottom: 32 },
   sep: { height: 1 },

@@ -656,5 +656,122 @@ update public.articles a
 
 -- ============================================================
 -- 22) 커뮤니티 자유글에 감상문(insight) 항목 — 인사이트와 동일 구조로 작성.
+--     ※ 현재 자유글은 "제목 + 내용"만 쓴다. 이 컬럼은 예전에 감상문 폼으로 쓴 글을 보여주기 위한 레거시.
 -- ============================================================
 alter table public.community_posts add column if not exists insight jsonb not null default '{}';
+
+-- ============================================================
+-- 23) 커뮤니티 자유글 — 좋아요 + 댓글/대댓글
+--     · 좋아요: reactions.target_type 에 'community' 추가 + like_count 동기화 트리거(섹션 9/11과 동일 방식)
+--     · 댓글  : 새 테이블을 만들지 않고 opinion_comments 를 **범용 댓글 테이블**로 확장
+--               (opinion_id | community_post_id 중 정확히 하나만 채운다)
+--               → 스레드/대댓글/좋아요/수정·삭제 로직을 인사이트와 그대로 공유한다.
+-- ============================================================
+
+-- 23-1) 자유글 좋아요
+alter table public.reactions drop constraint if exists reactions_target_type_check;
+alter table public.reactions
+  add constraint reactions_target_type_check
+  check (target_type in ('opinion', 'comment', 'article', 'community'));
+
+create or replace function public.sync_community_like_count()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if (tg_op = 'INSERT' and new.target_type = 'community') then
+    update public.community_posts set like_count = like_count + 1 where id = new.target_id;
+  elsif (tg_op = 'DELETE' and old.target_type = 'community') then
+    update public.community_posts set like_count = greatest(0, like_count - 1) where id = old.target_id;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists trg_community_like on public.reactions;
+create trigger trg_community_like
+  after insert or delete on public.reactions
+  for each row execute function public.sync_community_like_count();
+
+-- 기존 데이터 정합성 재계산(재실행 안전).
+update public.community_posts p
+  set like_count = (
+    select count(*) from public.reactions r
+    where r.target_type = 'community' and r.target_id = p.id
+  );
+
+-- 23-2) 댓글 테이블 범용화 — 자유글에도 댓글/대댓글
+alter table public.opinion_comments
+  add column if not exists community_post_id uuid references public.community_posts(id) on delete cascade;
+alter table public.opinion_comments alter column opinion_id drop not null;
+
+-- 둘 중 정확히 하나만 채워져야 한다(글 종류 판별 = 이 컬럼).
+alter table public.opinion_comments drop constraint if exists opinion_comments_target_check;
+alter table public.opinion_comments
+  add constraint opinion_comments_target_check
+  check (num_nonnulls(opinion_id, community_post_id) = 1);
+
+create index if not exists idx_ocomments_community
+  on public.opinion_comments(community_post_id, created_at);
+
+-- 23-3) 자유글 댓글 수(comment_count) — 홈 "이야기 나누고 있어요" 정렬/카드 지표용.
+--       (목록에서 글마다 댓글을 세는 쿼리를 날리지 않도록 비정규화 + 트리거로 유지)
+alter table public.community_posts add column if not exists comment_count int not null default 0;
+create index if not exists idx_community_posts_active
+  on public.community_posts(comment_count desc, like_count desc);
+
+create or replace function public.sync_community_comment_count()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if (tg_op = 'INSERT' and new.community_post_id is not null) then
+    update public.community_posts set comment_count = comment_count + 1 where id = new.community_post_id;
+  elsif (tg_op = 'DELETE' and old.community_post_id is not null) then
+    update public.community_posts set comment_count = greatest(0, comment_count - 1) where id = old.community_post_id;
+  end if;
+  return null;
+end;
+$$;
+
+drop trigger if exists trg_community_comment on public.opinion_comments;
+create trigger trg_community_comment
+  after insert or delete on public.opinion_comments
+  for each row execute function public.sync_community_comment_count();
+
+-- 기존 데이터 정합성 재계산(재실행 안전).
+update public.community_posts p
+  set comment_count = (
+    select count(*) from public.opinion_comments oc where oc.community_post_id = p.id
+  );
+
+-- 알림 트리거는 "의견 댓글"만 대상 — 자유글 댓글은 건너뛴다(app_notifications 가 opinion_id 기준이라).
+create or replace function public.notify_opinion_comment()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  opinion_author uuid;
+  parent_author uuid;
+begin
+  if new.opinion_id is null then
+    return null;                                  -- 자유글 댓글: 알림 대상 아님
+  end if;
+  select author_id into opinion_author from public.opinions where id = new.opinion_id;
+  if opinion_author is not null and opinion_author <> new.author_id then
+    insert into public.app_notifications (user_id, kind, actor_id, opinion_id, title)
+    values (opinion_author, 'comment', new.author_id, new.opinion_id, left(new.text, 80));
+  end if;
+  if new.parent_id is not null then
+    select author_id into parent_author from public.opinion_comments where id = new.parent_id;
+    if parent_author is not null
+       and parent_author <> new.author_id
+       and parent_author is distinct from opinion_author then
+      insert into public.app_notifications (user_id, kind, actor_id, opinion_id, title)
+      values (parent_author, 'reply', new.author_id, new.opinion_id, left(new.text, 80));
+    end if;
+  end if;
+  return null;
+end; $$;

@@ -10,6 +10,7 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
 import {
   useBlogs,
+  useFeaturedArticles,
   usePopularArticles,
   usePopularTags,
   useOpinionsFeed,
@@ -24,6 +25,7 @@ import type { ArticleWithBlog } from "@/data/articles";
 import { dtype } from "@/theme";
 import { ArticleCardH, FeaturedCard, ServiceLogo } from "@/components/distill/ArticleCards";
 import { OpinionCard } from "@/components/distill/OpinionCard";
+import { CommunityCard } from "@/components/distill/CommunityCard";
 import { Loading } from "@/components";
 
 const W = Dimensions.get("window").width;
@@ -101,14 +103,36 @@ export function DistillHomeScreen() {
   const blogs = useBlogs().data ?? [];
   const popular = usePopularArticles(10).data ?? [];
   const tags = usePopularTags().data ?? [];
-  const insights = (useOpinionsFeed("popular").data ?? []).slice(0, 8);
+  const popularInsights = useOpinionsFeed("popular").data ?? [];
+  const latestInsights = useOpinionsFeed("latest").data ?? [];
   const recommended = useRecommendedArticles(10).data ?? [];
+  const featured = useFeaturedArticles(10).data ?? [];
   const unfinished = useUnfinishedArticles(10).data ?? [];
-  const community = (useCommunityPosts().data ?? []).slice(0, 8);
+  // 섹션 제목대로 "이야기가 오가는" 글 = 댓글·공감 많은 순.
+  const community = (useCommunityPosts("active").data ?? []).slice(0, 8);
   const unread = useUnreadNotificationCount().data ?? 0;
 
   const loading = blogs.length === 0 && popular.length === 0;
-  const recoTitle = name ? `${name}님이 관심 있을 글이에요` : "관심 있을 만한 글이에요";
+
+  // 활동이 없는(게스트·신규) 사용자도 섹션이 비지 않게 폴백.
+  //  · 추천글 → 이미지 있는 최신 글(③ 인기 글과 겹치지 않게 "인기"가 아닌 "최신"을 쓴다)
+  //  · 인기 인사이트 → 최신 인사이트
+  const recoFallback = recommended.length === 0;
+  const recoList = recoFallback ? featured : recommended;
+  const recoTitle = recoFallback
+    ? "새로 올라온 글이에요"
+    : name
+      ? `${name}님이 관심 있을 글이에요`
+      : "관심 있을 만한 글이에요";
+  const recoSub = recoFallback
+    ? "글을 읽을수록 취향에 맞게 추천해드려요"
+    : "읽은 글의 주제를 바탕으로 골랐어요";
+
+  const insightsFallback = popularInsights.length === 0;
+  const insights = (insightsFallback ? latestInsights : popularInsights).slice(0, 8);
+  const insightsTitle = insightsFallback
+    ? "방금 올라온 인사이트예요"
+    : "이 생각에 공감을 많이 했어요";
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: c.surfacePage }]} edges={["top", "left", "right"]}>
@@ -132,12 +156,12 @@ export function DistillHomeScreen() {
 
         {loading ? <Loading label="불러오는 중…" /> : null}
 
-        {/* ① 추천 글(맞춤) — 세로 리스트 */}
-        {recommended.length > 0 ? (
+        {/* ① 추천 글(맞춤, 활동 없으면 최신 글로 폴백) — 큰 카드 좌우 스와이프 */}
+        {recoList.length > 0 ? (
           <View style={styles.block}>
-            <SectionHeader title={recoTitle} sub="읽은 글의 주제를 바탕으로 골랐어요" />
+            <SectionHeader title={recoTitle} sub={recoSub} />
             <FlatList
-              data={recommended}
+              data={recoList}
               keyExtractor={(a) => a.id}
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -196,10 +220,10 @@ export function DistillHomeScreen() {
           </View>
         ) : null}
 
-        {/* ⑤ 인기 인사이트(좋아요순) */}
+        {/* ⑤ 인기 인사이트(좋아요순, 없으면 최신 인사이트로 폴백) */}
         {insights.length > 0 ? (
           <View style={styles.block}>
-            <SectionHeader title="이 생각에 공감을 많이 했어요" />
+            <SectionHeader title={insightsTitle} />
             <FlatList
               data={insights}
               keyExtractor={(o) => o.id}
@@ -227,30 +251,41 @@ export function DistillHomeScreen() {
         {/* ⑥ 커뮤니티 인기글 */}
         {community.length > 0 ? (
           <View style={styles.block}>
-            <SectionHeader title="커뮤니티에서 이야기 나누고 있어요" />
-            {community.map((p, i) => (
-              <View key={p.id}>
-                {i > 0 ? <View style={[styles.sep, { backgroundColor: c.hairline }]} /> : null}
-                <View style={styles.communityRow}>
-                  <Text style={[styles.communityTitle, { color: c.textPrimary }]} numberOfLines={1}>
-                    {p.title}
-                  </Text>
-                  <Text style={[styles.communityBody, { color: c.textMuted }]} numberOfLines={1}>
-                    {p.body}
-                  </Text>
+            <SectionHeader title="커뮤니티에서 이야기 나누고 있어요" sub="댓글·공감이 많은 자유글이에요" />
+            <FlatList
+              data={community}
+              keyExtractor={(p) => p.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={OPINION_W + 12}
+              decelerationRate="fast"
+              contentContainerStyle={styles.carouselRow}
+              renderItem={({ item }) => (
+                <View style={{ width: OPINION_W }}>
+                  <CommunityCard
+                    post={item}
+                    bodyLines={2}
+                    onPress={() => nav.navigate("CommunityPostDetail", { postId: item.id })}
+                  />
                 </View>
-              </View>
-            ))}
+              )}
+            />
           </View>
         ) : null}
 
-        {/* ⑦ 읽다만 글(없으면 숨김) */}
-        {unfinished.length > 0 ? (
-          <View style={styles.block}>
-            <SectionHeader title="마저 읽고 인사이트 남겨볼까요?" sub="읽었지만 아직 생각을 안 남긴 글이에요" />
+        {/* ⑦ 읽다만 글 — 없으면 캐러셀 대신 안내(섹션이 통째로 사라져 "없어졌다"로 보이지 않게) */}
+        <View style={styles.block}>
+          <SectionHeader title="마저 읽고 인사이트 남겨볼까요?" sub="읽었지만 아직 생각을 안 남긴 글이에요" />
+          {unfinished.length > 0 ? (
             <ArticleCarousel data={unfinished} />
-          </View>
-        ) : null}
+          ) : (
+            <View style={[styles.hintCard, { backgroundColor: c.surfaceSunken }]}>
+              <Text style={[styles.hintText, { color: c.textSecondary }]}>
+                아직 읽다 만 글이 없어요. 글을 끝까지 읽으면 여기에 모여요.
+              </Text>
+            </View>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -292,9 +327,8 @@ const styles = StyleSheet.create({
   cell: { alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 2 },
   cellText: { fontSize: 11.5, lineHeight: 15, fontWeight: "700", textAlign: "center" },
 
-  communityRow: { paddingVertical: 12, gap: 4 },
-  communityTitle: { ...dtype.cardTitle, fontSize: 15 },
-  communityBody: { ...dtype.bodyS },
+  hintCard: { borderRadius: 14, paddingHorizontal: 16, paddingVertical: 18 },
+  hintText: { ...dtype.bodyS },
 
   sep: { height: 1 },
 });

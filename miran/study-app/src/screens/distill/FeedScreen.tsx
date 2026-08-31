@@ -1,5 +1,5 @@
 // distill 피드 탭 — 주제별 테크 글 스트림 (회의록 §피드).
-// 컬리식 필터(드롭다운 칩 → 바텀시트 탭) + [개수 좌] + 글 리스트.
+// 현대백화점식 상단: [큰 기업 드롭다운] → [카테고리/정렬 필터 칩] + [개수] + 글 리스트.
 import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -9,28 +9,23 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
 import { useArticlesFeed, useArticlesFeedCount, useBlogs } from "@/data";
 import { dtype } from "@/theme";
-import type { Topic } from "@/types/database";
 import { ArticleRow } from "@/components/distill/ArticleCards";
-import { FilterSheet, type FilterValue } from "@/components/distill/FilterSheet";
+import { FilterSheet, emptyFilter, type FilterValue } from "@/components/distill/FilterSheet";
 import { Loading, ErrorState, EmptyState } from "@/components";
 
 export function FeedScreen() {
   const { theme } = useTheme();
   const c = theme.colors;
   const nav = useRootNav();
-  const [filter, setFilter] = useState<FilterValue>({
-    blogs: new Set<string>(),
-    topics: new Set<Topic>(),
-    sort: "latest",
-  });
+  const [filter, setFilter] = useState<FilterValue>(emptyFilter);
 
   const blogsQ = useBlogs();
   const baseFilter = useMemo(
     () => ({
       ...(filter.topics.size > 0 ? { topics: [...filter.topics] } : {}),
-      ...(filter.blogs.size > 0 ? { blogIds: [...filter.blogs] } : {}),
+      ...(filter.blogIds.size > 0 ? { blogIds: [...filter.blogIds] } : {}),
     }),
-    [filter.topics, filter.blogs],
+    [filter.topics, filter.blogIds],
   );
   const q = useArticlesFeed({ ...baseFilter, sort: filter.sort });
   const countQ = useArticlesFeedCount(baseFilter);
@@ -39,16 +34,18 @@ export function FeedScreen() {
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: c.surfacePage }]} edges={["top", "left", "right"]}>
-      {/* 제목 + 검색 유틸 */}
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: c.textPrimary }]}>피드</Text>
-        <Pressable hitSlop={8} style={styles.searchUtil} onPress={() => nav.navigate("Search")}>
-          <Search size={22} color={c.textSecondary} />
-        </Pressable>
-      </View>
-
-      {/* 컬리식 필터 칩 바 */}
-      <FilterSheet blogs={blogsQ.data ?? []} value={filter} onChange={setFilter} />
+      {/* 큰 기업 드롭다운(제일 큰 요소) + 그 아래 카테고리/정렬 필터 칩 */}
+      <FilterSheet
+        blogs={blogsQ.data ?? []}
+        value={filter}
+        onChange={setFilter}
+        eyebrow="지금 보는 곳"
+        right={
+          <Pressable hitSlop={8} style={styles.searchUtil} onPress={() => nav.navigate("Search")}>
+            <Search size={22} color={c.textSecondary} />
+          </Pressable>
+        }
+      />
 
       {/* 글 개수 */}
       <View style={styles.filterRow}>
@@ -83,19 +80,10 @@ export function FeedScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 8,
-  },
-  title: { ...dtype.display },
   searchUtil: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
 
-  filterRow: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 10 },
-  countText: { fontSize: 13, lineHeight: 17, fontWeight: "700" },
+  filterRow: { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 10 },
+  countText: { ...dtype.label, fontSize: 13 },
 
   listContent: { paddingHorizontal: 16, paddingBottom: 32 },
   sep: { height: 1 },

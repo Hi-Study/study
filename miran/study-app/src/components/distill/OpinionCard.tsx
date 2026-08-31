@@ -58,9 +58,8 @@ export function OpinionCard({
         </View>
       </View>
 
-      {/* 인사이트 — 타이틀+내용(핵심만 미리보기) */}
+      {/* 인사이트 — 작성한 항목 전부를 타이틀+내용으로(항목별 3줄까지 미리보기) */}
       <InsightBody insight={opinion.insight} compact />
-
 
       {/* 출처 글 */}
       {a ? (
@@ -93,8 +92,6 @@ const styles = StyleSheet.create({
   date: { ...dtype.meta },
   likeMeta: { flexDirection: "row", alignItems: "center", gap: 3 },
   likeNum: { ...dtype.meta, fontWeight: "700" },
-  core: { ...dtype.body, fontWeight: "600", lineHeight: 23 },
-  apply: { ...dtype.bodyS },
   source: { flexDirection: "row", gap: 10, padding: 10, borderRadius: 12, alignItems: "center" },
   sourceThumb: { width: 44, height: 44, borderRadius: 8 },
   sourceTitle: { ...dtype.bodyS, fontWeight: "600", marginTop: 2 },

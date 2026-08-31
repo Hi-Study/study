@@ -33,14 +33,18 @@ export const HIGHLIGHT_COLORS = {
 export const HIGHLIGHT_INK = "#241A26";
 export type HighlightColor = keyof typeof HIGHLIGHT_COLORS;
 
-/** distill 타입 스케일: { fontSize, lineHeight, fontWeight }. Pretendard(미번들 시 시스템 폴백). */
+/** distill 타입 스케일: { fontSize, lineHeight, fontWeight }. Pretendard(미번들 시 시스템 폴백).
+ *  ⚠ lineHeight 는 fontSize 의 1.35배 이상으로 유지할 것.
+ *  안드로이드 RN 은 lineHeight 를 줄 높이 상한으로 강제해서, 값이 빠듯하면 한글 글자가
+ *  위아래로 잘려 보인다. 게다가 호출부가 `{...dtype.label, fontSize: 14}` 처럼 fontSize 만
+ *  덮어쓰는 경우가 많아(칩·카운트·라벨), 스케일이 큰 쪽을 기준으로 여유를 둬야 한다. */
 export const dtype = {
-  display: { fontSize: 28, lineHeight: 34, fontWeight: "800" as const },
-  titleL: { fontSize: 22, lineHeight: 28, fontWeight: "700" as const },
-  title: { fontSize: 18, lineHeight: 24, fontWeight: "700" as const },
-  cardTitle: { fontSize: 16, lineHeight: 22, fontWeight: "600" as const },
+  display: { fontSize: 28, lineHeight: 38, fontWeight: "800" as const },
+  titleL: { fontSize: 22, lineHeight: 30, fontWeight: "700" as const },
+  title: { fontSize: 18, lineHeight: 26, fontWeight: "700" as const },
+  cardTitle: { fontSize: 16, lineHeight: 23, fontWeight: "600" as const },
   body: { fontSize: 15, lineHeight: 24, fontWeight: "400" as const },
   bodyS: { fontSize: 13.5, lineHeight: 20, fontWeight: "400" as const },
-  meta: { fontSize: 12, lineHeight: 16, fontWeight: "500" as const },
-  label: { fontSize: 12, lineHeight: 14, fontWeight: "700" as const },
+  meta: { fontSize: 12, lineHeight: 17, fontWeight: "500" as const },
+  label: { fontSize: 12, lineHeight: 20, fontWeight: "700" as const },
 } as const;

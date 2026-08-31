@@ -33,6 +33,7 @@ import {
   type UserWordRow,
   type MyCommentRow,
   type ArticleWithBlog,
+  commentSource,
 } from "@/data";
 import { dtype } from "@/theme";
 import { highlightBg } from "@/lib/highlight";
@@ -84,13 +85,17 @@ export function DistillMyPageScreen() {
   const favSet = new Set(favsQ.data ?? []);
   const favCount = favsQ.data?.length ?? 0;
 
-  // 활동 캘린더 — 인사이트·하이라이트·댓글·단어 작성일을 점으로.
+  // 활동 캘린더 — 인사이트·하이라이트·댓글·단어 작성일 + 글 읽은 날을 원으로 채운다.
   const activeDays = new Set<string>();
   for (const arr of [opinionsQ.data, highlightsQ.data, commentsQ.data, wordsQ.data]) {
     for (const x of (arr ?? []) as { created_at?: string | null }[]) {
       const k = dayKey(x.created_at ?? "");
       if (k) activeDays.add(k);
     }
+  }
+  for (const r of readsQ.data ?? []) {
+    const k = dayKey(r.read_at ?? "");
+    if (k) activeDays.add(k);
   }
 
   const byTab = {
@@ -162,7 +167,11 @@ export function DistillMyPageScreen() {
             body = (
               <CommentRow
                 row={item as MyCommentRow}
-                onPress={(opinionId) => nav.navigate("OpinionDetail", { opinionId })}
+                onPress={(src) =>
+                  src.kind === "opinion"
+                    ? nav.navigate("OpinionDetail", { opinionId: src.id })
+                    : nav.navigate("CommunityPostDetail", { postId: src.id })
+                }
               />
             );
           } else {
@@ -231,8 +240,11 @@ export function DistillMyPageScreen() {
               </View>
             </Pressable>
 
-            {/* 활동 캘린더 */}
-            <ActivityCalendar activeDays={activeDays} />
+            {/* 활동 캘린더 — 날짜 탭 → 그날 활동 화면 */}
+            <ActivityCalendar
+              activeDays={activeDays}
+              onSelectDay={(date) => nav.navigate("DayActivity", { date })}
+            />
 
             {/* 내 활동 — 세그먼트 탭 (가로 스크롤). 앱 설정(테마·로그아웃)은 상단 기어 → 설정 화면. */}
             <Text style={[styles.activityLabel, { color: c.textPrimary }]}>내 활동</Text>
@@ -384,18 +396,21 @@ function WordCard({ row }: { row: UserWordRow }) {
 }
 
 // 내 댓글 한 줄 — 댓글 내용 + 어떤 글/의견에 달았는지(탭하면 의견 상세).
+// 내 댓글 — 인사이트에 단 것과 커뮤니티 자유글에 단 것이 섞여 있어 원본 종류에 맞게 이동한다.
 function CommentRow({
   row,
   onPress,
 }: {
   row: MyCommentRow;
-  onPress: (opinionId: string) => void;
+  onPress: (src: NonNullable<ReturnType<typeof commentSource>>) => void;
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
+  const src = commentSource(row);
   return (
     <Pressable
-      onPress={() => onPress(row.opinion_id)}
+      onPress={() => src && onPress(src)}
+      disabled={!src}
       style={({ pressed }) => [
         styles.commentCard,
         { backgroundColor: c.surfaceCard, borderColor: c.hairline, opacity: pressed ? 0.95 : 1 },
@@ -410,9 +425,9 @@ function CommentRow({
       <Text style={[styles.commentText, { color: c.textPrimary }]} numberOfLines={4}>
         {row.text}
       </Text>
-      {row.opinion?.article ? (
+      {src?.title ? (
         <Text style={[styles.commentSource, { color: c.textMuted }]} numberOfLines={1}>
-          {row.opinion.article.title}
+          {src.title}
         </Text>
       ) : null}
     </Pressable>

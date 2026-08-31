@@ -10,6 +10,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { qk } from "@/lib/queryKeys";
 import { topTags } from "@/lib/tags";
+import { isMissingColumnError } from "@/lib/pgError";
 import { useUid } from "@/auth/AuthProvider";
 import type { SummaryMode } from "@/lib/summary";
 import type { ArticleRow } from "@/types/tables";
@@ -117,45 +118,53 @@ export async function listArticlesFeed(
   filter: ArticleFeedFilter = {},
 ): Promise<{ rows: ArticleWithBlog[]; nextCursor: ArticleCursor | null }> {
   const popular = filter.sort === "popular";
-  let q = supabase.from("articles").select(SELECT_WITH_BLOG).limit(PAGE_SIZE);
-  // 인기순: 조회수 → 좋아요 → 인사이트 수 → 최신순(같은 지표면 최근 글 먼저).
-  q = popular
-    ? q
-        .order("view_count", { ascending: false })
-        .order("like_count", { ascending: false })
-        .order("opinion_count", { ascending: false })
-        .order("published_at", { ascending: false, nullsFirst: false })
-        .order("id", { ascending: false })
-    : q.order("published_at", { ascending: false, nullsFirst: false }).order("id", { ascending: false });
 
-  if (filter.topic) q = q.eq("topic", filter.topic);
-  if (filter.topics && filter.topics.length > 0) q = q.in("topic", filter.topics);
-  if (filter.blogId) q = q.eq("blog_id", filter.blogId);
-  if (filter.blogIds && filter.blogIds.length > 0) q = q.in("blog_id", filter.blogIds);
-  if (filter.ids && filter.ids.length > 0) q = q.in("id", filter.ids);
-  const search = filter.search?.replace(/[,(){}%*]/g, " ").trim();
-  if (search) {
-    q = q.or(`title.ilike.%${search}%,summary.ilike.%${search}%,tags.cs.{${search}}`);
-  }
-  if (cursor) {
+  // withStats=false 는 §21 컬럼(view_count/opinion_count)이 없는 DB용 축소 정렬.
+  const build = (withStats: boolean) => {
+    let q = supabase.from("articles").select(SELECT_WITH_BLOG).limit(PAGE_SIZE);
+    // 인기순: 조회수 → 좋아요 → 인사이트 수 → 최신순(같은 지표면 최근 글 먼저).
     if (popular) {
-      q = q.or(
-        `like_count.lt.${cursor.like_count},and(like_count.eq.${cursor.like_count},id.lt.${cursor.id})`,
-      );
-    } else if (cursor.published_at) {
-      q = q.or(
-        `published_at.lt.${cursor.published_at},and(published_at.eq.${cursor.published_at},id.lt.${cursor.id})`,
-      );
+      if (withStats) q = q.order("view_count", { ascending: false });
+      q = q.order("like_count", { ascending: false });
+      if (withStats) q = q.order("opinion_count", { ascending: false });
+      q = q
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .order("id", { ascending: false });
+    } else {
+      q = q.order("published_at", { ascending: false, nullsFirst: false }).order("id", { ascending: false });
     }
-  }
 
-  const { data, error } = await q;
+    if (filter.topic) q = q.eq("topic", filter.topic);
+    if (filter.topics && filter.topics.length > 0) q = q.in("topic", filter.topics);
+    if (filter.blogId) q = q.eq("blog_id", filter.blogId);
+    if (filter.blogIds && filter.blogIds.length > 0) q = q.in("blog_id", filter.blogIds);
+    if (filter.ids && filter.ids.length > 0) q = q.in("id", filter.ids);
+    const search = filter.search?.replace(/[,(){}%*]/g, " ").trim();
+    if (search) {
+      q = q.or(`title.ilike.%${search}%,summary.ilike.%${search}%,tags.cs.{${search}}`);
+    }
+    if (cursor) {
+      if (popular) {
+        q = q.or(
+          `like_count.lt.${cursor.like_count},and(like_count.eq.${cursor.like_count},id.lt.${cursor.id})`,
+        );
+      } else if (cursor.published_at) {
+        q = q.or(
+          `published_at.lt.${cursor.published_at},and(published_at.eq.${cursor.published_at},id.lt.${cursor.id})`,
+        );
+      }
+    }
+    return q;
+  };
+
+  let { data, error } = await build(true);
+  if (error && popular && isMissingColumnError(error)) ({ data, error } = await build(false));
   if (error) throw error;
   const rows = (data ?? []) as unknown as ArticleWithBlog[];
   const last = rows[rows.length - 1];
   const hasMore = rows.length === PAGE_SIZE && !!last && (popular || !!last.published_at);
   const nextCursor = hasMore
-    ? { published_at: last.published_at, like_count: last.like_count, id: last.id }
+    ? { published_at: last.published_at, like_count: last.like_count ?? 0, id: last.id }
     : null;
   return { rows, nextCursor };
 }

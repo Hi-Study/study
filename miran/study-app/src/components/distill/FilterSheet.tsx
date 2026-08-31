@@ -1,133 +1,391 @@
-// 컬리/무신사식 필터 — 드롭다운 칩 바 + 바텀시트(탭: 기업/주제/정렬) 선택. (DESIGN_SYSTEM §4.2/§4.5)
-//   칩 클릭 → 하단 시트가 해당 탭으로 열림 → 체크(다중) 선택 → "N개 글 보기"로 적용.
+// 피드/인사이트 상단 필터 — 현대백화점(더현대 서울)식 구성.
+//   ① 상단 유틸 아이콘 줄(검색 등) — 카드 바깥, 이미지의 우측 상단 아이콘 자리.
+//   ② **히어로 카드** — 카드 안쪽에 "지금 보는 곳"(작게) + 기업명 ∨(화면 최대 크기) + 브랜드 로고,
+//      그 아래 인사 배너("○○님 안녕하세요! / {기업} 글 N개를 모았어요").
+//      → 큰 텍스트가 화면 맨 위에 덜렁 붙지 않고 카드 여백 안쪽 아래에 자리잡는다.
+//      → 기업명 탭하면 바텀시트에서 기업 전환(단일 선택, 고르는 즉시 적용).
+//   ③ 그 아래 작은 드롭다운 필터 칩 `[카테고리 ▾] [정렬 ▾]`
+//      → 탭하면 하단 바텀시트(탭 전환) + 체크 선택 + "N개 글 보기"로 적용.
+//
+//   variant="chips" (검색 화면) — 히어로 카드 없이 `[기업 ▾] [카테고리 ▾] [정렬 ▾]` 칩만.
+//      기업도 카테고리와 **같은 칩 디자인 · 같은 바텀시트 탭**으로 고른다.
 import React, { useMemo, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Check, ChevronDown, RotateCcw } from "lucide-react-native";
+import { Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Check, ChevronDown, RotateCcw, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
-import { TOPIC_META, TOPIC_ORDER } from "@/theme";
+import { TOPIC_META, TOPIC_ORDER, dtype } from "@/theme";
 import type { BlogRow } from "@/types/tables";
 import type { Topic } from "@/types/database";
-import { useArticlesFeedCount } from "@/data";
+import { useArticlesFeedCount, useProfile } from "@/data";
 import { ServiceLogo } from "@/components/distill/ArticleCards";
 
 export type FeedSort = "latest" | "popular";
 type Tab = "blog" | "topic" | "sort";
 
+const W = Dimensions.get("window").width;
+const SHEET_LIST_H = Math.round(Dimensions.get("window").height * 0.46);
+const SORT_LABEL: Record<FeedSort, string> = { latest: "최신순", popular: "인기순" };
+const TAB_LABEL: Record<Tab, string> = { blog: "기업", topic: "카테고리", sort: "정렬" };
+const ALL_BLOGS = "전체 기업";
+
 export interface FilterValue {
-  blogs: Set<string>;
+  blogIds: Set<string>; // 비어 있으면 전체 기업(다중 선택)
   topics: Set<Topic>;
   sort: FeedSort;
 }
+
+/** 화면 진입 기본값(필터 없음). */
+export const emptyFilter = (): FilterValue => ({
+  blogIds: new Set<string>(),
+  topics: new Set<Topic>(),
+  sort: "latest",
+});
 
 export function FilterSheet({
   blogs,
   value,
   onChange,
+  eyebrow = "지금 보는 곳",
+  right,
+  variant = "hero",
 }: {
   blogs: BlogRow[];
   value: FilterValue;
   onChange: (v: FilterValue) => void;
+  /** 큰 기업명 위 작은 안내 문구("여기는" 자리). hero 에서만 쓰인다. */
+  eyebrow?: string;
+  /** 큰 헤더 우측에 놓을 액션(검색 아이콘 등). hero 에서만 쓰인다. */
+  right?: React.ReactNode;
+  /** hero: 큰 기업 드롭다운 + [카테고리][정렬] / chips: [기업][카테고리][정렬] 칩만(검색 화면). */
+  variant?: "hero" | "chips";
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
+  const insets = useSafeAreaInsets();
+  const chipsOnly = variant === "chips";
+  const TABS: Tab[] = chipsOnly ? ["blog", "topic", "sort"] : ["topic", "sort"];
+  const [brandOpen, setBrandOpen] = useState(false);
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<Tab>("blog");
+  const [tab, setTab] = useState<Tab>(chipsOnly ? "blog" : "topic");
   // 시트 안 임시 선택(적용 눌러야 반영).
   const [draft, setDraft] = useState<FilterValue>(value);
+  // 기업 시트도 다중 선택이라 임시 선택 후 "적용"으로 반영한다.
+  const [brandDraft, setBrandDraft] = useState<Set<string>>(value.blogIds);
 
-  const blogLabel =
-    value.blogs.size === 0 ? "기업" : `기업 ${value.blogs.size}`;
-  const topicLabel =
-    value.topics.size === 0 ? "카테고리" : `카테고리 ${value.topics.size}`;
-  const sortLabel = value.sort === "latest" ? "최신순" : "인기순";
+  const picked = blogs.filter((b) => value.blogIds.has(b.id));
+  // 0개=전체, 1개=기업명, 2개 이상="○○ 외 N곳"
+  const brandName =
+    picked.length === 0 ? ALL_BLOGS : picked.length === 1 ? picked[0].name : `${picked[0].name} 외 ${picked.length - 1}곳`;
+  const topicLabel = value.topics.size === 0 ? "카테고리" : `카테고리 ${value.topics.size}`;
+  const blogLabel = value.blogIds.size === 0 ? "기업" : `기업 ${value.blogIds.size}`;
+
+  // 인사 배너용 — 이름 + 지금 보는 기업의 전체 글 수(카테고리 필터와 무관).
+  const myName = useProfile().data?.name?.trim() || "게스트";
+  const brandFilter = useMemo(
+    () => (value.blogIds.size > 0 ? { blogIds: [...value.blogIds] } : {}),
+    [value.blogIds],
+  );
+  const brandTotal = useArticlesFeedCount(brandFilter).data;
+
+  const openBrand = () => {
+    setBrandDraft(new Set(value.blogIds));
+    setBrandOpen(true);
+  };
+  const applyBrand = () => {
+    onChange({ ...value, blogIds: new Set(brandDraft), topics: new Set(value.topics) });
+    setBrandOpen(false);
+  };
+  const toggleBrand = (blogId: string) =>
+    setBrandDraft((p) => {
+      const n = new Set(p);
+      if (n.has(blogId)) n.delete(blogId);
+      else n.add(blogId);
+      return n;
+    });
 
   const openAt = (t: Tab) => {
-    setDraft({ blogs: new Set(value.blogs), topics: new Set(value.topics), sort: value.sort });
+    setDraft({ blogIds: new Set(value.blogIds), topics: new Set(value.topics), sort: value.sort });
     setTab(t);
     setOpen(true);
   };
   const apply = () => {
-    onChange({ blogs: new Set(draft.blogs), topics: new Set(draft.topics), sort: draft.sort });
+    // chips 변형에선 기업도 이 시트에서 고르므로 draft 를 그대로 반영한다.
+    onChange({
+      blogIds: new Set(chipsOnly ? draft.blogIds : value.blogIds),
+      topics: new Set(draft.topics),
+      sort: draft.sort,
+    });
     setOpen(false);
   };
-  const reset = () => setDraft({ blogs: new Set(), topics: new Set(), sort: "latest" });
+  const reset = () =>
+    setDraft((p) => ({
+      blogIds: chipsOnly ? new Set<string>() : p.blogIds,
+      topics: new Set<Topic>(),
+      sort: "latest",
+    }));
 
-  const toggleBlog = (id: string) =>
-    setDraft((p) => {
-      const n = new Set(p.blogs);
-      n.has(id) ? n.delete(id) : n.add(id);
-      return { ...p, blogs: n };
-    });
   const toggleTopic = (t: Topic) =>
     setDraft((p) => {
       const n = new Set(p.topics);
-      n.has(t) ? n.delete(t) : n.add(t);
+      if (n.has(t)) n.delete(t);
+      else n.add(t);
       return { ...p, topics: n };
     });
+  const toggleDraftBlog = (blogId: string) =>
+    setDraft((p) => {
+      const n = new Set(p.blogIds);
+      if (n.has(blogId)) n.delete(blogId);
+      else n.add(blogId);
+      return { ...p, blogIds: n };
+    });
 
-  // 시트의 "N개 글 보기" 실시간 개수(임시 선택 기준).
+  // 시트의 "N개 글 보기" 실시간 개수(기업 + 임시 카테고리 기준).
+  const countBlogIds = chipsOnly ? draft.blogIds : value.blogIds;
   const draftFilter = useMemo(
     () => ({
       ...(draft.topics.size > 0 ? { topics: [...draft.topics] } : {}),
-      ...(draft.blogs.size > 0 ? { blogIds: [...draft.blogs] } : {}),
+      ...(countBlogIds.size > 0 ? { blogIds: [...countBlogIds] } : {}),
     }),
-    [draft.blogs, draft.topics],
+    [draft.topics, countBlogIds],
   );
   const draftCount = useArticlesFeedCount(draftFilter).data;
 
   return (
     <>
-      {/* 드롭다운 칩 바 */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipBar}>
-        <FilterChip label={blogLabel} active={value.blogs.size > 0} onPress={() => openAt("blog")} />
-        <FilterChip label={topicLabel} active={value.topics.size > 0} onPress={() => openAt("topic")} />
-        <FilterChip label={sortLabel} active={value.sort !== "latest"} onPress={() => openAt("sort")} />
-      </ScrollView>
+      {/* ① 상단 유틸 아이콘(카드 바깥) — hero 전용 */}
+      {!chipsOnly && right ? <View style={styles.utilBar}>{right}</View> : null}
 
-      {/* 필터 바텀시트 */}
-      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
-          <Pressable style={[styles.sheet, { backgroundColor: c.surfaceCard }]} onPress={() => {}}>
+      {/* ② 히어로 카드 — 기업 드롭다운이 카드 안쪽 주요 텍스트 (hero 전용) */}
+      {!chipsOnly ? (
+        <View style={[styles.hero, { backgroundColor: c.surfaceSunken }]}>
+          <View style={styles.heroTop}>
+            <Pressable style={styles.brandSelect} onPress={openBrand} hitSlop={6}>
+              <Text style={[styles.eyebrow, { color: c.textMuted }]}>{eyebrow}</Text>
+              <View style={styles.brandLine}>
+                <Text style={[styles.brandName, { color: c.textPrimary }]} numberOfLines={1}>
+                  {brandName}
+                </Text>
+                <ChevronDown size={26} color={c.textPrimary} />
+              </View>
+            </Pressable>
+            {picked.length === 1 ? (
+              <ServiceLogo
+                name={picked[0].name}
+                brandColor={picked[0].brand_color}
+                homepage={picked[0].homepage}
+                blogKey={picked[0].key}
+                size={52}
+              />
+            ) : null}
+          </View>
+
+          {/* 인사 배너 */}
+          <View style={[styles.banner, { backgroundColor: c.primary }]}>
+            <Text style={[styles.bannerTop, { color: c.actionOn }]} numberOfLines={1}>
+              {myName}님 안녕하세요!
+            </Text>
+            <Text style={[styles.bannerMain, { color: c.actionOn }]} numberOfLines={2}>
+              {picked.length === 0 ? "테크 블로그 " : `${brandName}의 `}
+              글 {brandTotal != null ? brandTotal.toLocaleString() : "-"}개를 모았어요.
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      {/* 기업 전환 바텀시트 — hero 의 큰 드롭다운 전용(chips 는 아래 필터 시트의 '기업' 탭 사용) */}
+      <Modal visible={brandOpen} transparent animationType="slide" onRequestClose={() => setBrandOpen(false)}>
+        <Pressable style={styles.backdrop} onPress={() => setBrandOpen(false)}>
+          <Pressable
+            style={[styles.sheet, { backgroundColor: c.surfaceCard, paddingBottom: 16 + insets.bottom }]}
+            onPress={() => {}}
+          >
             <View style={styles.grip}>
               <View style={[styles.gripBar, { backgroundColor: c.hairline }]} />
             </View>
-            <Text style={[styles.sheetTitle, { color: c.textPrimary }]}>필터</Text>
+            <View style={styles.sheetHead}>
+              <Text style={[styles.sheetTitle, { color: c.textPrimary }]}>
+                어떤 기업을 볼까요?
+                {brandDraft.size > 0 ? ` (${brandDraft.size})` : ""}
+              </Text>
+              <Pressable onPress={() => setBrandOpen(false)} hitSlop={10}>
+                <X size={22} color={c.textMuted} />
+              </Pressable>
+            </View>
+            <ScrollView style={{ maxHeight: SHEET_LIST_H }} showsVerticalScrollIndicator={false}>
+              {/* 아무것도 체크 안 하면 전체 — "전체 기업" 행으로 한 번에 해제 */}
+              <PickRow
+                label={ALL_BLOGS}
+                checked={brandDraft.size === 0}
+                onPress={() => setBrandDraft(new Set())}
+              />
+              {blogs.map((b) => (
+                <PickRow
+                  key={b.id}
+                  label={b.name}
+                  checked={brandDraft.has(b.id)}
+                  onPress={() => toggleBrand(b.id)}
+                  left={
+                    <ServiceLogo
+                      name={b.name}
+                      brandColor={b.brand_color}
+                      homepage={b.homepage}
+                      blogKey={b.key}
+                      size={28}
+                    />
+                  }
+                />
+              ))}
+            </ScrollView>
 
-            {/* 탭 */}
+            <View style={[styles.footer, { borderTopColor: c.hairline }]}>
+              <Pressable
+                style={[styles.resetBtn, { borderColor: c.hairline }]}
+                onPress={() => setBrandDraft(new Set())}
+              >
+                <RotateCcw size={16} color={c.textSecondary} />
+                <Text style={[styles.resetText, { color: c.textSecondary }]}>초기화</Text>
+              </Pressable>
+              <Pressable style={[styles.applyBtn, { backgroundColor: c.primary }]} onPress={applyBrand}>
+                <Text style={[styles.applyText, { color: c.actionOn }]}>
+                  {brandDraft.size === 0 ? "전체 기업 보기" : `${brandDraft.size}개 기업 보기`}
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ③ 드롭다운 필터 칩 — chips 변형이면 '기업'도 같은 칩으로 */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.chipScroll}
+        contentContainerStyle={styles.chipBar}
+      >
+        {chipsOnly ? (
+          <FilterChip label={blogLabel} active={value.blogIds.size > 0} onPress={() => openAt("blog")} />
+        ) : null}
+        <FilterChip label={topicLabel} active={value.topics.size > 0} onPress={() => openAt("topic")} />
+        <FilterChip
+          label={SORT_LABEL[value.sort]}
+          active={value.sort !== "latest"}
+          onPress={() => openAt("sort")}
+        />
+      </ScrollView>
+
+      {/* 카테고리/정렬 바텀시트 */}
+      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+        <Pressable style={styles.backdrop} onPress={() => setOpen(false)}>
+          <Pressable
+            style={[styles.sheet, { backgroundColor: c.surfaceCard, paddingBottom: 16 + insets.bottom }]}
+            onPress={() => {}}
+          >
+            <View style={styles.grip}>
+              <View style={[styles.gripBar, { backgroundColor: c.hairline }]} />
+            </View>
+
+            <View style={styles.sheetHead}>
+              <Text style={[styles.sheetTitle, { color: c.textPrimary }]}>필터</Text>
+              <Pressable onPress={() => setOpen(false)} hitSlop={10}>
+                <X size={22} color={c.textMuted} />
+              </Pressable>
+            </View>
+
+            {/* 탭 — 균등 폭 */}
             <View style={[styles.tabs, { borderBottomColor: c.hairline }]}>
-              {(["blog", "topic", "sort"] as const).map((t) => {
+              {TABS.map((t) => {
                 const on = tab === t;
-                const label = t === "blog" ? "기업" : t === "topic" ? "카테고리" : "정렬";
+                const cnt = t === "topic" ? draft.topics.size : t === "blog" ? draft.blogIds.size : 0;
                 return (
                   <Pressable key={t} style={styles.tab} onPress={() => setTab(t)}>
-                    <Text style={[styles.tabText, { color: on ? c.primary : c.textMuted }]}>{label}</Text>
+                    <Text style={[styles.tabText, { color: on ? c.textPrimary : c.textMuted }]}>
+                      {TAB_LABEL[t]}
+                      {cnt > 0 ? ` ${cnt}` : ""}
+                    </Text>
                     {on ? <View style={[styles.tabBar, { backgroundColor: c.primary }]} /> : null}
                   </Pressable>
                 );
               })}
             </View>
 
-            <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
-              {tab === "blog" &&
-                blogs.map((b) => (
-                  <CheckRow
-                    key={b.id}
-                    label={b.name}
-                    checked={draft.blogs.has(b.id)}
-                    onPress={() => toggleBlog(b.id)}
-                    left={<ServiceLogo name={b.name} brandColor={b.brand_color} homepage={b.homepage} blogKey={b.key} size={24} />}
-                  />
+            {/* 선택한 항목 칩 — 탭해서 바로 해제 (chips 변형이면 기업도 함께) */}
+            {draft.topics.size > 0 || (chipsOnly && draft.blogIds.size > 0) ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.pickedScroll}
+                contentContainerStyle={styles.pickedBar}
+              >
+                {chipsOnly
+                  ? blogs
+                      .filter((b) => draft.blogIds.has(b.id))
+                      .map((b) => (
+                        <Pressable
+                          key={`b:${b.id}`}
+                          onPress={() => toggleDraftBlog(b.id)}
+                          style={[styles.pickedChip, { backgroundColor: c.primaryTint, borderColor: c.primary }]}
+                        >
+                          <Text style={[styles.pickedText, { color: c.primary }]}>{b.name}</Text>
+                          <X size={13} color={c.primary} />
+                        </Pressable>
+                      ))
+                  : null}
+                {TOPIC_ORDER.filter((t) => draft.topics.has(t)).map((t) => (
+                  <Pressable
+                    key={t}
+                    onPress={() => toggleTopic(t)}
+                    style={[styles.pickedChip, { backgroundColor: c.primaryTint, borderColor: c.primary }]}
+                  >
+                    <Text style={[styles.pickedText, { color: c.primary }]}>{TOPIC_META[t].label}</Text>
+                    <X size={13} color={c.primary} />
+                  </Pressable>
                 ))}
+              </ScrollView>
+            ) : null}
+
+            <ScrollView style={{ maxHeight: SHEET_LIST_H }} showsVerticalScrollIndicator={false}>
+              {tab === "blog" && (
+                <>
+                  <PickRow
+                    label={ALL_BLOGS}
+                    checked={draft.blogIds.size === 0}
+                    onPress={() => setDraft((p) => ({ ...p, blogIds: new Set<string>() }))}
+                  />
+                  {blogs.map((b) => (
+                    <PickRow
+                      key={b.id}
+                      label={b.name}
+                      checked={draft.blogIds.has(b.id)}
+                      onPress={() => toggleDraftBlog(b.id)}
+                      left={
+                        <ServiceLogo
+                          name={b.name}
+                          brandColor={b.brand_color}
+                          homepage={b.homepage}
+                          blogKey={b.key}
+                          size={28}
+                        />
+                      }
+                    />
+                  ))}
+                </>
+              )}
               {tab === "topic" &&
                 TOPIC_ORDER.map((t) => (
-                  <CheckRow key={t} label={TOPIC_META[t].label} checked={draft.topics.has(t)} onPress={() => toggleTopic(t)} />
+                  <PickRow
+                    key={t}
+                    label={TOPIC_META[t].label}
+                    checked={draft.topics.has(t)}
+                    onPress={() => toggleTopic(t)}
+                  />
                 ))}
               {tab === "sort" &&
                 (["latest", "popular"] as const).map((s) => (
-                  <CheckRow
+                  <PickRow
                     key={s}
-                    label={s === "latest" ? "최신순" : "인기순"}
+                    label={SORT_LABEL[s]}
                     checked={draft.sort === s}
                     radio
                     onPress={() => setDraft((p) => ({ ...p, sort: s }))}
@@ -136,10 +394,10 @@ export function FilterSheet({
             </ScrollView>
 
             {/* 하단: 초기화 + N개 글 보기 */}
-            <View style={styles.footer}>
-              <Pressable style={styles.resetBtn} onPress={reset} hitSlop={6}>
-                <RotateCcw size={16} color={c.textMuted} />
-                <Text style={[styles.resetText, { color: c.textMuted }]}>초기화</Text>
+            <View style={[styles.footer, { borderTopColor: c.hairline }]}>
+              <Pressable style={[styles.resetBtn, { borderColor: c.hairline }]} onPress={reset}>
+                <RotateCcw size={16} color={c.textSecondary} />
+                <Text style={[styles.resetText, { color: c.textSecondary }]}>초기화</Text>
               </Pressable>
               <Pressable style={[styles.applyBtn, { backgroundColor: c.primary }]} onPress={apply}>
                 <Text style={[styles.applyText, { color: c.actionOn }]}>
@@ -165,13 +423,16 @@ function FilterChip({ label, active, onPress }: { label: string; active: boolean
         { backgroundColor: active ? c.primaryTint : c.surfaceCard, borderColor: active ? c.primary : c.hairline },
       ]}
     >
-      <Text style={[styles.chipText, { color: active ? c.primary : c.textSecondary }]}>{label}</Text>
+      <Text style={[styles.chipText, { color: active ? c.primary : c.textSecondary }]} numberOfLines={1}>
+        {label}
+      </Text>
       <ChevronDown size={15} color={active ? c.primary : c.textMuted} />
     </Pressable>
   );
 }
 
-function CheckRow({
+/** 시트 옵션 행 — 체크(원형)가 맨 왼쪽, 그다음 로고/라벨. */
+function PickRow({
   label,
   checked,
   onPress,
@@ -188,53 +449,135 @@ function CheckRow({
   const c = theme.colors;
   return (
     <Pressable style={styles.row} onPress={onPress}>
-      {left}
-      <Text style={[styles.rowLabel, { color: c.textPrimary }]}>{label}</Text>
       <View
         style={[
-          radio ? styles.radio : styles.box,
-          checked ? { backgroundColor: c.primary, borderColor: c.primary } : { borderColor: c.hairline },
+          styles.mark,
+          checked
+            ? radio
+              ? { borderColor: c.primary }
+              : { backgroundColor: c.primary, borderColor: c.primary }
+            : { borderColor: c.hairline },
         ]}
       >
-        {checked ? <Check size={14} color={c.actionOn} /> : null}
+        {checked ? (
+          radio ? (
+            <View style={[styles.radioDot, { backgroundColor: c.primary }]} />
+          ) : (
+            <Check size={14} color={c.actionOn} strokeWidth={3} />
+          )
+        ) : null}
       </View>
+      {left}
+      <Text
+        style={[
+          styles.rowLabel,
+          { color: checked ? c.textPrimary : c.textSecondary, fontWeight: checked ? "700" : "500" },
+        ]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  chipBar: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
+  // ① 상단 유틸 아이콘 줄 — 카드 위, 이미지의 우측 상단 아이콘 자리.
+  utilBar: { flexDirection: "row", justifyContent: "flex-end", alignItems: "center", paddingHorizontal: 12 },
+
+  // ② 히어로 카드 — 큰 기업명이 카드 여백 안쪽(위에서 한 칸 내려온 자리)에 놓인다.
+  hero: { marginHorizontal: 16, borderRadius: 20, padding: 18, paddingTop: 20, gap: 16 },
+  heroTop: { flexDirection: "row", alignItems: "center", gap: 12 },
+  brandSelect: { flex: 1 },
+  eyebrow: { ...dtype.bodyS, marginBottom: 2 },
+  brandLine: { flexDirection: "row", alignItems: "center", gap: 4 },
+  brandName: { ...dtype.display, maxWidth: W * 0.52 },
+
+  banner: { borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, gap: 3 },
+  bannerTop: { ...dtype.bodyS, fontWeight: "700", opacity: 0.9 },
+  bannerMain: { ...dtype.cardTitle, fontWeight: "700" },
+
+  // ③ 하위 필터 칩 — flexGrow:0 으로 세로로 눌리지 않게, 칩은 minHeight 로 글자 잘림 방지.
+  //    ↳ 칩이 세로로 잘려 보이지 않게 위아래 여백을 넉넉히 준다(특히 하단).
+  chipScroll: { flexGrow: 0 },
+  chipBar: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 12,
+    paddingRight: 24,
+    gap: 8,
+    alignItems: "center",
+  },
   chip: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 4,
     borderWidth: 1,
     borderRadius: 999,
     paddingLeft: 14,
     paddingRight: 10,
-    paddingVertical: 8,
+    minHeight: 36,
   },
-  chipText: { fontSize: 13, lineHeight: 18, fontWeight: "700" },
+  chipText: { fontSize: 13, lineHeight: 20, fontWeight: "700" },
 
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
-  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 20 },
+  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20 },
   grip: { alignItems: "center", paddingTop: 10 },
   gripBar: { width: 40, height: 4, borderRadius: 2 },
-  sheetTitle: { fontSize: 18, lineHeight: 24, fontWeight: "800", paddingHorizontal: 20, paddingTop: 8 },
+  sheetHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 6,
+  },
+  sheetTitle: { ...dtype.title, fontWeight: "800" },
 
-  tabs: { flexDirection: "row", borderBottomWidth: 1, marginTop: 12, paddingHorizontal: 8 },
-  tab: { paddingHorizontal: 16, paddingVertical: 12 },
-  tabText: { fontSize: 15, lineHeight: 20, fontWeight: "700" },
-  tabBar: { position: "absolute", bottom: -1, left: 12, right: 12, height: 2, borderRadius: 2 },
+  tabs: { flexDirection: "row", borderBottomWidth: 1, marginTop: 6 },
+  tab: { flex: 1, alignItems: "center", paddingVertical: 13 },
+  tabText: { fontSize: 15, lineHeight: 21, fontWeight: "700" },
+  tabBar: { position: "absolute", bottom: -1, left: 0, right: 0, height: 2.5, borderRadius: 2 },
 
-  row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 13, paddingHorizontal: 20 },
-  rowLabel: { flex: 1, fontSize: 15, lineHeight: 20, fontWeight: "500" },
-  box: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
-  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  pickedScroll: { flexGrow: 0 },
+  pickedBar: { paddingHorizontal: 20, paddingVertical: 10, gap: 6, alignItems: "center" },
+  pickedChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingLeft: 11,
+    paddingRight: 8,
+    minHeight: 30,
+  },
+  pickedText: { fontSize: 12.5, lineHeight: 18, fontWeight: "700" },
 
-  footer: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 20, paddingTop: 12 },
-  resetBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 8 },
-  resetText: { fontSize: 13, fontWeight: "600" },
-  applyBtn: { flex: 1, borderRadius: 12, paddingVertical: 15, alignItems: "center" },
-  applyText: { fontSize: 15, lineHeight: 20, fontWeight: "700" },
+  row: { flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 12, paddingHorizontal: 20 },
+  rowLabel: { flex: 1, fontSize: 15, lineHeight: 21 },
+  mark: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  radioDot: { width: 11, height: 11, borderRadius: 6 },
+
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
+  resetBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    minHeight: 50,
+  },
+  resetText: { fontSize: 14, lineHeight: 20, fontWeight: "700" },
+  applyBtn: { flex: 1, borderRadius: 12, alignItems: "center", justifyContent: "center", minHeight: 50 },
+  applyText: { fontSize: 15, lineHeight: 21, fontWeight: "700" },
 });

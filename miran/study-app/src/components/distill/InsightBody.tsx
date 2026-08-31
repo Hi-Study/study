@@ -23,6 +23,10 @@ const FIELDS: { key: keyof InsightData; label: string }[] = [
   { key: "similar", label: "비슷한 사례" },
 ];
 
+// 카드 미리보기(compact)에서 항목당 보여줄 최대 줄 수 / 질문 최대 개수.
+const PREVIEW_LINES = 3;
+const PREVIEW_QUESTIONS = 2;
+
 export function InsightBody({
   insight,
   compact = false,
@@ -34,13 +38,16 @@ export function InsightBody({
   const c = theme.colors;
   if (!insight) return null;
 
-  // compact: 카드 미리보기 — 핵심만(라벨 포함). 전체: 값이 있는 모든 항목.
-  const fields = (compact ? FIELDS.slice(0, 1) : FIELDS).filter(
+  // 값이 있는 항목은 compact 여부와 무관하게 **전부** 타이틀+내용으로 보여준다.
+  // compact(카드 미리보기)는 "항목을 줄이는" 게 아니라 "항목별 길이를 줄이는" 모드.
+  const fields = FIELDS.filter(
     (f) => typeof insight[f.key] === "string" && (insight[f.key] as string).trim(),
   );
-  const questions = Array.isArray(insight.questions)
+  const allQuestions = Array.isArray(insight.questions)
     ? insight.questions.filter((q) => q && q.trim())
     : [];
+  const questions = compact ? allQuestions.slice(0, PREVIEW_QUESTIONS) : allQuestions;
+  const moreQuestions = allQuestions.length - questions.length;
 
   return (
     <View style={styles.wrap}>
@@ -49,20 +56,27 @@ export function InsightBody({
           <Text style={[styles.label, { color: c.primary }]}>{f.label}</Text>
           <Text
             style={[styles.value, { color: c.textPrimary }]}
-            numberOfLines={compact ? 4 : undefined}
+            numberOfLines={compact ? PREVIEW_LINES : undefined}
           >
             {insight[f.key] as string}
           </Text>
         </View>
       ))}
-      {!compact && questions.length > 0 ? (
+      {questions.length > 0 ? (
         <View style={styles.field}>
           <Text style={[styles.label, { color: c.primary }]}>떠오른 질문</Text>
           {questions.map((qv, i) => (
-            <Text key={i} style={[styles.value, { color: c.textPrimary }]}>
+            <Text
+              key={i}
+              style={[styles.value, { color: c.textPrimary }]}
+              numberOfLines={compact ? PREVIEW_LINES : undefined}
+            >
               · {qv}
             </Text>
           ))}
+          {moreQuestions > 0 ? (
+            <Text style={[styles.more, { color: c.textMuted }]}>+{moreQuestions}개 더</Text>
+          ) : null}
         </View>
       ) : null}
     </View>
@@ -72,6 +86,7 @@ export function InsightBody({
 const styles = StyleSheet.create({
   wrap: { gap: 14 },
   field: { gap: 5 },
-  label: { ...dtype.label, fontSize: 12, letterSpacing: 0.2, lineHeight: 16 },
+  label: { ...dtype.label, fontSize: 12, letterSpacing: 0.2, lineHeight: 17 },
   value: { ...dtype.body, lineHeight: 23 },
+  more: { ...dtype.meta, marginTop: 2 },
 });

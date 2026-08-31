@@ -88,6 +88,9 @@ export function useToggleReaction(targetType: ReactionTarget, targetId: string) 
       } else if (targetType === "opinion") {
         qc.invalidateQueries({ queryKey: qk.opinion(targetId) });
         qc.invalidateQueries({ queryKey: qk.opinionsFeed() });
+      } else if (targetType === "community") {
+        qc.invalidateQueries({ queryKey: qk.communityPost(targetId) });
+        qc.invalidateQueries({ queryKey: qk.communityPosts() });
       }
     },
   });

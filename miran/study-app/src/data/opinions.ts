@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { qk } from "@/lib/queryKeys";
 import { useUid } from "@/auth/AuthProvider";
+import { isMissingColumnError } from "@/lib/pgError";
 import type { Insight } from "@/lib/insight";
 import type { Topic } from "@/types/database";
 
@@ -97,14 +98,20 @@ export interface OpinionFeedItem extends OpinionWithAuthor {
 const OPINION_SELECT =
   "*, author:users(name, role_title), article:articles(id, title, og_image, topic, url, summary, blog:blogs(id, key, name, brand_color, homepage))";
 
-/** 전체 의견 피드 — 작성자 + 출처 글 요약 포함. 인기순(like_count) 또는 최신순. */
+/** 전체 의견 피드 — 작성자 + 출처 글 요약 포함. 인기순(like_count) 또는 최신순.
+ *  like_count 는 스키마 §11 컬럼이라 SQL 미적용 DB 에선 없다 → 그 경우 최신순으로 폴백해
+ *  "인기 인사이트" 섹션이 통째로 비지 않게 한다. */
 export async function listOpinionsFeed(sort: OpinionSort = "latest"): Promise<OpinionFeedItem[]> {
-  const base = supabase.from("opinions").select(OPINION_SELECT).limit(50);
-  const query =
-    sort === "popular"
+  const build = (byLike: boolean) => {
+    const base = supabase.from("opinions").select(OPINION_SELECT).limit(50);
+    return byLike
       ? base.order("like_count", { ascending: false }).order("created_at", { ascending: false })
       : base.order("created_at", { ascending: false });
-  const { data, error } = await query;
+  };
+  let { data, error } = await build(sort === "popular");
+  if (error && sort === "popular" && isMissingColumnError(error)) {
+    ({ data, error } = await build(false));
+  }
   if (error) throw error;
   return (data ?? []) as unknown as OpinionFeedItem[];
 }

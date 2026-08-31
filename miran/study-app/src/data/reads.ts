@@ -24,16 +24,21 @@ export async function listReadIds(uid: string): Promise<string[]> {
   return (data ?? []).map((r) => r.article_id);
 }
 
-export async function listMyReads(uid: string): Promise<ArticleWithBlog[]> {
+/** 읽은 글 + **읽은 날짜**(read_at). 활동 캘린더/그날 활동 화면에서 날짜별로 묶는 데 쓴다. */
+export interface MyReadArticle extends ArticleWithBlog {
+  read_at: string | null;
+}
+
+export async function listMyReads(uid: string): Promise<MyReadArticle[]> {
   const { data, error } = await supabase
     .from("article_reads")
     .select("created_at, article:articles(*, blog:blogs(key, name, brand_color))")
     .eq("user_id", uid)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return ((data ?? []) as unknown as { article: ArticleWithBlog | null }[])
-    .map((r) => r.article)
-    .filter((a): a is ArticleWithBlog => Boolean(a));
+  return ((data ?? []) as unknown as { created_at: string | null; article: ArticleWithBlog | null }[])
+    .filter((r): r is { created_at: string | null; article: ArticleWithBlog } => Boolean(r.article))
+    .map((r) => ({ ...r.article, read_at: r.created_at }));
 }
 
 /** 조회수 +1 — 글 상세 진입 시 1회 호출(RPC, 서버 권한으로 articles.view_count 갱신). */

@@ -1,4 +1,5 @@
-// distill 커뮤니티 자유글 작성 — 제목 + 감상문(인사이트와 동일 항목). 인사이트 탭 > 커뮤니티 FAB.
+// distill 커뮤니티 자유글 작성 — **제목 + 내용**만. 인사이트 탭 > 커뮤니티 FAB.
+//   (독후감 항목이 있는 글은 "인사이트 공유"(CreateArticle)로 쓴다. 자유글은 형식 없이 자유롭게.)
 import React, { useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -16,47 +17,7 @@ import { ChevronLeft } from "lucide-react-native";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
 import { useCreateCommunityPost } from "@/data";
-import { cleanInsight, EMPTY_INSIGHT, type Insight } from "@/lib/insight";
 import { dtype } from "@/theme";
-
-function Field({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  required,
-  multiline = true,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (t: string) => void;
-  placeholder?: string;
-  required?: boolean;
-  multiline?: boolean;
-}) {
-  const { theme } = useTheme();
-  const c = theme.colors;
-  return (
-    <View style={styles.field}>
-      <Text style={[styles.label, { color: c.textSecondary }]}>
-        {label}
-        {required ? <Text style={{ color: c.primary }}> *</Text> : null}
-      </Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={c.textMuted}
-        multiline={multiline}
-        style={[
-          styles.input,
-          multiline && styles.inputMulti,
-          { color: c.textPrimary, borderColor: c.hairline, backgroundColor: c.surfaceCard },
-        ]}
-      />
-    </View>
-  );
-}
 
 export function CreateCommunityPostScreen() {
   const { theme } = useTheme();
@@ -64,18 +25,13 @@ export function CreateCommunityPostScreen() {
   const nav = useRootNav();
   const create = useCreateCommunityPost();
   const [title, setTitle] = useState("");
-  const [insight, setInsight] = useState<Insight>({ ...EMPTY_INSIGHT });
-  const set = (patch: Partial<Insight>) => setInsight((p) => ({ ...p, ...patch }));
+  const [body, setBody] = useState("");
 
-  const canSubmit = title.trim().length >= 2 && insight.core.trim().length > 0 && !create.isPending;
+  const canSubmit = title.trim().length >= 2 && body.trim().length > 0 && !create.isPending;
 
   const submit = () => {
     if (!canSubmit) return;
-    const clean = cleanInsight(insight);
-    create.mutate(
-      { title: title.trim(), insight: clean ?? insight },
-      { onSuccess: () => nav.goBack() },
-    );
+    create.mutate({ title: title.trim(), body: body.trim() }, { onSuccess: () => nav.goBack() });
   };
 
   return (
@@ -91,7 +47,11 @@ export function CreateCommunityPostScreen() {
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <TextInput
             value={title}
             onChangeText={setTitle}
@@ -100,25 +60,13 @@ export function CreateCommunityPostScreen() {
             style={[styles.title, { color: c.textPrimary, borderBottomColor: c.hairline }]}
             maxLength={100}
           />
-          {/* 인사이트와 동일한 감상문 항목 */}
-          <Field
-            label="인상 깊은 부분"
-            required
-            value={insight.core}
-            onChangeText={(t) => set({ core: t })}
-            placeholder="가장 인상 깊었던 점·생각"
-          />
-          <Field
-            label="접목하고 싶은 방법"
-            value={insight.apply}
-            onChangeText={(t) => set({ apply: t })}
-            placeholder="내 업무·기획에 어떻게 접목할지"
-          />
-          <Field
-            label="질문 · 나누고 싶은 것"
-            value={insight.questions[0] ?? ""}
-            onChangeText={(t) => set({ questions: t ? [t] : [] })}
-            placeholder="함께 나누고 싶은 질문"
+          <TextInput
+            value={body}
+            onChangeText={setBody}
+            placeholder="내용을 자유롭게 적어주세요."
+            placeholderTextColor={c.textMuted}
+            multiline
+            style={[styles.body, { color: c.textPrimary }]}
           />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -140,10 +88,7 @@ const styles = StyleSheet.create({
   submitBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   submitText: { ...dtype.cardTitle, fontSize: 15 },
 
-  content: { padding: 16, gap: 16, flexGrow: 1 },
+  content: { padding: 16, gap: 8, flexGrow: 1 },
   title: { ...dtype.titleL, borderBottomWidth: 1, paddingVertical: 10 },
-  field: { gap: 8 },
-  label: { ...dtype.label, fontSize: 13 },
-  input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, ...dtype.body },
-  inputMulti: { minHeight: 64, textAlignVertical: "top" },
+  body: { ...dtype.body, minHeight: 260, paddingTop: 8, textAlignVertical: "top" },
 });

@@ -2,7 +2,7 @@
 //   인사이트: 사람들의 독후감(의견) 모아보기(기업·주제·정렬 필터).
 //   커뮤니티: 자유글. 글쓰기 FAB는 커뮤니티에만.
 import React, { useMemo, useState } from "react";
-import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { FlatList, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FileText, Link2, PenLine, Search, X } from "lucide-react-native";
 
@@ -10,12 +10,9 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
 import { useOpinionsFeed, useBlogs, useCommunityPosts } from "@/data";
 import { dtype } from "@/theme";
-import type { CommunityPost } from "@/data/community";
 import { OpinionCard } from "@/components/distill/OpinionCard";
-import { FilterSheet, type FilterValue } from "@/components/distill/FilterSheet";
-import { InsightBody, type InsightData } from "@/components/distill/InsightBody";
-import { relativeDate } from "@/components/distill/ArticleCards";
-import { Avatar } from "@/components/Avatar";
+import { CommunityCard } from "@/components/distill/CommunityCard";
+import { FilterSheet, emptyFilter, type FilterValue } from "@/components/distill/FilterSheet";
 import { Loading, ErrorState, EmptyState } from "@/components";
 
 type MainTab = "insight" | "community";
@@ -27,7 +24,7 @@ export function DiscussScreen() {
 
   const [mainTab, setMainTab] = useState<MainTab>("insight");
   const [writeOpen, setWriteOpen] = useState(false);
-  const [filter, setFilter] = useState<FilterValue>({ blogs: new Set(), topics: new Set(), sort: "latest" });
+  const [filter, setFilter] = useState<FilterValue>(emptyFilter);
 
   const blogsQ = useBlogs();
   const q = useOpinionsFeed(filter.sort);
@@ -37,10 +34,10 @@ export function DiscussScreen() {
   const filtered = useMemo(() => {
     return list.filter((o) => {
       if (filter.topics.size > 0 && !(o.article?.topic && filter.topics.has(o.article.topic))) return false;
-      if (filter.blogs.size > 0 && !filter.blogs.has(o.article?.blog?.id ?? "")) return false;
+      if (filter.blogIds.size > 0 && !filter.blogIds.has(o.article?.blog?.id ?? "")) return false;
       return true;
     });
-  }, [list, filter.topics, filter.blogs]);
+  }, [list, filter.topics, filter.blogIds]);
 
   const countLabel = `${filtered.length.toLocaleString()}개`;
 
@@ -71,8 +68,13 @@ export function DiscussScreen() {
 
       {mainTab === "insight" ? (
         <>
-          {/* 컬리식 필터(피드와 동일) */}
-          <FilterSheet blogs={blogsQ.data ?? []} value={filter} onChange={setFilter} />
+          {/* 큰 기업 드롭다운 + 카테고리/정렬 필터(피드와 동일) */}
+          <FilterSheet
+            blogs={blogsQ.data ?? []}
+            value={filter}
+            onChange={setFilter}
+            eyebrow="지금 보는 곳"
+          />
 
           {/* 개수 */}
           <View style={styles.filterRow}>
@@ -124,7 +126,12 @@ export function DiscussScreen() {
             <FlatList
               data={communityQ.data ?? []}
               keyExtractor={(p) => p.id}
-              renderItem={({ item }) => <CommunityCard post={item} />}
+              renderItem={({ item }) => (
+                <CommunityCard
+                  post={item}
+                  onPress={() => nav.navigate("CommunityPostDetail", { postId: item.id })}
+                />
+              )}
               contentContainerStyle={styles.listContent}
               ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
               showsVerticalScrollIndicator={false}
@@ -193,46 +200,6 @@ export function DiscussScreen() {
   );
 }
 
-function CommunityCard({ post }: { post: CommunityPost }) {
-  const { theme } = useTheme();
-  const c = theme.colors;
-  return (
-    <View style={[styles.cCard, { backgroundColor: c.surfaceCard, borderColor: c.hairline }]}>
-      <View style={styles.cHead}>
-        <Avatar name={post.author?.name ?? "게스트"} size={28} />
-        <Text style={[styles.cAuthor, { color: c.textSecondary }]}>{post.author?.name ?? "게스트"}</Text>
-        <Text style={[styles.cDate, { color: c.textMuted }]}>{relativeDate(post.created_at)}</Text>
-      </View>
-      <Text style={[styles.cTitle, { color: c.textPrimary }]} numberOfLines={2}>
-        {post.title}
-      </Text>
-      {post.insight && (post.insight as { core?: string }).core ? (
-        <InsightBody insight={post.insight as InsightData} />
-      ) : post.body ? (
-        <Text style={[styles.cBody, { color: c.textSecondary }]} numberOfLines={3}>
-          {post.body}
-        </Text>
-      ) : null}
-    </View>
-  );
-}
-
-function Chip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  const { theme } = useTheme();
-  const c = theme.colors;
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[
-        styles.chip,
-        { backgroundColor: active ? c.primary : c.surfaceSunken, borderColor: active ? c.primary : c.hairline },
-      ]}
-    >
-      <Text style={[styles.chipText, { color: active ? c.actionOn : c.textSecondary }]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   header: {
@@ -243,17 +210,14 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 4,
   },
-  title: { ...dtype.display },
+  // 화면 제목은 한 단계 낮춰서, "기업 드롭다운"이 화면에서 제일 큰 요소가 되게 한다.
+  title: { ...dtype.title },
   searchUtil: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
 
   mainTabs: { flexDirection: "row", borderBottomWidth: 1, marginBottom: 4 },
   mainTab: { flex: 1, alignItems: "center", paddingVertical: 12 },
   mainTabText: { ...dtype.cardTitle, fontSize: 15 },
   mainTabBar: { position: "absolute", bottom: -1, height: 2, left: "25%", right: "25%", borderRadius: 2 },
-
-  sortSeg: { flexDirection: "row", borderRadius: 10, padding: 3, gap: 2 },
-  sortBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  sortBtnText: { ...dtype.label, fontSize: 12.5, fontWeight: "700" },
 
   filterRow: {
     flexDirection: "row",
@@ -265,18 +229,7 @@ const styles = StyleSheet.create({
   },
   countText: { ...dtype.label, fontSize: 13, fontWeight: "700" },
 
-  chips: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
-  chipText: { fontSize: 13, lineHeight: 18, fontWeight: "700" },
-
   listContent: { paddingHorizontal: 16, paddingVertical: 12, paddingBottom: 32 },
-
-  cCard: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 8 },
-  cHead: { flexDirection: "row", alignItems: "center", gap: 8 },
-  cAuthor: { ...dtype.label, fontSize: 13, flex: 1 },
-  cDate: { ...dtype.meta },
-  cTitle: { ...dtype.cardTitle, fontSize: 15 },
-  cBody: { ...dtype.bodyS, lineHeight: 20 },
 
   fab: {
     position: "absolute",
