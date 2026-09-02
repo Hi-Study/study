@@ -30,8 +30,37 @@ export type Topic =
   | "planning"
   | "data_ai"
   | "infra"
-  | "career";
+  | "career"
+  | "marketing";
 export type CollectMethod = "rss_full" | "rss_scrape" | "nuxt" | "listscrape";
+/** 수집 소스 성격 — 개발 글 밖의 소스를 구분한다(홈 로고 그리드 묶음). */
+export type BlogKind = "tech" | "design" | "product" | "culture";
+/** 온보딩에서 받는 직무. 역할별 요약·직군 배지·단어장 개인화가 전부 이 값을 쓴다. */
+export type JobRole = "planner" | "designer" | "marketer" | "dev" | "data" | "other";
+/** 글 난이도 배지 — 사람을 등급 매기지 않고 '글의 성격'을 말한다. */
+export type ArticleLevel = "easy" | "terms" | "code";
+/** 원탭 스탬프 — 글을 다 읽고 버튼 하나만 누르는 반응. */
+export type StampKind = "apply" | "reason" | "disagree" | "hard";
+
+/**
+ * 결정 카드 — "어떤 테크를 썼나"가 아니라 "어떤 문제를 어떻게 풀었나".
+ * 수집 시 AI 배치가 채우고, 본문에 트레이드오프 서술이 없으면 null 로 둔다(억지로 만들지 않는다).
+ */
+export interface ArticleDecision {
+  problem: string; // 무슨 문제를 만났나
+  constraint: string; // 어떤 제약이 있었나
+  chosen: string; // 선택한 방법
+  rejected: string; // 버린 대안 ← 인사이트 질문 1개가 여기서 나온다
+  metric: string; // 결과 지표(숫자가 있으면 숫자로)
+}
+
+/** 본문 용어 풀이 — 단어를 누른 것 자체가 '이 영역에 약하다'는 신호가 된다. */
+export interface ArticleTerm {
+  term: string; // 본문에 등장한 용어
+  plain: string; // 한 줄 설명(1단)
+  why: string; // 이 글에서 왜 중요한지
+  domain: string; // dev/design/marketing/data/infra/product/biz
+}
 export type ReactionTarget = "opinion" | "comment" | "article" | "community";
 
 export interface Database {
@@ -42,6 +71,8 @@ export interface Database {
           id: string;
           name: string;
           role_title: string | null;
+          job_role: JobRole | null;
+          onboarded_at: string | null;
           theme: string;
           created_at: string;
         };
@@ -49,6 +80,8 @@ export interface Database {
           id: string;
           name?: string;
           role_title?: string | null;
+          job_role?: JobRole | null;
+          onboarded_at?: string | null;
           theme?: string;
           created_at?: string;
         };
@@ -64,6 +97,7 @@ export interface Database {
           homepage: string | null;
           rss_url: string | null;
           collect: CollectMethod;
+          kind: BlogKind;
           brand_color: string | null;
           active: boolean;
           last_collected_at: string | null;
@@ -76,6 +110,7 @@ export interface Database {
           homepage?: string | null;
           rss_url?: string | null;
           collect?: CollectMethod;
+          kind?: BlogKind;
           brand_color?: string | null;
           active?: boolean;
           last_collected_at?: string | null;
@@ -98,6 +133,11 @@ export interface Database {
           og_image: string | null;
           topic: Topic | null;
           tags: string[];
+          level: ArticleLevel | null;
+          read_minutes: number | null;
+          decision: ArticleDecision | null;
+          question: string | null;
+          terms: ArticleTerm[];
           ai_summaries: Record<string, string>;
           like_count: number;
           view_count: number;
@@ -117,6 +157,11 @@ export interface Database {
           og_image?: string | null;
           topic?: Topic | null;
           tags?: string[];
+          level?: ArticleLevel | null;
+          read_minutes?: number | null;
+          decision?: ArticleDecision | null;
+          question?: string | null;
+          terms?: ArticleTerm[];
           ai_summaries?: Record<string, string>;
           like_count?: number;
           view_count?: number;
@@ -208,7 +253,11 @@ export interface Database {
           term: string;
           reading: string | null;
           definition: string | null;
+          easy_definition: string | null;
           context: string | null;
+          domain: string | null;
+          job_role: JobRole | null;
+          hit_count: number;
           created_at: string;
         };
         Insert: {
@@ -218,7 +267,11 @@ export interface Database {
           term: string;
           reading?: string | null;
           definition?: string | null;
+          easy_definition?: string | null;
           context?: string | null;
+          domain?: string | null;
+          job_role?: JobRole | null;
+          hit_count?: number;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["user_words"]["Insert"]>;
@@ -270,6 +323,13 @@ export interface Database {
         Row: { user_id: string; article_id: string; created_at: string };
         Insert: { user_id: string; article_id: string; created_at?: string };
         Update: Partial<Database["public"]["Tables"]["article_reads"]["Insert"]>;
+        Relationships: [];
+      };
+      // ---- distill: 원탭 스탬프(글 다 읽고 누르는 반응) ----
+      article_stamps: {
+        Row: { user_id: string; article_id: string; kind: StampKind; created_at: string };
+        Insert: { user_id: string; article_id: string; kind: StampKind; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["article_stamps"]["Insert"]>;
         Relationships: [];
       };
       community_posts: {
@@ -629,6 +689,31 @@ export interface Database {
       increment_article_view: {
         Args: { aid: string };
         Returns: undefined;
+      };
+      // 글별 원탭 스탬프 집계(카드/상세의 "💡 12").
+      article_stamp_counts: {
+        Args: { p_article_ids: string[] };
+        Returns: { article_id: string; kind: StampKind; cnt: number }[];
+      };
+      // 연속 읽기(벌칙 없음) + 이번 달 누적. streak 이 0 이면 화면에서 숨긴다.
+      my_reading_stats: {
+        Args: { p_user_id: string };
+        Returns: {
+          streak_days: number;
+          month_days: number;
+          month_reads: number;
+          month_opinions: number;
+        }[];
+      };
+      // "기획자 12명이 이 글을 읽었어요" — 직군 배지.
+      article_reader_roles: {
+        Args: { p_article_id: string };
+        Returns: { job_role: JobRole; cnt: number }[];
+      };
+      // 내가 자주 막히는 영역 — 단어 클릭 수를 도메인별로 합친 것.
+      my_weak_domains: {
+        Args: { p_user_id: string };
+        Returns: { domain: string; cnt: number }[];
       };
     };
     Enums: Record<string, never>;

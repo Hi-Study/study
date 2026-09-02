@@ -775,3 +775,207 @@ begin
   end if;
   return null;
 end; $$;
+
+-- ============================================================
+-- 24) 온보딩 · 직무(job_role) — 구글 로그인 직후 1화면에서 받는다.
+--     직무 하나로 ①역할별 AI 요약 ②직군 배지("기획자 12명이 읽었어요")
+--     ③단어장 개인화가 전부 돌아간다.
+--     · users.job_role      : 'planner' | 'designer' | 'marketer' | 'dev' | 'data' | 'other'
+--     · users.onboarded_at  : 온보딩 완료 시각(있으면 온보딩 화면을 다시 띄우지 않는다)
+-- ============================================================
+alter table public.users add column if not exists job_role text
+  check (job_role is null or job_role in ('planner','designer','marketer','dev','data','other'));
+alter table public.users add column if not exists onboarded_at timestamptz;
+
+-- 관심 주제에 'marketing' 추가(기존 7주제 + 1). articles.topic 도 동일하게 확장.
+alter table public.user_topics drop constraint if exists user_topics_topic_check;
+alter table public.user_topics
+  add constraint user_topics_topic_check
+  check (topic in ('dev','product','design','planning','data_ai','infra','career','marketing'));
+
+alter table public.articles drop constraint if exists articles_topic_check;
+alter table public.articles
+  add constraint articles_topic_check
+  check (topic is null or topic in
+    ('dev','product','design','planning','data_ai','infra','career','marketing'));
+
+-- ============================================================
+-- 25) 수집 소스 확장 — blogs.kind 로 "개발 글" 밖의 소스를 구분한다.
+--     tech(기술) · design(디자인) · product(프로덕트/기획) · culture(문화·브랜드)
+--     기존 18개는 전부 tech 로 두고, B컷(배민)을 culture 로 추가한다.
+-- ============================================================
+alter table public.blogs add column if not exists kind text not null default 'tech'
+  check (kind in ('tech','design','product','culture'));
+
+-- B컷 by 배민 — WordPress 라 /feed/ 에서 content:encoded(전문)를 준다 → rss_full.
+--   카테고리: Product&Tech / Culture / Impact. 개발 글이 아닌 '판단·문화' 소스라 kind='culture'.
+insert into public.blogs (key, name, homepage, rss_url, collect, brand_color, kind) values
+  ('bcut','B컷 by 배민','https://bcut.baemin.com','https://bcut.baemin.com/feed/','rss_full','#2AC1BC','culture')
+on conflict (key) do update
+  set name = excluded.name, homepage = excluded.homepage, collect = excluded.collect,
+      brand_color = excluded.brand_color, kind = excluded.kind;
+
+create index if not exists idx_blogs_kind on public.blogs(kind) where active;
+
+-- ============================================================
+-- 26) 아티클 메타 — 난이도 배지 · 읽는 시간 · 결정 카드 · 질문 · 용어
+--     전부 수집 시 AI 배치가 채우고, 못 채우면 null 로 두고 화면에서 숨긴다(폴백 안전).
+--     · level        : 'easy'(술술 읽혀요) | 'terms'(용어 몇 개만) | 'code'(코드까지 들어가요)
+--     · read_minutes : 예상 읽기 분
+--     · decision     : {problem, constraint, chosen, rejected, metric} — 결정 카드
+--     · question     : 인사이트 유도 질문 1개.
+--                      **decision.chosen / decision.rejected 가 둘 다 있을 때만 생성**한다.
+--                      억지로 만들지 않는다(없으면 화면은 스탬프만 보여준다).
+--     · terms        : [{term, plain, why, domain}] — 본문 용어 풀이(단어장 연결)
+-- ============================================================
+alter table public.articles add column if not exists level text
+  check (level is null or level in ('easy','terms','code'));
+alter table public.articles add column if not exists read_minutes int;
+alter table public.articles add column if not exists decision jsonb;
+alter table public.articles add column if not exists question text;
+alter table public.articles add column if not exists terms jsonb not null default '[]';
+
+create index if not exists idx_articles_level on public.articles(level);
+
+-- ============================================================
+-- 27) 원탭 스탬프 — 글을 다 읽고 버튼 하나만 누르는 반응.
+--     인사이트를 못 쓰는 다수에게서 큐레이션 데이터를 얻는 통로.
+--     kind: apply(우리도 써먹겠다) · reason(결정 근거가 인상적)
+--           disagree(반대 의견 있음) · hard(용어가 어려웠다)
+--     한 사람이 한 글에 여러 종류를 누를 수 있다(같은 종류 중복만 막는다).
+-- ============================================================
+create table if not exists public.article_stamps (
+  user_id    uuid not null references public.users(id) on delete cascade,
+  article_id uuid not null references public.articles(id) on delete cascade,
+  kind       text not null check (kind in ('apply','reason','disagree','hard')),
+  created_at timestamptz not null default now(),
+  primary key (user_id, article_id, kind)
+);
+create index if not exists idx_article_stamps_article on public.article_stamps(article_id, kind);
+create index if not exists idx_article_stamps_user on public.article_stamps(user_id, created_at desc);
+
+alter table public.article_stamps enable row level security;
+
+-- 남의 스탬프도 집계로 보여줘야 하므로 읽기는 전체 허용, 쓰기는 본인 것만.
+drop policy if exists stamps_read_all on public.article_stamps;
+create policy stamps_read_all on public.article_stamps for select to authenticated using (true);
+drop policy if exists stamps_write_own on public.article_stamps;
+create policy stamps_write_own on public.article_stamps for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- 글별 스탬프 집계(카드/상세에서 "💡 12" 처럼 표시).
+create or replace function public.article_stamp_counts(p_article_ids uuid[])
+returns table (article_id uuid, kind text, cnt bigint)
+language sql
+stable
+security definer
+set search_path = public
+as $fn$
+  select s.article_id, s.kind, count(*)::bigint
+  from public.article_stamps s
+  where s.article_id = any(p_article_ids)
+  group by s.article_id, s.kind;
+$fn$;
+
+-- ============================================================
+-- 28) 단어장 개인화 — 단어를 누른 것 자체가 "이 영역에 약하다"는 신호.
+--     비개발자 전용 기능이 아니다: 개발자가 '리텐션/코호트/LTV' 를 누르면 대칭으로 작동한다.
+--     · domain          : 단어가 속한 영역(dev/design/marketing/data/infra/product/biz)
+--     · easy_definition : "더 쉽게" 2단 설명(직무 언어 + 비유). 처음엔 비고 요청 시 채운다
+--     · job_role        : 누를 당시 그 사람의 직무(뜻풀이를 다시 쓸 때 재료)
+--     · hit_count       : 같은 단어를 다시 누른 횟수
+-- ============================================================
+alter table public.user_words add column if not exists domain text;
+alter table public.user_words add column if not exists easy_definition text;
+alter table public.user_words add column if not exists job_role text;
+alter table public.user_words add column if not exists hit_count int not null default 1;
+
+create index if not exists idx_user_words_domain on public.user_words(user_id, domain);
+
+-- 내가 자주 막히는 영역 = 도메인별 단어 클릭 수. 마이 화면 "자주 막히는 영역".
+create or replace function public.my_weak_domains(p_user_id uuid)
+returns table (domain text, cnt bigint)
+language sql
+stable
+security definer
+set search_path = public
+as $fn$
+  select w.domain, sum(w.hit_count)::bigint as cnt
+  from public.user_words w
+  where w.user_id = p_user_id and w.domain is not null
+  group by w.domain
+  order by sum(w.hit_count) desc;
+$fn$;
+
+-- ============================================================
+-- 29) 읽기 기록 통계 — 연속 읽기 배지(벌칙 없음) + 이번 달 누적.
+--     연속이 끊겨도 0 을 보여주지 않는다(화면에서 불꽃만 숨긴다).
+--     ※ article_reads 는 (user_id, article_id) PK 라 같은 글 재독은 날짜가 안 바뀐다.
+--        연속은 '읽은 글이 하나라도 있는 날' 기준이므로 이걸로 충분하다.
+-- ============================================================
+create or replace function public.my_reading_stats(p_user_id uuid)
+returns table (streak_days int, month_days int, month_reads int, month_opinions int)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $fn$
+declare
+  v_streak int := 0;
+  v_day date;
+  v_next date;
+begin
+  -- 연속: 오늘(또는 어제)부터 하루씩 거슬러 올라가며 읽은 날이 이어지는 만큼 센다.
+  -- 오늘 아직 안 읽었어도 어제까지 이어졌으면 유지한다(하루가 끝나기 전에 깎지 않음).
+  select max(d) into v_day
+  from (select distinct (created_at at time zone 'Asia/Seoul')::date as d
+          from public.article_reads where user_id = p_user_id) t
+  where d >= (now() at time zone 'Asia/Seoul')::date - 1;
+
+  while v_day is not null loop
+    v_streak := v_streak + 1;
+    select d into v_next
+    from (select distinct (created_at at time zone 'Asia/Seoul')::date as d
+            from public.article_reads where user_id = p_user_id) t
+    where d = v_day - 1;
+    v_day := v_next;
+    v_next := null;
+  end loop;
+
+  return query
+  select
+    v_streak,
+    (select count(distinct (created_at at time zone 'Asia/Seoul')::date)::int
+       from public.article_reads
+      where user_id = p_user_id
+        and (created_at at time zone 'Asia/Seoul')::date
+            >= date_trunc('month', (now() at time zone 'Asia/Seoul')::date)),
+    (select count(*)::int from public.article_reads
+      where user_id = p_user_id
+        and (created_at at time zone 'Asia/Seoul')::date
+            >= date_trunc('month', (now() at time zone 'Asia/Seoul')::date)),
+    (select count(*)::int from public.opinions
+      where author_id = p_user_id
+        and (created_at at time zone 'Asia/Seoul')::date
+            >= date_trunc('month', (now() at time zone 'Asia/Seoul')::date));
+end;
+$fn$;
+
+-- ============================================================
+-- 30) 직군 배지 — "기획자 12명이 이 글을 읽었어요".
+--     들어와서 개발자만 보이면 비개발자는 바로 나간다. 같은 직군의 존재를 보여준다.
+-- ============================================================
+create or replace function public.article_reader_roles(p_article_id uuid)
+returns table (job_role text, cnt bigint)
+language sql
+stable
+security definer
+set search_path = public
+as $fn$
+  select u.job_role, count(*)::bigint as cnt
+  from public.article_reads r
+  join public.users u on u.id = r.user_id
+  where r.article_id = p_article_id and u.job_role is not null
+  group by u.job_role
+  order by count(*) desc;
+$fn$;

@@ -22,6 +22,7 @@ export type OpinionRow = T["opinions"]["Row"];
 export type OpinionCommentRow = T["opinion_comments"]["Row"];
 export type ArticleHighlightRow = T["article_highlights"]["Row"];
 export type UserTopicRow = T["user_topics"]["Row"];
+export type ArticleStampRow = T["article_stamps"]["Row"];
 
 export type OpinionInsert = T["opinions"]["Insert"];
 export type OpinionCommentInsert = T["opinion_comments"]["Insert"];
