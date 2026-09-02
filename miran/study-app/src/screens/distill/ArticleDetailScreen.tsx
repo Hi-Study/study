@@ -34,7 +34,7 @@ import { dtype, reading , PRETENDARD} from "@/theme";
 import { cleanBody } from "@/lib/text";
 import { safeImageUri } from "@/lib/image";
 import { splitInsightSections, isStructuredInsight, insightCacheKey } from "@/lib/summary";
-import { isUsableQuestion, questionFromDecision } from "@/lib/decision";
+import { questionFromDecision } from "@/lib/decision";
 import { useReadingFontScale, getReadPos, setReadPos, clearReadPos } from "@/lib/readingPrefs";
 import {
   useArticle,
@@ -116,13 +116,11 @@ export function ArticleDetailScreen({ route }: Props) {
   const a = q.data;
   const body = cleanBody(a.body);
 
-  // 인사이트 유도 질문 1개.
-  //   저장된 질문이 검증(선택/버린 대안이 문장에 살아 있는지)을 통과하면 그걸 쓰고,
-  //   아니면 결정 카드에서 직접 조립한다. **둘 다 안 되면 null 이고 화면에 안 띄운다.**
-  //   (회고·문화·인터뷰 글은 트레이드오프 서술이 없어 질문이 안 나온다 — 억지로 만들지 않는다.)
-  const question = isUsableQuestion(a.question, a.decision)
-    ? a.question
-    : questionFromDecision(a.decision, a.blog?.name);
+  // 인사이트 유도 질문 1개 — **저장된 값(articles.question)을 믿지 않고 항상 다시 조립**한다.
+  //   조립 규칙(비교 가능한 한 쌍인지 · 조사)을 고쳤을 때 DB 를 다시 돌리지 않아도
+  //   바로 반영되고, 가드 이전에 저장된 어색한 질문이 화면에 뜨지 않는다.
+  //   결정 카드가 없거나 두 선택지가 비교 대상이 아니면 null → 화면에 안 띄운다.
+  const question = questionFromDecision(a.decision, a.blog?.name);
 
   return (
     <View style={[styles.screen, { backgroundColor: c.surfacePage }]}>

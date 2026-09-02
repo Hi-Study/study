@@ -36,6 +36,52 @@ export function hasDecision(raw: unknown): boolean {
 }
 
 /**
+ * 두 선택지가 **비교 가능한 대안 한 쌍**인지 본다.
+ *
+ * 실측 실패 사례(2026-09-02 enrich 검수):
+ *   "공통 컴포넌트화 대신 공통 컴포넌트로 만들지 않음을 골랐을까요?"
+ *   — 같은 대상을 긍정/부정으로 적은 것이라 질문이 성립하지 않는다.
+ * 엣지 함수(summarize)의 comparablePair 와 **같은 규칙**이다. 한쪽만 고치지 말 것.
+ */
+/** 받침이 있으면 true. 한글이 아닌 끝(영문·숫자)은 false 로 본다. */
+function hasFinalConsonant(word: string): boolean {
+  const ch = word.trim().slice(-1);
+  const code = ch.charCodeAt(0);
+  if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return false;
+  return (code - 0xac00) % 28 !== 0;
+}
+
+/**
+ * 주격 조사 — 받침이 있으면 "은", 없으면 "는".
+ * "올리브영는 왜…", "당근는 왜…" 처럼 틀리던 것을 고친다(실측).
+ */
+export function subjectParticle(word: string): "은" | "는" {
+  return hasFinalConsonant(word) ? "은" : "는";
+}
+
+/**
+ * 목적격 조사 — 받침이 있으면 "을", 없으면 "를".
+ * 이걸 안 하면 "과거 장애 패턴 대조을 골랐을까요?" 처럼 어색해진다(실측).
+ * 한글이 아닌 끝(영문·숫자)은 관용을 따라 "를".
+ */
+export function objectParticle(word: string): "을" | "를" {
+  return hasFinalConsonant(word) ? "을" : "를";
+}
+
+export function comparablePair(chosen: string, rejected: string): boolean {
+  if (!chosen || !rejected) return false;
+  if (chosen.length > 20 || rejected.length > 20) return false; // 문장이면 탈락
+  if (/(선택|도입|적용|채택|사용|변경|전환)$/.test(chosen.trim()) || /(선택|도입|적용|채택|사용|변경|전환)$/.test(rejected.trim())) return false; // 서술형 꼬리
+
+  if (/않|안 하|없이|미사용|제외/.test(chosen + rejected)) return false; // 부정 서술
+  const norm = (v: string) => v.replace(/[\s·]/g, "");
+  const a = norm(chosen);
+  const b = norm(rejected);
+  if (a.includes(b) || b.includes(a)) return false; // 한쪽이 다른 쪽을 포함
+  return a.slice(0, 5) !== b.slice(0, 5); // 앞부분이 같으면 같은 대상
+}
+
+/**
  * 인사이트 유도 질문 1개 — **AI에게 자유 생성시키지 않는다.**
  * 자유 생성은 "이 글의 핵심은?" 같은 어느 글에나 붙는 질문을 낳는다.
  * 좋은 질문은 글 안에 실제로 있는 두 선택지를 이름으로 부른다. 그래서 결정 카드의
@@ -48,10 +94,11 @@ export function questionFromDecision(
   blogName?: string | null,
 ): string | null {
   const d = toDecision(raw);
-  if (!d.chosen || !d.rejected) return null;
+  if (!comparablePair(d.chosen, d.rejected)) return null;
 
-  const subject = blogName?.trim() ? `${blogName.trim()}는 왜 ` : "왜 ";
-  return `${subject}${d.rejected} 대신 ${d.chosen}을 골랐을까요?`;
+  const name = blogName?.trim() ?? "";
+  const subject = name ? `${name}${subjectParticle(name)} 왜 ` : "왜 ";
+  return `${subject}${d.rejected} 대신 ${d.chosen}${objectParticle(d.chosen)} 골랐을까요?`;
 }
 
 /**
@@ -62,7 +109,7 @@ export function isUsableQuestion(question: string | null | undefined, raw: unkno
   const q = (question ?? "").trim();
   if (q.length < 8) return false;
   const d = toDecision(raw);
-  if (!d.chosen || !d.rejected) return false;
+  if (!comparablePair(d.chosen, d.rejected)) return false;
   return q.includes(d.chosen) && q.includes(d.rejected);
 }
 

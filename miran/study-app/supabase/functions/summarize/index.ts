@@ -73,7 +73,12 @@ const LLM_MODELS = [
 
 let lastLlmError: string | null = null;
 
-async function callGroq(text: string, system: string, model: string): Promise<string | null> {
+async function callGroq(
+  text: string,
+  system: string,
+  model: string,
+  maxTokens = 900,
+): Promise<string | null> {
   const apiKey = Deno.env.get("LLM_API_KEY");
   if (!apiKey) {
     lastLlmError = "NO_LLM_API_KEY";
@@ -86,7 +91,7 @@ async function callGroq(text: string, system: string, model: string): Promise<st
       body: JSON.stringify({
         model,
         temperature: 0.2,
-        max_tokens: 900,
+        max_tokens: maxTokens,
         messages: [
           { role: "system", content: system },
           { role: "user", content: text.slice(0, 24000) },
@@ -109,17 +114,32 @@ async function callGroq(text: string, system: string, model: string): Promise<st
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function llmSummarize(text: string, system: string): Promise<string | null> {
-  // 모델 체인을 최대 3회 시도(레이트리밋 429 시 잠깐 대기 후 재시도).
+/**
+ * 429(레이트리밋) 응답은 "Please try again in 17.3025s" 처럼 **얼마나 기다려야 하는지**를
+ * 알려준다. 그 값을 그대로 쓴다. 고정 1.5초 백오프로는 어림도 없었다
+ * (Groq 무료 티어 TPM 8,000 — 긴 본문 한 건이 5,000토큰이라 분당 1건 남짓).
+ */
+function retryAfterMs(err: string | null): number {
+  const m = (err ?? "").match(/try again in ([\d.]+)s/i);
+  if (!m) return 0;
+  return Math.min(Math.ceil(parseFloat(m[1]) * 1000) + 1000, 30000); // 여유 1초, 최대 30초
+}
+
+async function llmSummarize(
+  text: string,
+  system: string,
+  maxTokens = 900,
+): Promise<string | null> {
+  // 모델 체인을 최대 3회 시도(레이트리밋 429 시 응답이 알려준 만큼 대기 후 재시도).
   for (let attempt = 0; attempt < 3; attempt++) {
     for (const model of LLM_MODELS) {
-      const out = await callGroq(text, system, model);
+      const out = await callGroq(text, system, model, maxTokens);
       if (out) return out;
       console.error("[summarize] model fail:", lastLlmError);
     }
-    // 마지막 실패가 레이트리밋이면 백오프 후 재시도, 아니면 중단.
-    if (lastLlmError && lastLlmError.includes("429") && attempt < 2) {
-      await sleep(1500 * (attempt + 1));
+    const wait = retryAfterMs(lastLlmError);
+    if (wait > 0 && attempt < 2) {
+      await sleep(wait);
       continue;
     }
     break;
@@ -309,9 +329,14 @@ const ENRICH_SYS =
   "1) decision 은 **본문에 실제로 쓰인 내용만** 채운다. 특히 rejected(버린 대안)는 글이 " +
   "명시적으로 'A 대신 B' 또는 'A는 ~해서 안 썼다'라고 말한 경우에만 채우고, 아니면 빈 문자열로 둬라. " +
   "추측해서 채우지 마라. 회고·문화·인터뷰 글이면 decision 의 모든 값을 빈 문자열로 둬라.\n" +
-  "2) metric 은 숫자가 있으면 숫자를 그대로 쓴다(예: '실패율 2.1%→0.4%'). 없으면 빈 문자열.\n" +
+  "2) metric 은 **숫자와 단위가 함께 있는 결과**만 쓴다(예: '실패율 2.1%→0.4%', '응답 300ms 단축'). " +
+  "숫자만 덩그러니 있거나 결과가 아니면 빈 문자열로 둬라.\n" +
+  "2-1) chosen 과 rejected 는 **서로 비교 가능한 짧은 명사구**(각 20자 이내)로 쓴다. " +
+  "예: chosen='단일 테이블', rejected='테이블 분리'. " +
+  "'~하지 않음', '~를 만들지 않음' 같은 부정 서술이나 문장은 쓰지 마라. " +
+  "둘이 같은 대상을 가리키게 되면 rejected 를 빈 문자열로 둬라.\n" +
   "3) level: easy=배경지식 없이 읽힘, terms=도메인 용어가 나옴, code=코드/아키텍처 상세가 있음.\n" +
-  "4) terms 는 비전공자가 막힐 용어만 최대 6개. plain 은 한 줄 정의, why 는 이 글에서 왜 중요한지, " +
+  "4) terms 는 비전공자가 막힐 용어만 **최대 4개**. plain 은 한 문장, why 는 반 문장으로 짧게. " +
   "domain 은 dev|infra|data|design|marketing|product|biz 중 하나.\n" +
   "5) 모든 값은 한국어. 문장은 짧게.";
 
@@ -356,9 +381,20 @@ async function enrichArticle(articleId: string) {
   }
   if (!body) return { ok: false, reason: "본문 없음" };
 
-  const raw = await llmSummarize(`제목: ${art.title}\n\n${body.slice(0, 8000)}`, ENRICH_SYS);
-  const parsed = raw ? parseJsonLoose(raw) : null;
-  if (!parsed) return { ok: false, reason: "LLM 파싱 실패" };
+  // 입력은 3,000자로 줄인다 — 결정·난이도·용어는 앞부분으로 대부분 판단되고,
+  // 무료 티어 TPM(8,000) 안에 들어와야 배치가 굴러간다.
+  // 출력은 1,800 토큰 — 900·1,400 에서 JSON 이 중간에 잘려 파싱이 실패했다.
+  const raw = await llmSummarize(
+    `제목: ${art.title}\n\n${body.slice(0, 3000)}`,
+    ENRICH_SYS,
+    1800,
+  );
+  // ⚠️ 실패 원인을 뭉개지 말 것 — 호출 실패(레이트리밋 등)와 JSON 파싱 실패는 대응이 다르다.
+  if (!raw) return { ok: false, reason: "LLM 호출 실패", detail: lastLlmError };
+  const parsed = parseJsonLoose(raw);
+  if (!parsed) {
+    return { ok: false, reason: "JSON 파싱 실패", sample: raw.slice(0, 300) };
+  }
 
   const d = (parsed.decision ?? {}) as Record<string, unknown>;
   const decision = {
@@ -374,9 +410,40 @@ async function enrichArticle(articleId: string) {
   // 질문은 **자유 생성이 아니라 조립**이다. 선택/버린 대안이 둘 다 있을 때만 만들어진다.
   //   자유 생성은 "이 글의 핵심은?" 같은 어느 글에나 붙는 질문을 낳아서 아무도 답하지 않는다.
   const blogName = (art as { blog?: { name?: string } | null }).blog?.name ?? "";
+
+  /**
+   * 두 선택지가 **비교 가능한 대안 한 쌍**인지 본다. 아니면 질문을 만들지 않는다.
+   * 실측 실패 사례: "공통 컴포넌트화 대신 공통 컴포넌트로 만들지 않음을 골랐을까요?"
+   *   — 같은 대상을 긍정/부정으로 쓴 것이라 질문이 성립하지 않는다.
+   */
+  /** 받침 유무 — 한글이 아닌 끝(영문·숫자)은 없음으로 본다. */
+  function hasFinalConsonant(word: string): boolean {
+    const ch = word.trim().slice(-1);
+    const code = ch.charCodeAt(0);
+    if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return false;
+    return (code - 0xac00) % 28 !== 0;
+  }
+
+  /** 조사 — 앱 lib/decision.ts 와 같은 규칙. 한쪽만 고치지 말 것. */
+  const objectParticle = (w: string) => (hasFinalConsonant(w) ? "을" : "를");
+  const subjectParticle = (w: string) => (hasFinalConsonant(w) ? "은" : "는");
+
+  function comparablePair(chosen: string, rejected: string): boolean {
+    if (!chosen || !rejected) return false;
+    if (chosen.length > 20 || rejected.length > 20) return false; // 문장이면 탈락
+    if (/(선택|도입|적용|채택|사용|변경|전환)$/.test(chosen.trim())) return false; // 서술형 꼬리
+    if (/(선택|도입|적용|채택|사용|변경|전환)$/.test(rejected.trim())) return false;
+    if (/않|안 하|없이|미사용|제외/.test(chosen + rejected)) return false; // 부정 서술
+    const norm = (v: string) => v.replace(/[\s·]/g, "");
+    const a = norm(chosen);
+    const b = norm(rejected);
+    if (a.includes(b) || b.includes(a)) return false; // 한쪽이 다른 쪽을 포함
+    return a.slice(0, 5) !== b.slice(0, 5); // 앞부분이 같으면 같은 대상
+  }
+
   const question =
-    hasDecision && decision.rejected
-      ? `${blogName ? `${blogName}는 왜 ` : "왜 "}${decision.rejected} 대신 ${decision.chosen}을 골랐을까요?`
+    hasDecision && comparablePair(decision.chosen, decision.rejected)
+      ? `${blogName ? `${blogName}${subjectParticle(blogName)} 왜 ` : "왜 "}${decision.rejected} 대신 ${decision.chosen}${objectParticle(decision.chosen)} 골랐을까요?`
       : null;
 
   const lvl = str(parsed.level);
@@ -391,7 +458,7 @@ async function enrichArticle(articleId: string) {
           domain: str(t.domain),
         }))
         .filter((t) => t.term && t.plain)
-        .slice(0, 6)
+        .slice(0, 4)
     : [];
 
   await supabase
