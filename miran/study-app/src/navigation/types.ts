@@ -38,7 +38,8 @@ export type RootStackParamList = {
   DistillTabs: NavigatorScreenParams<DistillTabParamList> | undefined;
   ArticleDetail: { articleId: string; focusOpinionId?: string };
   BlogArticles: { blogId: string; blogName: string };
-  CreateOpinion: { articleId: string };
+  // question: 결정 카드에서 조립된 질문 1개(빈 폼 대신 이걸 먼저 보여준다).
+  CreateOpinion: { articleId: string; question?: string };
   OpinionDetail: { opinionId: string };
   CreateArticle: undefined;
   CreateCommunityPost: undefined;

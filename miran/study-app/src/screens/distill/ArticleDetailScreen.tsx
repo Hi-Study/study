@@ -30,10 +30,11 @@ import {
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav, type RootStackParamList } from "@/navigation/types";
-import { dtype } from "@/theme";
+import { dtype, reading , PRETENDARD} from "@/theme";
 import { cleanBody } from "@/lib/text";
 import { safeImageUri } from "@/lib/image";
-import { splitInsightSections, isStructuredInsight } from "@/lib/summary";
+import { splitInsightSections, isStructuredInsight, insightCacheKey } from "@/lib/summary";
+import { isUsableQuestion, questionFromDecision } from "@/lib/decision";
 import { useReadingFontScale, getReadPos, setReadPos, clearReadPos } from "@/lib/readingPrefs";
 import {
   useArticle,
@@ -43,9 +44,14 @@ import {
   useToggleBookmark,
   useMarkArticleRead,
   incrementArticleView,
+  useProfile,
 } from "@/data";
 import { ServiceLogo, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
 import { ArticleHighlightSection } from "@/components/distill/ArticleHighlightSection";
+import { LevelBadge } from "@/components/distill/LevelBadge";
+import { DecisionCard } from "@/components/distill/DecisionCard";
+import { StampBar } from "@/components/distill/StampBar";
+import { ReaderRoles } from "@/components/distill/ReaderRoles";
 import { OpinionThread } from "@/components/distill/OpinionThread";
 import { InsightBody } from "@/components/distill/InsightBody";
 import { Avatar } from "@/components/Avatar";
@@ -61,6 +67,7 @@ export function ArticleDetailScreen({ route }: Props) {
   const q = useArticle(articleId);
   // ⚠️ 훅은 early return 앞에서 무조건 호출 (React 훅 규칙 — 렌더마다 개수 동일).
   const [tab, setTab] = useState<"original" | "opinions">("original");
+  const profile = useProfile(); // 직군 배지에서 "내 직무"를 맨 앞으로 올리는 데 쓴다
   const bookmarked = useIsBookmarked(articleId);
   const toggleBookmark = useToggleBookmark(articleId);
   const markRead = useMarkArticleRead(articleId);
@@ -109,6 +116,14 @@ export function ArticleDetailScreen({ route }: Props) {
   const a = q.data;
   const body = cleanBody(a.body);
 
+  // 인사이트 유도 질문 1개.
+  //   저장된 질문이 검증(선택/버린 대안이 문장에 살아 있는지)을 통과하면 그걸 쓰고,
+  //   아니면 결정 카드에서 직접 조립한다. **둘 다 안 되면 null 이고 화면에 안 띄운다.**
+  //   (회고·문화·인터뷰 글은 트레이드오프 서술이 없어 질문이 안 나온다 — 억지로 만들지 않는다.)
+  const question = isUsableQuestion(a.question, a.decision)
+    ? a.question
+    : questionFromDecision(a.decision, a.blog?.name);
+
   return (
     <View style={[styles.screen, { backgroundColor: c.surfacePage }]}>
       <ScrollView
@@ -143,6 +158,7 @@ export function ArticleDetailScreen({ route }: Props) {
           {/* 주제칩 · 읽기시간 · 공유·북마크 */}
           <View style={styles.metaTop}>
             {a.topic ? <TopicChip topic={a.topic} /> : null}
+            <LevelBadge level={a.level} readMinutes={a.read_minutes} />
             <View style={{ flex: 1 }} />
             <Pressable
               onPress={() => Share.share({ message: `${a.title}\n${a.url}` }).catch(() => undefined)}
@@ -196,6 +212,9 @@ export function ArticleDetailScreen({ route }: Props) {
             {a.blog ? <ChevronRight size={16} color={c.textMuted} /> : null}
           </Pressable>
 
+          {/* 직군 배지 — "기획자 12명이 이 글을 읽었어요". 같은 직군이 보이면 남는다. */}
+          <ReaderRoles articleId={a.id} myRole={profile.data?.job_role} />
+
           {/* 원문 보기 */}
           <Pressable
             style={[styles.sourceLink, { borderColor: c.hairline }]}
@@ -231,10 +250,15 @@ export function ArticleDetailScreen({ route }: Props) {
 
           {tab === "original" ? (
             <View style={styles.originalWrap}>
+              {/* 결정 카드 — "어떤 테크"가 아니라 "무슨 문제를 어떻게 풀었나".
+                  값이 없으면 컴포넌트가 스스로 아무것도 안 그린다. */}
+              <DecisionCard decision={a.decision} />
+
               {/* AI 요약(3관점) — 원문 최상단 고정 */}
               <AiSummaryPanel
                 articleId={a.id}
                 cached={a.ai_summaries as Record<string, string> | null | undefined}
+                jobRole={profile.data?.job_role}
               />
               {body.length > 0 ? (
                 <View style={{ gap: 10 }}>
@@ -245,14 +269,14 @@ export function ArticleDetailScreen({ route }: Props) {
                       hitSlop={6}
                       style={[styles.fontBtn, { borderColor: c.hairline }]}
                     >
-                      <Text style={{ color: c.textSecondary, fontSize: 13, fontWeight: "700" }}>가</Text>
+                      <Text style={{ color: c.textSecondary, fontSize: 13, fontWeight: "700", fontFamily: PRETENDARD["700"] }}>가</Text>
                     </Pressable>
                     <Pressable
                       onPress={() => step(1)}
                       hitSlop={6}
                       style={[styles.fontBtn, { borderColor: c.hairline }]}
                     >
-                      <Text style={{ color: c.textSecondary, fontSize: 18, fontWeight: "700" }}>가</Text>
+                      <Text style={{ color: c.textSecondary, fontSize: 18, fontWeight: "700", fontFamily: PRETENDARD["700"] }}>가</Text>
                     </Pressable>
                   </View>
                   <ArticleHighlightSection articleId={a.id} text={body} fontScale={scale} />
@@ -262,6 +286,23 @@ export function ArticleDetailScreen({ route }: Props) {
                   본문이 없어요. 원문에서 읽어보세요.
                 </Text>
               )}
+
+              {/* 인사이트 진입 3단 사다리 중 아래 두 칸.
+                  ① 하이라이트를 그었으면 → 인사이트 쓰기에서 초안이 채워진다(CreateOpinion)
+                  ② 질문 1개 — 빈 종이보다 질문이 답하기 쉽다
+                  ③ 원탭 스탬프 — 글은 한 글자도 안 쓰고 탭 한 번 */}
+              {question ? (
+                <Pressable
+                  style={[styles.questionCard, { backgroundColor: c.primaryTint, borderColor: c.accentTintBorder }]}
+                  onPress={() => nav.navigate("CreateOpinion", { articleId: a.id, question })}
+                >
+                  <Text style={[styles.questionLabel, { color: c.primary }]}>생각해볼 질문</Text>
+                  <Text style={[styles.questionText, { color: c.textPrimary }]}>{question}</Text>
+                  <Text style={[styles.questionCta, { color: c.primary }]}>답 남기기 ›</Text>
+                </Pressable>
+              ) : null}
+
+              <StampBar articleId={a.id} finished={readMarked.current} />
             </View>
           ) : (
             <OpinionsSection articleId={a.id} />
@@ -310,28 +351,37 @@ export function ArticleDetailScreen({ route }: Props) {
 }
 
 // AI 요약 패널 — 3관점 고정(무슨 문제/어떻게 해결/디자이너·PM 관점 배울 점) + 쉽게 풀기(선택).
+/**
+ * AI 요약(3관점) — 세 번째 항목은 **읽는 사람 직무 관점**으로 생성된다(온보딩의 job_role).
+ * 같은 글이라도 기획자에게는 판단 과정이, 개발자에게는 구현이 남을 것이 다르기 때문이다.
+ * 캐시도 직무별로 분리한다(`insight_<직무>`) — 안 그러면 서로 덮어쓴다.
+ */
 function AiSummaryPanel({
   articleId,
   cached,
+  jobRole,
 }: {
   articleId: string;
   cached: Record<string, string> | null | undefined;
+  jobRole: string | null | undefined;
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
   const [results, setResults] = useState<Record<string, string>>({ ...(cached ?? {}) });
   const [running, setRunning] = useState<string | null>(null);
-  const req = useRequestArticleSummary(articleId);
+  const req = useRequestArticleSummary(articleId, jobRole);
+  // 이 사용자 직무의 요약이 담긴 캐시 키(직무 없으면 기존 "insight" 키를 그대로 쓴다).
+  const insightKey = insightCacheKey(jobRole);
 
   const run = (m: "insight" | "explain") => {
     if (running) return;
     // insight 는 '3관점 구조'가 이미 있으면 재생성 안 함(구형/단일 캐시는 재생성 허용).
-    if (m === "insight" && isStructuredInsight(results.insight)) return;
+    if (m === "insight" && isStructuredInsight(results[insightKey])) return;
     if (m === "explain" && results.explain) return;
     setRunning(m);
     req.mutate(m, {
       onSuccess: (s) => {
-        if (s) setResults((p) => ({ ...p, [m]: s }));
+        if (s) setResults((p) => ({ ...p, [m === "insight" ? insightKey : m]: s }));
         setRunning(null);
       },
       onError: () => setRunning(null),
@@ -340,17 +390,18 @@ function AiSummaryPanel({
 
   // AI 요약 탭 진입 시 3관점을 자동 생성. 캐시가 구형(단일 요약)이면 새 프롬프트로 재생성.
   useEffect(() => {
-    if (!isStructuredInsight(results.insight)) run("insight");
+    if (!isStructuredInsight(results[insightKey])) run("insight");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 구조화된 3관점이 있으면 그걸, 아직 없으면(재생성 중/실패) 있는 텍스트라도 파싱.
-  const sections = isStructuredInsight(results.insight)
-    ? splitInsightSections(results.insight)
+  const insightText = results[insightKey];
+  const sections = isStructuredInsight(insightText)
+    ? splitInsightSections(insightText)
     : running === "insight"
       ? []
-      : results.insight
-        ? splitInsightSections(results.insight)
+      : insightText
+        ? splitInsightSections(insightText)
         : [];
 
   return (
@@ -455,7 +506,8 @@ const styles = StyleSheet.create({
   hero: { width: "100%", aspectRatio: 16 / 9 },
   heroImg: { width: "100%", height: "100%" },
 
-  body: { paddingHorizontal: 16, paddingTop: 16 },
+  // 본문 좌우 여백 — 17px 본문 + 20 여백이면 한 줄이 약 19~20자(한글 장문 최적 구간).
+  body: { paddingHorizontal: reading.pagePadding, paddingTop: 16 },
   metaTop: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
   readTime: { ...dtype.meta },
   bookmarkBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
@@ -477,13 +529,13 @@ const styles = StyleSheet.create({
   },
   resumeText: { ...dtype.cardTitle, fontSize: 14 },
   likeBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
-  likeCount: { ...dtype.meta, fontWeight: "700" },
+  likeCount: { ...dtype.meta, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 
   title: { ...dtype.titleL, marginBottom: 12 },
 
   tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
   tagChip: { borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4 },
-  tagText: { ...dtype.meta, fontWeight: "600" },
+  tagText: { ...dtype.meta, fontWeight: "600", fontFamily: PRETENDARD["600"] },
 
   source: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
   sourceText: { ...dtype.bodyS, flex: 1 },
@@ -501,7 +553,11 @@ const styles = StyleSheet.create({
   sourceLinkText: { ...dtype.cardTitle },
 
   article: { gap: 16 },
-  paragraph: { ...dtype.body, lineHeight: 26 },
+  paragraph: { ...reading.para },
+  questionCard: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 6 },
+  questionLabel: { ...dtype.label, fontSize: 12 },
+  questionText: { ...dtype.cardTitle, fontSize: 16, lineHeight: 24 },
+  questionCta: { ...dtype.label, fontSize: 13, marginTop: 2 },
 
   tabs: { flexDirection: "row", borderWidth: 1, borderRadius: 12, padding: 3, marginBottom: 16, gap: 3 },
   tab: { flex: 1, paddingVertical: 8, borderRadius: 9, alignItems: "center" },
@@ -521,7 +577,7 @@ const styles = StyleSheet.create({
   aiCard: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 8 },
   aiCardHead: { flexDirection: "row", alignItems: "center", gap: 8 },
   aiNum: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  aiNumText: { fontSize: 13, fontWeight: "800" },
+  aiNumText: { fontSize: 13, fontWeight: "800", fontFamily: PRETENDARD["800"] },
   aiCardTitle: { ...dtype.cardTitle, flex: 1 },
   aiCardBody: { ...dtype.body, lineHeight: 24 },
   aiExplain: { borderWidth: 1, borderRadius: 12, paddingVertical: 12, alignItems: "center" },
@@ -532,7 +588,7 @@ const styles = StyleSheet.create({
   opinionCard: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 8 },
   opinionHead: { flexDirection: "row", alignItems: "center", gap: 8 },
   opinionWho: { ...dtype.cardTitle },
-  opinionCore: { ...dtype.body, fontWeight: "600" },
+  opinionCore: { ...dtype.body, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   opinionField: { ...dtype.bodyS },
   opinionMore: { ...dtype.cardTitle, paddingVertical: 6 },
   opinionExpand: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 4, alignSelf: "flex-start" },

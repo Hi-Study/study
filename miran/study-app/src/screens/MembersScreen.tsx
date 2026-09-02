@@ -16,6 +16,7 @@ import {
 import { CADENCE_OPTIONS } from "@/lib/cadence";
 import { Avatar, ErrorState, Loading } from "@/components";
 import { Screen, ScreenHeader, SectionLabel } from "@/components/Chrome";
+import { PRETENDARD } from "@/theme";
 
 type R = RouteProp<RootStackParamList, "Members">;
 
@@ -97,7 +98,7 @@ export function MembersScreen({ route }: { route: R }) {
                 <Avatar name={me.user.name} size={40} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.mName, { color: c.textPrimary }]}>
-                    {me.user.name} <Text style={{ color: c.textMuted, fontWeight: "400", fontSize: 12 }}>· 나</Text>
+                    {me.user.name} <Text style={{ color: c.textMuted, fontWeight: "400", fontFamily: PRETENDARD["400"], fontSize: 12 }}>· 나</Text>
                   </Text>
                   <Text style={[styles.mRole, { color: c.textMuted }]}>
                     {[isOwner ? "스터디 개설자" : "멤버", me.user.role_title].filter(Boolean).join(" · ")}
@@ -164,7 +165,7 @@ export function MembersScreen({ route }: { route: R }) {
                         onPress={() => updateStudy.mutate({ share_cadence: opt })}
                         style={[styles.chip, { backgroundColor: c.surfaceCard, borderColor: on ? c.primaryFocus : c.hairline, borderWidth: on ? 2 : 1 }]}
                       >
-                        <Text style={{ color: on ? c.primary : c.textPrimary, fontSize: 13, fontWeight: "600" }}>{opt}</Text>
+                        <Text style={{ color: on ? c.primary : c.textPrimary, fontSize: 13, fontWeight: "600", fontFamily: PRETENDARD["600"] }}>{opt}</Text>
                       </Pressable>
                     );
                   })}
@@ -172,7 +173,7 @@ export function MembersScreen({ route }: { route: R }) {
               </>
             ) : (
               <Text style={{ color: c.textPrimary, fontSize: 14 }}>
-                이 스터디는 <Text style={{ fontWeight: "700" }}>{cadence}</Text> 공유가 목표예요.
+                이 스터디는 <Text style={{ fontWeight: "700", fontFamily: PRETENDARD["700"] }}>{cadence}</Text> 공유가 목표예요.
               </Text>
             )}
           </View>
@@ -195,7 +196,7 @@ function SmallBtn({ label, primary, onPress }: { label: string; primary?: boolea
       style={[styles.smallBtn, { borderColor: primary ? c.primary : c.hairline }]}
       hitSlop={4}
     >
-      <Text style={{ color: primary ? c.primary : c.textMuted, fontSize: 12, fontWeight: "600" }}>{label}</Text>
+      <Text style={{ color: primary ? c.primary : c.textMuted, fontSize: 12, fontWeight: "600", fontFamily: PRETENDARD["600"] }}>{label}</Text>
     </Pressable>
   );
 }
@@ -205,16 +206,16 @@ const styles = StyleSheet.create({
   count: { fontSize: 13, textAlign: "right" },
   card: { borderWidth: 1, borderRadius: 12, overflow: "hidden" },
   memberRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
-  mName: { fontSize: 15, fontWeight: "600" },
+  mName: { fontSize: 15, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   mRole: { fontSize: 12.5, marginTop: 1 },
   ownerBadge: { borderWidth: 1, borderRadius: 90, paddingHorizontal: 8, paddingVertical: 1 },
   actions: { flexDirection: "row", gap: 6 },
   smallBtn: { borderWidth: 1, borderRadius: 90, paddingHorizontal: 11, paddingVertical: 5 },
   codeRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  code: { fontSize: 26, fontWeight: "700", letterSpacing: 4 },
+  code: { fontSize: 26, fontWeight: "700", fontFamily: PRETENDARD["700"], letterSpacing: 4 },
   desc: { fontSize: 12.5, lineHeight: 18, marginTop: 10 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 90 },
   leaveBtn: { marginTop: 14, paddingVertical: 14, borderWidth: 1, borderRadius: 90, alignItems: "center" },
-  leaveText: { color: "#c0392b", fontSize: 16, fontWeight: "600" },
+  leaveText: { color: "#c0392b", fontSize: 16, fontWeight: "600", fontFamily: PRETENDARD["600"] },
 });

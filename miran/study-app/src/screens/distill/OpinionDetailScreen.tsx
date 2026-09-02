@@ -28,7 +28,7 @@ import {
   useToggleReaction,
   type OpinionCommentRow,
 } from "@/data";
-import { dtype } from "@/theme";
+import { dtype , PRETENDARD} from "@/theme";
 import { Avatar } from "@/components/Avatar";
 import { ServiceLogo, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
 import { Loading, ErrorState } from "@/components";
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   author: { flexDirection: "row", alignItems: "center", gap: 10 },
   who: { ...dtype.cardTitle },
   date: { ...dtype.meta, marginTop: 2 },
-  core: { ...dtype.titleL, fontWeight: "700" },
+  core: { ...dtype.titleL, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   likeRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
   comment: { flexDirection: "row", gap: 10 },
   reply: { marginLeft: 32 },
   cmHead: { flexDirection: "row", alignItems: "center", gap: 6 },
-  cmWho: { ...dtype.bodyS, fontWeight: "700" },
+  cmWho: { ...dtype.bodyS, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   cmDate: { ...dtype.meta },
   cmText: { ...dtype.body, marginTop: 3, lineHeight: 22 },
   empty: { ...dtype.body, textAlign: "center", paddingVertical: 12 },

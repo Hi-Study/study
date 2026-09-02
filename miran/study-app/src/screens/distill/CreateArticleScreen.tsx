@@ -17,7 +17,7 @@ import { Check, ChevronLeft, ExternalLink, Link2, PenLine } from "lucide-react-n
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
 import { useRegisterArticle, type RegisterResult } from "@/data";
-import { dtype } from "@/theme";
+import { dtype , PRETENDARD} from "@/theme";
 
 export function CreateArticleScreen() {
   const { theme } = useTheme();
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
 
   result: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 8, marginTop: 8 },
   resultHead: { flexDirection: "row", alignItems: "center", gap: 6 },
-  resultBadge: { ...dtype.label, fontWeight: "800" },
+  resultBadge: { ...dtype.label, fontWeight: "800", fontFamily: PRETENDARD["800"] },
   resultTitle: { ...dtype.cardTitle, fontSize: 17, lineHeight: 24 },
   resultHint: { ...dtype.bodyS },
   resultActions: { flexDirection: "row", gap: 10, marginTop: 6 },

@@ -4,7 +4,7 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Heart } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
-import { dtype } from "@/theme";
+import { dtype , PRETENDARD} from "@/theme";
 import { Avatar } from "@/components/Avatar";
 import { ServiceLogo, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
 import { InsightBody } from "@/components/distill/InsightBody";
@@ -91,9 +91,9 @@ const styles = StyleSheet.create({
   headRight: { alignItems: "flex-end", gap: 3 },
   date: { ...dtype.meta },
   likeMeta: { flexDirection: "row", alignItems: "center", gap: 3 },
-  likeNum: { ...dtype.meta, fontWeight: "700" },
+  likeNum: { ...dtype.meta, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   source: { flexDirection: "row", gap: 10, padding: 10, borderRadius: 12, alignItems: "center" },
   sourceThumb: { width: 44, height: 44, borderRadius: 8 },
-  sourceTitle: { ...dtype.bodyS, fontWeight: "600", marginTop: 2 },
+  sourceTitle: { ...dtype.bodyS, fontWeight: "600", fontFamily: PRETENDARD["600"], marginTop: 2 },
   sourceBlog: { ...dtype.meta, marginTop: 2 },
 });

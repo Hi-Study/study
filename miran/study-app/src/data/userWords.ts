@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { qk } from "@/lib/queryKeys";
 import { useUid } from "@/auth/AuthProvider";
+import type { JobRole } from "@/types/database";
 
 export interface UserWordArticleLite {
   id: string;
@@ -19,7 +20,14 @@ export interface UserWordRow {
   term: string;
   reading: string | null;
   definition: string | null;
+  /** "더 쉽게" 2단 설명 — 직무 언어 + 비유. 처음엔 비어 있고 요청 시 채운다. */
+  easy_definition: string | null;
   context: string | null;
+  /** 단어가 속한 영역(dev/design/marketing/data/infra/product/biz) — 약한 영역 집계용. */
+  domain: string | null;
+  job_role: JobRole | null;
+  /** 같은 단어를 다시 누른 횟수. 누를수록 그 영역에 약하다는 신호가 세진다. */
+  hit_count: number;
   created_at: string;
   article: UserWordArticleLite | null;
 }
@@ -41,6 +49,10 @@ export interface CreateWordInput {
   term: string;
   context?: string | null;
   articleId?: string | null;
+  /** 본문 용어 풀이(articles.terms)에서 온 영역. 없으면 null. */
+  domain?: string | null;
+  /** 누를 당시의 내 직무 — 나중에 뜻풀이를 그 사람 언어로 다시 쓸 때 재료. */
+  jobRole?: JobRole | null;
 }
 
 /**
@@ -55,19 +67,28 @@ export async function createWord(uid: string, input: CreateWordInput): Promise<s
       term: input.term,
       context: input.context ?? null,
       article_id: input.articleId ?? null,
+      domain: input.domain ?? null,
+      job_role: input.jobRole ?? null,
     })
     .select("id")
     .single();
 
   if (error) {
     // unique(user_id, term) 위반 → 이미 저장된 단어. 기존 id 반환(재정의 스킵).
+    //   ⚠️ 다시 눌렀다는 것 자체가 "아직 이 단어가 안 익었다"는 신호이므로 hit_count 를 올린다.
     if (error.code === "23505") {
       const { data: ex } = await supabase
         .from("user_words")
-        .select("id")
+        .select("id, hit_count")
         .eq("user_id", uid)
         .eq("term", input.term)
         .single();
+      if (ex?.id) {
+        await supabase
+          .from("user_words")
+          .update({ hit_count: (ex.hit_count ?? 1) + 1 })
+          .eq("id", ex.id);
+      }
       return ex?.id ?? "";
     }
     throw error;
@@ -82,6 +103,19 @@ export async function defineWord(wordId: string): Promise<string | null> {
   });
   if (error) throw error;
   return (data as { definition?: string })?.definition ?? null;
+}
+
+/**
+ * "더 쉽게" 2단 설명 요청 — 1단(definition)으로 부족할 때 누른다.
+ * 서버가 user_words.job_role / domain 을 보고 **그 사람 직무 언어 + 비유**로 다시 쓴다.
+ * (기획자에게는 지표·사용자 영향으로, 개발자에게는 구현 관점으로.)
+ */
+export async function explainWordEasier(wordId: string): Promise<string | null> {
+  const { data, error } = await supabase.functions.invoke("summarize", {
+    body: { word_id: wordId, mode: "easy" },
+  });
+  if (error) throw error;
+  return (data as { easy_definition?: string })?.easy_definition ?? null;
 }
 
 export async function deleteWord(id: string): Promise<void> {
@@ -156,6 +190,16 @@ export function useDeleteWord() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteWord(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.words(uid) }),
+  });
+}
+
+/** "더 쉽게" — 2단 설명을 채우고 단어장을 갱신한다. */
+export function useExplainWordEasier() {
+  const uid = useUid();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (wordId: string) => explainWordEasier(wordId),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.words(uid) }),
   });
 }

@@ -17,6 +17,7 @@ import {
 } from "@/components";
 import { Screen } from "@/components/Chrome";
 import { dateRangeFor } from "@/lib/date";
+import { PRETENDARD } from "@/theme";
 
 const ALL_TIME = { monthStart: "1900-01-01", monthEnd: "2999-12-31" };
 type Scope = "shares" | "discussions";
@@ -243,22 +244,22 @@ const styles = StyleSheet.create({
   heroSearch: { height: 52, borderRadius: 12 },
 
   discovery: { padding: 16, gap: 10 },
-  discLead: { fontSize: 18, fontWeight: "800", letterSpacing: -0.3 },
+  discLead: { fontSize: 18, fontWeight: "800", fontFamily: PRETENDARD["800"], letterSpacing: -0.3 },
   discSub: { fontSize: 13, lineHeight: 19, marginTop: -4 },
-  discTitle: { fontSize: 14, fontWeight: "800", marginTop: 6 },
+  discTitle: { fontSize: 14, fontWeight: "800", fontFamily: PRETENDARD["800"], marginTop: 6 },
   tagCloud: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   bigTag: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: 90 },
-  bigTagText: { fontSize: 14, fontWeight: "700" },
+  bigTagText: { fontSize: 14, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 
   scopeTabs: { flexDirection: "row", gap: 20, paddingHorizontal: 18, paddingTop: 2 },
   scopeTab: { alignItems: "center", gap: 6 },
-  scopeText: { fontSize: 15, fontWeight: "700" },
+  scopeText: { fontSize: 15, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   scopeBar: { height: 2.5, width: "100%", borderRadius: 2 },
 
   filterRow: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10 },
   filterDivider: { width: 1, height: 20, marginHorizontal: 3 },
   chip: { borderWidth: 1, borderRadius: 90, paddingVertical: 6, paddingHorizontal: 13 },
-  chipText: { fontSize: 12.5, fontWeight: "600" },
+  chipText: { fontSize: 12.5, fontWeight: "600", fontFamily: PRETENDARD["600"] },
 
   results: { padding: 14, paddingTop: 8, gap: 12 },
 });

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
+import { PRETENDARD } from "@/theme";
 
 const MAX_TAGS = 10;
 
@@ -77,7 +78,7 @@ export function TagInput({
 
 const styles = StyleSheet.create({
   wrap: { gap: 8 },
-  label: { fontSize: 13, fontWeight: "600" },
+  label: { fontSize: 13, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   inputRow: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 4 },
   input: { fontSize: 15, paddingVertical: 8 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
@@ -89,5 +90,5 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     paddingHorizontal: 11,
   },
-  chipText: { fontSize: 12.5, fontWeight: "700" },
+  chipText: { fontSize: 12.5, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 });

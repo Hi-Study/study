@@ -8,6 +8,7 @@ import {
 } from "react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
+import { PRETENDARD } from "@/theme";
 
 interface PillProps {
   label: string;
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 20,
   },
-  pillLabel: { fontSize: 16, fontWeight: "600", letterSpacing: -0.2 },
+  pillLabel: { fontSize: 16, fontWeight: "600", fontFamily: PRETENDARD["600"], letterSpacing: -0.2 },
   cta: {
     flexDirection: "row",
     alignItems: "center",
@@ -150,8 +151,8 @@ const styles = StyleSheet.create({
     borderRadius: 90,
     paddingHorizontal: 16,
   },
-  ctaLabel: { fontSize: 14, fontWeight: "700", letterSpacing: -0.2 },
-  textBtn: { fontSize: 14, fontWeight: "600" },
+  ctaLabel: { fontSize: 14, fontWeight: "700", fontFamily: PRETENDARD["700"], letterSpacing: -0.2 },
+  textBtn: { fontSize: 14, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   iconBtn: {
     width: 34,
     height: 34,

@@ -23,6 +23,7 @@ import {
 } from "@/data";
 import { splitSentences, groupSentencesIntoBlocks, imageMarkerUrl } from "@/lib/text";
 import { safeImageUri } from "@/lib/image";
+import { reading , PRETENDARD} from "@/theme";
 import { HIGHLIGHT_COLORS, HIGHLIGHT_TEXT, highlightBg } from "@/lib/highlight";
 import { WordPickerSheet } from "@/components/distill/WordPickerSheet";
 
@@ -185,10 +186,14 @@ function HighlightableText({
         // 이미지 마커 줄([[img:URL]])은 텍스트 대신 이미지로 렌더(하이라이트 대상 아님).
         const imgUrl = imageMarkerUrl(b.items.map((x) => x.seg).join(""));
         if (imgUrl) return <BodyImage key={bi} url={imgUrl} />;
-        const scaled =
-          b.kind === "heading"
-            ? { fontSize: 17 * fontScale, lineHeight: 25 * fontScale }
-            : { fontSize: 15.5 * fontScale, lineHeight: 27 * fontScale };
+        // 사용자 폰트 크기 토글(가/가)은 기준값에 곱해서 적용 — 설정과 충돌하지 않는다.
+        const base =
+          b.kind === "heading" ? reading.heading : b.kind === "list" ? reading.list : reading.para;
+        const scaled = {
+          fontSize: base.fontSize * fontScale,
+          lineHeight: base.lineHeight * fontScale,
+          letterSpacing: base.letterSpacing,
+        };
         return (
           <Text
             key={bi}
@@ -305,7 +310,7 @@ function SheetBody({
             style={[styles.delBtn, { borderColor: c.danger }]}
           >
             <Trash2 size={15} color={c.danger} />
-            <Text style={{ color: c.danger, fontSize: 14, fontWeight: "700" }}>삭제</Text>
+            <Text style={{ color: c.danger, fontSize: 14, fontWeight: "700", fontFamily: PRETENDARD["700"] }}>삭제</Text>
           </Pressable>
         ) : null}
         <Pressable
@@ -324,28 +329,29 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   section: { marginTop: 8, gap: 10 },
   head: { flexDirection: "row", alignItems: "center", gap: 6 },
-  headText: { fontSize: 12.5, fontWeight: "700" },
-  blocks: { gap: 14 },
-  blockPara: { fontSize: 15.5, lineHeight: 27 },
-  blockHeading: { fontSize: 17, lineHeight: 25, fontWeight: "800", marginTop: 4 },
-  blockList: { paddingLeft: 10 },
+  headText: { fontSize: 12.5, fontWeight: "700", fontFamily: PRETENDARD["700"] },
+  // 장문 조판 — 카드용 dtype 과 분리한 reading 토큰을 쓴다(theme/distill.ts).
+  blocks: { gap: reading.blockGap },
+  blockPara: { ...reading.para },
+  blockHeading: { ...reading.heading, fontWeight: "800", fontFamily: PRETENDARD["800"], marginTop: reading.headingTop },
+  blockList: { ...reading.list, paddingLeft: reading.listIndent },
   bodyImage: { width: "100%", borderRadius: 10 },
 
   rollup: { marginTop: 14, paddingTop: 16, borderTopWidth: 1, gap: 12 },
   rollupHead: { flexDirection: "row", alignItems: "center", gap: 5 },
-  rollupTitle: { fontSize: 12.5, fontWeight: "800", letterSpacing: 0.2 },
+  rollupTitle: { fontSize: 12.5, fontWeight: "800", fontFamily: PRETENDARD["800"], letterSpacing: 0.2 },
   rollupRow: { flexDirection: "row", gap: 10, alignItems: "flex-start", padding: 12, borderRadius: 12, borderWidth: 1, overflow: "hidden" },
   rollupBar: { width: 4, alignSelf: "stretch", borderRadius: 2 },
-  rollupQuote: { fontSize: 13.5, lineHeight: 19, fontWeight: "600" },
+  rollupQuote: { fontSize: 13.5, lineHeight: 19, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   rollupNote: { fontSize: 13.5, lineHeight: 19, marginTop: 5 },
 
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 34, gap: 12 },
   sheetHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sheetTitle: { fontSize: 16, fontWeight: "700" },
+  sheetTitle: { fontSize: 16, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   privacyNote: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: -4 },
-  privacyText: { fontSize: 12, fontWeight: "600" },
-  sheetLabel: { fontSize: 12, fontWeight: "700", marginTop: 2 },
+  privacyText: { fontSize: 12, fontWeight: "600", fontFamily: PRETENDARD["600"] },
+  sheetLabel: { fontSize: 12, fontWeight: "700", fontFamily: PRETENDARD["700"], marginTop: 2 },
   quote: { fontSize: 14.5, lineHeight: 22, borderRadius: 8, padding: 10, overflow: "hidden" },
   swatches: { flexDirection: "row", gap: 10, marginTop: 2 },
   swatch: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, borderColor: "rgba(0,0,0,0.08)" },
@@ -353,5 +359,5 @@ const styles = StyleSheet.create({
   actions: { flexDirection: "row", gap: 10, marginTop: 2 },
   delBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 10, paddingHorizontal: 16, justifyContent: "center" },
   saveBtn: { flex: 1, height: 46, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  saveText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  saveText: { color: "#fff", fontSize: 15, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 });

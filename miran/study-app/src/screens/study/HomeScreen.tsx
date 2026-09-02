@@ -46,6 +46,7 @@ import {
   toISODate,
   weekdayMonFirst,
 } from "@/lib/date";
+import { PRETENDARD } from "@/theme";
 
 /** 월요일 → "M월 N주차" 라벨(토론 week_label 규칙과 동일: 월·ceil(일/7)). */
 function weekLabelOf(monday: Date): string {
@@ -354,7 +355,7 @@ function DiscussionsPane({ mode }: { mode: ViewMode }) {
           >
             <View style={[styles.calloutDot, { backgroundColor: c.primary }]} />
             <Text style={[styles.calloutText, { color: c.textPrimary }]}>
-              진행 중 토론 <Text style={{ fontWeight: "700" }}>‘{pending[0].title}’</Text>에 아직 의견을 안 남겼어요
+              진행 중 토론 <Text style={{ fontWeight: "700", fontFamily: PRETENDARD["700"] }}>‘{pending[0].title}’</Text>에 아직 의견을 안 남겼어요
             </Text>
             <Text style={[styles.calloutCta, { color: c.primary }]}>참여 ›</Text>
           </Pressable>
@@ -449,7 +450,7 @@ const styles = StyleSheet.create({
   segRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   seg: { flexDirection: "row", gap: 4, padding: 4, borderRadius: 9 },
   segItem: { paddingVertical: 9, paddingHorizontal: 20, borderRadius: 7, alignItems: "center" },
-  segText: { fontSize: 14, fontWeight: "700" },
+  segText: { fontSize: 14, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   iconToggle: { flexDirection: "row", gap: 3, padding: 3, borderRadius: 8 },
   iconBtn: { paddingVertical: 6, paddingHorizontal: 11, borderRadius: 6 },
 
@@ -469,13 +470,13 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     elevation: 5,
   },
-  fabText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  fabText: { color: "#fff", fontSize: 14, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 
   calContent: { padding: 16, paddingTop: 12, paddingBottom: 88, gap: 10 },
   calList: { marginHorizontal: -8 },
   weekNav: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   weekLabelWrap: { alignItems: "center" },
-  weekLabel: { fontSize: 15, fontWeight: "700" },
+  weekLabel: { fontSize: 15, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   weekRange: { fontSize: 11.5, marginTop: 1 },
   strip: {
     flexDirection: "row",
@@ -485,7 +486,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   stripCell: { flex: 1, alignItems: "center", gap: 5, paddingVertical: 4 },
-  stripLabel: { fontSize: 11.5, fontWeight: "600" },
+  stripLabel: { fontSize: 11.5, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   stripCircle: {
     width: 32,
     height: 32,
@@ -494,7 +495,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  stripNum: { fontSize: 15, fontWeight: "600" },
+  stripNum: { fontSize: 15, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   stripDot: { width: 6, height: 6, borderRadius: 3, overflow: "hidden" },
   dayHeader: {
     flexDirection: "row",
@@ -502,7 +503,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 6,
   },
-  dayTitle: { fontSize: 17, fontWeight: "600" },
+  dayTitle: { fontSize: 17, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   dayCount: { fontSize: 13 },
 
   discContent: { padding: 14, paddingTop: 12, paddingBottom: 88, gap: 12 },
@@ -516,14 +517,14 @@ const styles = StyleSheet.create({
   },
   calloutDot: { width: 7, height: 7, borderRadius: 3.5 },
   calloutText: { flex: 1, fontSize: 13, lineHeight: 18 },
-  calloutCta: { fontSize: 12.5, fontWeight: "600" },
+  calloutCta: { fontSize: 12.5, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   monthRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
-  month: { fontSize: 19, fontWeight: "700", letterSpacing: -0.4, minWidth: 48, textAlign: "center" },
+  month: { fontSize: 19, fontWeight: "700", fontFamily: PRETENDARD["700"], letterSpacing: -0.4, minWidth: 48, textAlign: "center" },
   weekPickBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 4, paddingHorizontal: 8 },
-  weekPickText: { fontSize: 17, fontWeight: "700", letterSpacing: -0.3 },
+  weekPickText: { fontSize: 17, fontWeight: "700", fontFamily: PRETENDARD["700"], letterSpacing: -0.3 },
   pickerBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.35)", justifyContent: "center", padding: 32 },
   pickerSheet: { borderRadius: 16, padding: 16, gap: 8 },
-  pickerTitle: { fontSize: 15, fontWeight: "800", marginBottom: 2 },
+  pickerTitle: { fontSize: 15, fontWeight: "800", fontFamily: PRETENDARD["800"], marginBottom: 2 },
   pickerRow: {
     flexDirection: "row",
     alignItems: "center",

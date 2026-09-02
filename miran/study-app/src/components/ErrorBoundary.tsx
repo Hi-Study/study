@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from "react";
 import { ScrollView, StyleSheet, Text } from "react-native";
+import { PRETENDARD } from "@/theme";
 
 interface State {
   error: Error | null;
@@ -46,7 +47,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
 const styles = StyleSheet.create({
   bg: { flex: 1, backgroundColor: "#fff" },
   content: { padding: 24, paddingTop: 72 },
-  title: { fontSize: 18, fontWeight: "700", color: "#c0392b", marginBottom: 14 },
+  title: { fontSize: 18, fontWeight: "700", fontFamily: PRETENDARD["700"], color: "#c0392b", marginBottom: 14 },
   msg: { fontSize: 14, color: "#1d1d1d", lineHeight: 20 },
   stack: { fontSize: 11, color: "#888", marginTop: 16, lineHeight: 16 },
 });

@@ -282,6 +282,42 @@ export function usePopularArticles(limit = 10) {
   });
 }
 
+/**
+ * 홈 "이번 주 같이 읽는 글" — 최근 7일 안에 **인사이트가 붙은 글**을 묶는다.
+ * 주 1회 지정글을 정하지 않는다(운영 부담 + 아무도 안 읽으면 섹션이 죽는다).
+ * 이미 여러 명이 읽고 남긴 글을 모아 "같이 읽는 중"이라는 사실 자체를 보여준다.
+ * opinion_count 컬럼이 없는 환경에서는 like_count → 최신순으로 자동 폴백.
+ */
+export async function listWeeklyTogether(limit = 8): Promise<ArticleWithBlog[]> {
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const base = () =>
+    supabase
+      .from("articles")
+      .select(SELECT_WITH_BLOG)
+      .gte("published_at", since)
+      .limit(limit);
+
+  const { data, error } = await base()
+    .order("opinion_count", { ascending: false })
+    .order("published_at", { ascending: false, nullsFirst: false });
+  if (!error) return (data ?? []) as unknown as ArticleWithBlog[];
+  if (!isMissingColumnError(error)) throw error;
+
+  const { data: fb, error: fbErr } = await base()
+    .order("like_count", { ascending: false })
+    .order("published_at", { ascending: false, nullsFirst: false });
+  if (fbErr) throw fbErr;
+  return (fb ?? []) as unknown as ArticleWithBlog[];
+}
+
+export function useWeeklyTogether(limit = 8) {
+  return useQuery({
+    queryKey: [...qk.weeklyTogether(), limit] as const,
+    queryFn: () => listWeeklyTogether(limit),
+    staleTime: 5 * 60_000,
+  });
+}
+
 /** 홈 큐레이션 — 즐겨찾기(관심) 기업의 새 글, 최신순. 즐겨찾기 없으면 빈 배열. */
 export async function listFavoriteBlogArticles(uid: string, limit = 10): Promise<ArticleWithBlog[]> {
   const { data: favs, error: favErr } = await supabase
@@ -430,21 +466,26 @@ export function useRecommendedKeywords(limit = 10) {
   });
 }
 
+/**
+ * 요약 요청. `jobRole` 을 주면 서버가 3관점의 **세 번째 항목을 그 직무 관점으로** 쓰고
+ * ai_summaries 를 직무별 키에 따로 캐시한다(직무마다 요약이 덮어쓰이지 않게).
+ */
 export async function requestArticleSummary(
   articleId: string,
   mode: SummaryMode,
+  jobRole?: string | null,
 ): Promise<string | null> {
   const { data, error } = await supabase.functions.invoke("summarize", {
-    body: { article_id: articleId, mode },
+    body: { article_id: articleId, mode, job_role: jobRole ?? null },
   });
   if (error) throw error;
   return (data as { summary?: string })?.summary ?? null;
 }
 
-export function useRequestArticleSummary(articleId: string) {
+export function useRequestArticleSummary(articleId: string, jobRole?: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (mode: SummaryMode) => requestArticleSummary(articleId, mode),
+    mutationFn: (mode: SummaryMode) => requestArticleSummary(articleId, mode, jobRole),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.article(articleId) }),
   });
 }

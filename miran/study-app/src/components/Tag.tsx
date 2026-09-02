@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
+import { PRETENDARD } from "@/theme";
 
 type TagKind = "owner" | "active" | "host" | "muted";
 
@@ -54,5 +55,5 @@ export function RedDot({ size = 8 }: { size?: number }) {
 
 const styles = StyleSheet.create({
   tag: { paddingHorizontal: 7, paddingVertical: 2, alignSelf: "flex-start" },
-  label: { fontSize: 11, fontWeight: "600" },
+  label: { fontSize: 11, fontWeight: "600", fontFamily: PRETENDARD["600"] },
 });

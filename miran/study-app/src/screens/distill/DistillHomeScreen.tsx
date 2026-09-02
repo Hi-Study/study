@@ -19,13 +19,15 @@ import {
   useCommunityPosts,
   useUnreadNotificationCount,
   useProfile,
+  useWeeklyTogether,
 } from "@/data";
 import type { BlogRow } from "@/types/tables";
 import type { ArticleWithBlog } from "@/data/articles";
-import { dtype } from "@/theme";
+import { dtype , PRETENDARD} from "@/theme";
 import { ArticleCardH, FeaturedCard, ServiceLogo } from "@/components/distill/ArticleCards";
 import { OpinionCard } from "@/components/distill/OpinionCard";
 import { CommunityCard } from "@/components/distill/CommunityCard";
+import { StreakPill } from "@/components/distill/ReadingStatsBadge";
 import { Loading } from "@/components";
 
 const W = Dimensions.get("window").width;
@@ -111,6 +113,9 @@ export function DistillHomeScreen() {
   // 섹션 제목대로 "이야기가 오가는" 글 = 댓글·공감 많은 순.
   const community = (useCommunityPosts("active").data ?? []).slice(0, 8);
   const unread = useUnreadNotificationCount().data ?? 0;
+  // "이번 주 같이 읽는 글" — 주 1회 지정글을 정하지 않는다(운영 부담 + 아무도 안 읽으면 섹션이 죽음).
+  //   최근 7일 안에 이미 여러 명이 읽고 인사이트를 남긴 글을 묶어, "같이 읽는 중"이라는 사실을 보여준다.
+  const weekly = useWeeklyTogether(8).data ?? [];
 
   const loading = blogs.length === 0 && popular.length === 0;
 
@@ -140,6 +145,8 @@ export function DistillHomeScreen() {
         {/* 인사말 + 알림 */}
         <View style={styles.topRow}>
           <Text style={[styles.greetTitle, { color: c.textPrimary }]}>{greeting()}</Text>
+          {/* 연속 읽기 — 있을 때만 보인다. 끊겨도 "0일"을 절대 띄우지 않는다(벌칙이 된다). */}
+          <StreakPill />
           <Pressable hitSlop={8} style={styles.bellBtn} onPress={() => nav.navigate("DistillNotifications")}>
             <Bell size={22} color={c.textSecondary} />
             {unread > 0 ? (
@@ -177,6 +184,17 @@ export function DistillHomeScreen() {
                 </View>
               )}
             />
+          </View>
+        ) : null}
+
+        {/* ①-2 이번 주 같이 읽는 글 — 인기글 묶음(지정글 없음) */}
+        {weekly.length > 0 ? (
+          <View style={styles.block}>
+            <SectionHeader
+              title="이번 주 같이 읽고 있어요"
+              sub="최근 일주일 동안 인사이트가 많이 붙은 글이에요"
+            />
+            <ArticleCarousel data={weekly} />
           </View>
         ) : null}
 
@@ -320,12 +338,12 @@ const styles = StyleSheet.create({
 
   tagWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   tagChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 13, paddingVertical: 8 },
-  tagText: { fontSize: 13.5, lineHeight: 18, fontWeight: "700" },
+  tagText: { fontSize: 13.5, lineHeight: 18, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 
   gridScroll: { paddingRight: 8 },
   grid2row: { flexDirection: "column", flexWrap: "wrap", rowGap: ROW_GAP, columnGap: 10 },
   cell: { alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 2 },
-  cellText: { fontSize: 11.5, lineHeight: 15, fontWeight: "700", textAlign: "center" },
+  cellText: { fontSize: 11.5, lineHeight: 15, fontWeight: "700", fontFamily: PRETENDARD["700"], textAlign: "center" },
 
   hintCard: { borderRadius: 14, paddingHorizontal: 16, paddingVertical: 18 },
   hintText: { ...dtype.bodyS },

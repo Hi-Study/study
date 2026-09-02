@@ -13,6 +13,7 @@ import { useDashboard, usePendingDiscussions } from "@/data/dashboard";
 import { Avatar, SectionLabel } from "@/components";
 import { Screen } from "@/components/Chrome";
 import { mondayOf, toISODate } from "@/lib/date";
+import { PRETENDARD } from "@/theme";
 
 export function MyPageScreen() {
   const { theme } = useTheme();
@@ -129,17 +130,17 @@ function MenuRow({ title, desc, onPress, last }: { title: string; desc: string; 
 const styles = StyleSheet.create({
   content: { padding: 16, gap: 10 },
   profile: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 8 },
-  name: { fontSize: 20, fontWeight: "600" },
+  name: { fontSize: 20, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   role: { fontSize: 13, marginTop: 2 },
   statGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   stat: { width: "47.8%", flexGrow: 1, borderWidth: 1, borderRadius: 12, padding: 16 },
   statTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  statValue: { fontSize: 28, fontWeight: "600", letterSpacing: -0.6 },
+  statValue: { fontSize: 28, fontWeight: "600", fontFamily: PRETENDARD["600"], letterSpacing: -0.6 },
   statLabel: { fontSize: 12.5, marginTop: 2 },
   menu: { borderWidth: 1, borderRadius: 12, overflow: "hidden" },
   menuRow: { flexDirection: "row", alignItems: "center", padding: 15 },
-  menuTitle: { fontSize: 15, fontWeight: "600" },
+  menuTitle: { fontSize: 15, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   menuDesc: { fontSize: 12.5, marginTop: 2 },
   leaveBtn: { marginTop: 10, paddingVertical: 14, alignItems: "center" },
-  leaveText: { color: "#c0392b", fontSize: 15, fontWeight: "600" },
+  leaveText: { color: "#c0392b", fontSize: 15, fontWeight: "600", fontFamily: PRETENDARD["600"] },
 });

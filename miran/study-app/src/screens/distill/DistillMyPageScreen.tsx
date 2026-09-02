@@ -35,13 +35,15 @@ import {
   type ArticleWithBlog,
   commentSource,
 } from "@/data";
-import { dtype } from "@/theme";
+import { dtype , PRETENDARD} from "@/theme";
 import { highlightBg } from "@/lib/highlight";
 import { bucketHeaders } from "@/lib/dateBucket";
 import { Avatar } from "@/components/Avatar";
 import { OpinionCard } from "@/components/distill/OpinionCard";
 import { ArticleRow, ServiceLogo, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
 import { ActivityCalendar, dayKey } from "@/components/distill/ActivityCalendar";
+import { ReadingStatsRow } from "@/components/distill/ReadingStatsBadge";
+import { WeakDomains } from "@/components/distill/WeakDomains";
 import { Loading, EmptyState } from "@/components";
 
 type MyTab =
@@ -240,11 +242,18 @@ export function DistillMyPageScreen() {
               </View>
             </Pressable>
 
+            {/* 이번 달 수치 — 연속은 살아 있을 때만 3번째 칸에 뜨고, 끊기면 "이번 달 N일"로 바뀐다.
+                0 을 보여주지 않는 게 규칙(0 은 벌칙이 된다). */}
+            <ReadingStatsRow />
+
             {/* 활동 캘린더 — 날짜 탭 → 그날 활동 화면 */}
             <ActivityCalendar
               activeDays={activeDays}
               onSelectDay={(date) => nav.navigate("DayActivity", { date })}
             />
+
+            {/* 자주 막히는 영역 — 단어를 누른 기록이 쌓이면 내 학습 지도가 된다. */}
+            <WeakDomains />
 
             {/* 내 활동 — 세그먼트 탭 (가로 스크롤). 앱 설정(테마·로그아웃)은 상단 기어 → 설정 화면. */}
             <Text style={[styles.activityLabel, { color: c.textPrimary }]}>내 활동</Text>
@@ -444,7 +453,7 @@ const styles = StyleSheet.create({
   role: { ...dtype.bodyS, marginTop: 2 },
   iconBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
 
-  dateHeader: { ...dtype.label, fontSize: 12.5, fontWeight: "800", marginTop: 10, marginBottom: 8 },
+  dateHeader: { ...dtype.label, fontSize: 12.5, fontWeight: "800", fontFamily: PRETENDARD["800"], marginTop: 10, marginBottom: 8 },
 
   menuRow: {
     flexDirection: "row",
@@ -482,11 +491,11 @@ const styles = StyleSheet.create({
   commentText: { ...dtype.body, lineHeight: 22 },
   commentSource: { ...dtype.meta },
   draftBadge: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2 },
-  draftBadgeText: { ...dtype.meta, fontWeight: "800" },
+  draftBadgeText: { ...dtype.meta, fontWeight: "800", fontFamily: PRETENDARD["800"] },
 
   hlCard: { flexDirection: "row", gap: 12, borderWidth: 1, borderRadius: 16, padding: 14, overflow: "hidden" },
   hlBar: { width: 4, alignSelf: "stretch", borderRadius: 2 },
-  hlQuote: { ...dtype.body, fontWeight: "600", lineHeight: 22 },
+  hlQuote: { ...dtype.body, fontWeight: "600", fontFamily: PRETENDARD["600"], lineHeight: 22 },
   hlNote: { ...dtype.bodyS, lineHeight: 20 },
   hlMeta: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 },
   hlSource: { ...dtype.meta, flex: 1 },

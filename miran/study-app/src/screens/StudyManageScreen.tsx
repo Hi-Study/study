@@ -6,6 +6,7 @@ import { useRootNav } from "@/navigation/types";
 import { useMyStudies, useDeleteStudy, type MyStudy } from "@/data/studies";
 import { EmptyState, ErrorState, Loading, PillButton } from "@/components";
 import { Screen, ScreenHeader, SectionLabel } from "@/components/Chrome";
+import { PRETENDARD } from "@/theme";
 
 export function StudyManageScreen() {
   const { theme } = useTheme();
@@ -56,10 +57,10 @@ export function StudyManageScreen() {
                 onPress={() => nav.navigate("StudyEdit", { studyId: m.study.id })}
                 style={[styles.pill, { borderColor: c.hairline }]}
               >
-                <Text style={{ color: c.textPrimary, fontSize: 13, fontWeight: "600" }}>수정</Text>
+                <Text style={{ color: c.textPrimary, fontSize: 13, fontWeight: "600", fontFamily: PRETENDARD["600"] }}>수정</Text>
               </Pressable>
               <Pressable onPress={() => onDelete(m)} style={[styles.pill, { borderColor: "#c0392b" }]}>
-                <Text style={{ color: "#c0392b", fontSize: 13, fontWeight: "600" }}>삭제</Text>
+                <Text style={{ color: "#c0392b", fontSize: 13, fontWeight: "600", fontFamily: PRETENDARD["600"] }}>삭제</Text>
               </Pressable>
             </View>
           ))}
@@ -77,7 +78,7 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13.5, marginTop: -4 },
   card: { borderWidth: 1, borderRadius: 12, overflow: "hidden" },
   row: { flexDirection: "row", alignItems: "center", gap: 8, padding: 14 },
-  name: { fontSize: 15, fontWeight: "600" },
+  name: { fontSize: 15, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   meta: { fontSize: 12.5, marginTop: 2 },
   pill: { borderWidth: 1, borderRadius: 90, paddingHorizontal: 14, paddingVertical: 6 },
 });

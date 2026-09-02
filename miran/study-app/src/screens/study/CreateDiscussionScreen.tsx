@@ -12,6 +12,7 @@ import {
 import { weekOptions } from "@/lib/date";
 import { Screen, ScreenHeader } from "@/components/Chrome";
 import { Loading, PillButton, TagInput, TextField } from "@/components";
+import { PRETENDARD } from "@/theme";
 
 type R = RouteProp<RootStackParamList, "CreateDiscussion">;
 
@@ -142,7 +143,7 @@ export function CreateDiscussionScreen({ route }: { route: R }) {
                     { backgroundColor: c.surfaceCard, borderColor: on ? c.primaryFocus : c.hairline, borderWidth: on ? 2 : 1 },
                   ]}
                 >
-                  <Text style={{ color: on ? c.primary : c.textPrimary, fontSize: 13, fontWeight: "600" }}>
+                  <Text style={{ color: on ? c.primary : c.textPrimary, fontSize: 13, fontWeight: "600", fontFamily: PRETENDARD["600"] }}>
                     {w.label}
                   </Text>
                 </Pressable>
@@ -217,8 +218,8 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13.5, marginTop: -4 },
   segment: { flexDirection: "row", gap: 4, padding: 4, borderRadius: 8 },
   seg: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: "center" },
-  segText: { fontSize: 14, fontWeight: "600" },
-  label: { fontSize: 13, fontWeight: "600" },
+  segText: { fontSize: 14, fontWeight: "600", fontFamily: PRETENDARD["600"] },
+  label: { fontSize: 13, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   weekRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   weekChip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 90 },
   hint: { fontSize: 12.5, lineHeight: 18, marginTop: -6 },

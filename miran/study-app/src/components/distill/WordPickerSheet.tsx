@@ -1,5 +1,10 @@
 // distill 단어 저장 시트 — 본문 문장을 길게 눌러 열고, 어려운 단어 칩을 눌러 담는다.
 //   단어를 누르면 즉시 저장(✓)되고, 그 자리에서 AI 뜻풀이가 채워져 표시된다(마이 단어장에도 담김).
+//
+// ⚠️ 이건 "비개발자용" 기능이 아니다. **단어를 누른 것 자체가 그 영역에 약하다는 신호**이고,
+//    개발자가 '리텐션/코호트/LTV' 를 누르면 정확히 대칭으로 작동한다. 그래서 저장할 때
+//    domain(글의 용어 풀이에서 온 영역) + 내 직무를 함께 남기고, 뜻풀이도 2단으로 준다:
+//      1단 = 한 줄 설명 / 2단("더 쉽게") = 내 직무 언어 + 비유로 다시 쓴 설명.
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -10,10 +15,18 @@ import {
   Text,
   View,
 } from "react-native";
-import { BookmarkPlus, Check, RotateCw, X } from "lucide-react-native";
+import { BookmarkPlus, Check, RotateCw, Sparkles, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
-import { useCreateWord, useWordByTerm, useDefineWord } from "@/data";
+import {
+  useCreateWord,
+  useWordByTerm,
+  useDefineWord,
+  useExplainWordEasier,
+  useArticle,
+  useProfile,
+} from "@/data";
+import { termDomain } from "@/lib/terms";
 import { tokenizeWords } from "@/lib/text";
 import { dtype } from "@/theme";
 
@@ -30,6 +43,10 @@ export function WordPickerSheet({
   const c = theme.colors;
   const create = useCreateWord();
   const define = useDefineWord();
+  const easier = useExplainWordEasier();
+  const profile = useProfile();
+  // 글의 용어 풀이(articles.terms)에서 이 단어의 영역을 찾는다. 없으면 null 로 저장.
+  const articleQ = useArticle(articleId);
   const [saved, setSaved] = useState<Set<string>>(new Set());
   const [active, setActive] = useState<string | null>(null);
   const [gaveUp, setGaveUp] = useState(false);
@@ -50,7 +67,13 @@ export function WordPickerSheet({
     setActive(term); // 누른 단어의 뜻을 보여줌
     if (!saved.has(term)) {
       setSaved((p) => new Set(p).add(term));
-      create.mutate({ term, context: sentence, articleId });
+      create.mutate({
+        term,
+        context: sentence,
+        articleId,
+        domain: termDomain(articleQ.data?.terms, term),
+        jobRole: profile.data?.job_role ?? null,
+      });
     }
   };
 
@@ -122,7 +145,36 @@ export function WordPickerSheet({
             <View style={[styles.defPanel, { backgroundColor: c.surfaceSunken }]}>
               <Text style={[styles.defTerm, { color: c.primary }]}>{active}</Text>
               {wordQ.data?.definition ? (
-                <Text style={[styles.defText, { color: c.textPrimary }]}>{wordQ.data.definition}</Text>
+                <>
+                  <Text style={[styles.defText, { color: c.textPrimary }]}>
+                    {wordQ.data.definition}
+                  </Text>
+
+                  {/* 2단 — 1단으로 부족할 때. 서버가 내 직무·영역을 보고 다시 쓴다. */}
+                  {wordQ.data.easy_definition ? (
+                    <View style={[styles.easyBox, { borderColor: c.accentTintBorder, backgroundColor: c.primaryTint }]}>
+                      <Text style={[styles.easyLabel, { color: c.primary }]}>더 쉽게</Text>
+                      <Text style={[styles.defText, { color: c.textPrimary }]}>
+                        {wordQ.data.easy_definition}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Pressable
+                      style={styles.defLoading}
+                      disabled={easier.isPending}
+                      onPress={() => easier.mutate(wordQ.data!.id)}
+                    >
+                      {easier.isPending ? (
+                        <ActivityIndicator size="small" color={c.primary} />
+                      ) : (
+                        <Sparkles size={14} color={c.primary} />
+                      )}
+                      <Text style={[styles.defLoadingText, { color: c.primary }]}>
+                        {easier.isPending ? "다시 쓰는 중이에요…" : "더 쉽게 설명해줘"}
+                      </Text>
+                    </Pressable>
+                  )}
+                </>
               ) : gaveUp && !define.isPending && wordQ.data ? (
                 <Pressable
                   style={styles.defLoading}
@@ -174,6 +226,8 @@ const styles = StyleSheet.create({
   empty: { ...dtype.bodyS, paddingVertical: 12 },
 
   defPanel: { borderRadius: 12, padding: 14, gap: 6 },
+  easyBox: { borderWidth: 1, borderRadius: 10, padding: 10, marginTop: 8, gap: 4 },
+  easyLabel: { ...dtype.label, fontSize: 11.5 },
   defTerm: { ...dtype.cardTitle, fontSize: 15 },
   defText: { ...dtype.body, lineHeight: 23 },
   defLoading: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 2 },

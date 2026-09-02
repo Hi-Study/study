@@ -63,5 +63,13 @@ export const qk = {
   reads: (uid: string) => ["reads", uid] as const,
   readIds: (uid: string) => ["read-ids", uid] as const,
   drafts: (uid: string) => ["opinion-drafts", uid] as const,
+  // 원탭 스탬프 · 읽기 통계 · 직군 배지 · 약한 영역 · 온보딩
+  myStamps: (uid: string, articleId: string) => ["stamps", "mine", uid, articleId] as const,
+  stampCounts: (articleId: string) => ["stamps", "counts", articleId] as const,
+  readingStats: (uid: string) => ["reading-stats", uid] as const,
+  readerRoles: (articleId: string) => ["reader-roles", articleId] as const,
+  weakDomains: (uid: string) => ["weak-domains", uid] as const,
+  myTopics: (uid: string) => ["my-topics", uid] as const,
+  weeklyTogether: () => ["articles", "weekly-together"] as const,
   draft: (uid: string, articleId: string) => ["opinion-draft", uid, articleId] as const,
 };

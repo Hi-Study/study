@@ -15,7 +15,34 @@ export interface InsightSection {
   body: string;
 }
 
-/** 3관점 요약이 기대하는 표준 제목(프롬프트와 동일). */
+/**
+ * 3관점 요약의 세 번째 제목은 **읽는 사람 직무에 따라 달라진다**(온보딩에서 받은 job_role).
+ * 같은 글이라도 기획자에게는 판단 과정이, 개발자에게는 구현이 남을 것이 다르기 때문이다.
+ * 앞의 두 제목은 고정 — 파싱 기준이자 "문제 → 해결"이라는 뼈대라서 바뀌면 안 된다.
+ */
+export const ROLE_INSIGHT_TITLE: Record<string, string> = {
+  planner: "기획자 관점에서 배울 점",
+  designer: "디자이너 관점에서 배울 점",
+  marketer: "마케터 관점에서 배울 점",
+  dev: "개발자 관점에서 배울 점",
+  data: "데이터 관점에서 배울 점",
+  other: "실무에 적용할 점",
+};
+
+/** 직무별 세 번째 제목(모르는 값이면 기존 기본 제목). */
+export function insightTitleForRole(jobRole: string | null | undefined): string {
+  return ROLE_INSIGHT_TITLE[jobRole ?? ""] ?? "디자이너·PM 관점에서 배울 점";
+}
+
+/**
+ * ai_summaries 캐시 키 — 직무별 요약이 서로 덮어쓰지 않게 분리한다.
+ * 직무가 없으면 기존 키("insight")를 그대로 써서 예전 캐시를 살린다.
+ */
+export function insightCacheKey(jobRole: string | null | undefined): string {
+  return jobRole ? `insight_${jobRole}` : "insight";
+}
+
+/** 3관점 요약이 기대하는 표준 제목(프롬프트와 동일). 세 번째는 직무별로 대체될 수 있다. */
 export const INSIGHT_TITLES = [
   "무슨 문제를 다뤘나",
   "어떻게 해결했나",
@@ -31,7 +58,9 @@ export function isStructuredInsight(text: string | null | undefined): boolean {
   const t = (text ?? "").trim();
   if (!t) return false;
   if (/^\s{0,3}#{1,3}\s+/m.test(t)) return true;
-  const hit = INSIGHT_TITLES.filter((title) => t.includes(title)).length;
+  // 세 번째 제목은 직무별로 다르므로 후보 전체를 놓고 센다.
+  const candidates = [...INSIGHT_TITLES, ...Object.values(ROLE_INSIGHT_TITLE)];
+  const hit = candidates.filter((title) => t.includes(title)).length;
   return hit >= 2;
 }
 
@@ -54,16 +83,16 @@ export function splitInsightSections(text: string): InsightSection[] {
   }
 
   // 2) 마커는 없지만 표준 제목이 본문에 박혀 있으면 그 위치로 분할.
-  const found = INSIGHT_TITLES.filter((title) => t.includes(title));
+  const found = [...INSIGHT_TITLES, ...Object.values(ROLE_INSIGHT_TITLE)].filter((title) => t.includes(title));
   if (found.length >= 2) {
-    const escaped = INSIGHT_TITLES.map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+    const escaped = [...INSIGHT_TITLES, ...Object.values(ROLE_INSIGHT_TITLE)].map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
     return t
       .split(new RegExp(`(?=(?:${escaped}))`))
       .map((s) => s.trim())
       .filter(Boolean)
       .map((seg) => {
         // 세그먼트 앞의 표준 제목을 떼어내 title 로, 나머지를 body 로.
-        const title = INSIGHT_TITLES.find((tt) => seg.startsWith(tt));
+        const title = [...INSIGHT_TITLES, ...Object.values(ROLE_INSIGHT_TITLE)].find((tt) => seg.startsWith(tt));
         if (title) {
           return { title, body: seg.slice(title.length).replace(/^[\s:：·-]+/, "").trim() };
         }

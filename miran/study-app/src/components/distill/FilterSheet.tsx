@@ -15,7 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Check, ChevronDown, RotateCcw, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
-import { TOPIC_META, TOPIC_ORDER, dtype } from "@/theme";
+import { TOPIC_META, TOPIC_ORDER, dtype , PRETENDARD} from "@/theme";
 import type { BlogRow } from "@/types/tables";
 import type { Topic } from "@/types/database";
 import { useArticlesFeedCount, useProfile } from "@/data";
@@ -494,8 +494,8 @@ const styles = StyleSheet.create({
   brandName: { ...dtype.display, maxWidth: W * 0.52 },
 
   banner: { borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, gap: 3 },
-  bannerTop: { ...dtype.bodyS, fontWeight: "700", opacity: 0.9 },
-  bannerMain: { ...dtype.cardTitle, fontWeight: "700" },
+  bannerTop: { ...dtype.bodyS, fontWeight: "700", fontFamily: PRETENDARD["700"], opacity: 0.9 },
+  bannerMain: { ...dtype.cardTitle, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 
   // ③ 하위 필터 칩 — flexGrow:0 으로 세로로 눌리지 않게, 칩은 minHeight 로 글자 잘림 방지.
   //    ↳ 칩이 세로로 잘려 보이지 않게 위아래 여백을 넉넉히 준다(특히 하단).
@@ -519,7 +519,7 @@ const styles = StyleSheet.create({
     paddingRight: 10,
     minHeight: 36,
   },
-  chipText: { fontSize: 13, lineHeight: 20, fontWeight: "700" },
+  chipText: { fontSize: 13, lineHeight: 20, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20 },
@@ -533,11 +533,11 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 6,
   },
-  sheetTitle: { ...dtype.title, fontWeight: "800" },
+  sheetTitle: { ...dtype.title, fontWeight: "800", fontFamily: PRETENDARD["800"] },
 
   tabs: { flexDirection: "row", borderBottomWidth: 1, marginTop: 6 },
   tab: { flex: 1, alignItems: "center", paddingVertical: 13 },
-  tabText: { fontSize: 15, lineHeight: 21, fontWeight: "700" },
+  tabText: { fontSize: 15, lineHeight: 21, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   tabBar: { position: "absolute", bottom: -1, left: 0, right: 0, height: 2.5, borderRadius: 2 },
 
   pickedScroll: { flexGrow: 0 },
@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
     paddingRight: 8,
     minHeight: 30,
   },
-  pickedText: { fontSize: 12.5, lineHeight: 18, fontWeight: "700" },
+  pickedText: { fontSize: 12.5, lineHeight: 18, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 
   row: { flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 12, paddingHorizontal: 20 },
   rowLabel: { flex: 1, fontSize: 15, lineHeight: 21 },
@@ -577,7 +577,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     minHeight: 50,
   },
-  resetText: { fontSize: 14, lineHeight: 20, fontWeight: "700" },
+  resetText: { fontSize: 14, lineHeight: 20, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   applyBtn: { flex: 1, borderRadius: 12, alignItems: "center", justifyContent: "center", minHeight: 50 },
-  applyText: { fontSize: 15, lineHeight: 21, fontWeight: "700" },
+  applyText: { fontSize: 15, lineHeight: 21, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 });

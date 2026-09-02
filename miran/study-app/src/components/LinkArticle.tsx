@@ -5,6 +5,7 @@ import { Link2 } from "lucide-react-native";
 import { useTheme } from "@/providers/ThemeProvider";
 import { domainOf, stripArticleNoise } from "@/lib/text";
 import { HighlightSection } from "./HighlightSection";
+import { PRETENDARD } from "@/theme";
 
 // 진입 시 AI 요약도 함께 보이도록 접힘 미리보기는 짧게(약 200자)만 노출.
 const PREVIEW_CHARS = 200;
@@ -92,12 +93,12 @@ export function LinkArticle({
 const styles = StyleSheet.create({
   card: { marginTop: 10, paddingLeft: 12, borderLeftWidth: 4 },
   domainRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 2 },
-  domain: { fontSize: 12.5, fontWeight: "600", flex: 1 },
+  domain: { fontSize: 12.5, fontWeight: "600", fontFamily: PRETENDARD["600"], flex: 1 },
   desc: { flex: 1, fontSize: 13.5, lineHeight: 20, marginTop: 6 },
   body: { fontSize: 14.5, lineHeight: 23, marginTop: 8 },
   loading: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 },
   expand: { marginTop: 8, alignSelf: "flex-start" },
-  expandText: { fontSize: 13, fontWeight: "700" },
+  expandText: { fontSize: 13, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   btn: { alignSelf: "flex-start", marginTop: 10, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 90 },
-  btnText: { color: "#fff", fontSize: 12.5, fontWeight: "700" },
+  btnText: { color: "#fff", fontSize: 12.5, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 });

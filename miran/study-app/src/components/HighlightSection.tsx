@@ -23,6 +23,7 @@ import {
 import { splitSentences } from "@/lib/text";
 import { HIGHLIGHT_COLORS, HIGHLIGHT_TEXT, highlightBg } from "@/lib/highlight";
 import { Avatar } from "./Avatar";
+import { PRETENDARD } from "@/theme";
 
 /** 공유 글 본문을 문장 단위로 밑줄 긋고 감상평을 남기는 섹션(피그마 코멘트식, 모두에게 공유). */
 export function HighlightSection({
@@ -291,7 +292,7 @@ function SheetBody({
             style={[styles.delBtn, { borderColor: "#c0392b" }]}
           >
             <Trash2 size={15} color="#c0392b" />
-            <Text style={{ color: "#c0392b", fontSize: 14, fontWeight: "700" }}>삭제</Text>
+            <Text style={{ color: "#c0392b", fontSize: 14, fontWeight: "700", fontFamily: PRETENDARD["700"] }}>삭제</Text>
           </Pressable>
         ) : null}
         <Pressable
@@ -335,9 +336,9 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   section: { marginTop: 12, gap: 8 },
   head: { flexDirection: "row", alignItems: "center", gap: 6 },
-  headText: { fontSize: 12.5, fontWeight: "700" },
+  headText: { fontSize: 12.5, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   body: { fontSize: 15, lineHeight: 26 },
-  inlineAuthor: { fontSize: 11, fontWeight: "800" },
+  inlineAuthor: { fontSize: 11, fontWeight: "800", fontFamily: PRETENDARD["800"] },
   openBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -349,10 +350,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
   },
-  openText: { fontSize: 13.5, fontWeight: "700" },
+  openText: { fontSize: 13.5, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 
   rollup: { marginTop: 10, paddingTop: 14, borderTopWidth: 1, gap: 14 },
-  rollupTitle: { fontSize: 12.5, fontWeight: "800", letterSpacing: 0.2, marginBottom: 2 },
+  rollupTitle: { fontSize: 12.5, fontWeight: "800", fontFamily: PRETENDARD["800"], letterSpacing: 0.2, marginBottom: 2 },
   rollupRow: {
     flexDirection: "row",
     gap: 10,
@@ -363,7 +364,7 @@ const styles = StyleSheet.create({
   },
   rollupBar: { width: 4, alignSelf: "stretch", borderRadius: 2 },
   rollupWhoRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  rollupWho: { fontSize: 14, fontWeight: "800" },
+  rollupWho: { fontSize: 14, fontWeight: "800", fontFamily: PRETENDARD["800"] },
   rollupDot: { width: 11, height: 11, borderRadius: 6 },
   rollupQuote: { fontSize: 12.5, lineHeight: 18, marginTop: 4 },
   rollupNote: { fontSize: 13.5, lineHeight: 19, marginTop: 5 },
@@ -377,8 +378,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sheetHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sheetTitle: { fontSize: 16, fontWeight: "700" },
-  sheetLabel: { fontSize: 12, fontWeight: "700", marginTop: 2 },
+  sheetTitle: { fontSize: 16, fontWeight: "700", fontFamily: PRETENDARD["700"] },
+  sheetLabel: { fontSize: 12, fontWeight: "700", fontFamily: PRETENDARD["700"], marginTop: 2 },
   quote: {
     fontSize: 14.5,
     lineHeight: 22,
@@ -386,7 +387,7 @@ const styles = StyleSheet.create({
     padding: 10,
     overflow: "hidden",
   },
-  otherLabel: { fontSize: 12, fontWeight: "800", marginTop: 2, marginBottom: 8 },
+  otherLabel: { fontSize: 12, fontWeight: "800", fontFamily: PRETENDARD["800"], marginTop: 2, marginBottom: 8 },
   other: {
     flexDirection: "row",
     gap: 10,
@@ -397,7 +398,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   otherBar: { width: 4, alignSelf: "stretch", borderRadius: 2 },
-  otherName: { fontSize: 13.5, fontWeight: "800" },
+  otherName: { fontSize: 13.5, fontWeight: "800", fontFamily: PRETENDARD["800"] },
   otherNote: { fontSize: 13.5, lineHeight: 19, marginTop: 3 },
   hint: { fontSize: 13, lineHeight: 19, paddingVertical: 8 },
   swatches: { flexDirection: "row", gap: 10, marginTop: 2 },
@@ -421,5 +422,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   saveBtn: { flex: 1, height: 46, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  saveText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  saveText: { color: "#fff", fontSize: 15, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 });

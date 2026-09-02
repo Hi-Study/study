@@ -8,6 +8,7 @@ import { DiscussScreen } from "@/screens/distill/DiscussScreen";
 import { FeedScreen } from "@/screens/distill/FeedScreen";
 import { DistillMyPageScreen } from "@/screens/distill/DistillMyPageScreen";
 import type { DistillTabParamList } from "./types";
+import { PRETENDARD } from "@/theme";
 
 const Tab = createBottomTabNavigator<DistillTabParamList>();
 
@@ -27,7 +28,7 @@ export function DistillTabs() {
           paddingTop: 8,
           paddingBottom: 12,
         },
-        tabBarLabelStyle: { fontSize: 11.5, fontWeight: "600", marginTop: 2 },
+        tabBarLabelStyle: { fontSize: 11.5, fontWeight: "600", fontFamily: PRETENDARD["600"], marginTop: 2 },
       }}
     >
       <Tab.Screen

@@ -5,10 +5,11 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Bookmark, Eye, MessageSquare } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
-import { TOPIC_META, dtype } from "@/theme";
+import { TOPIC_META, dtype , PRETENDARD} from "@/theme";
 import { faviconDomain, faviconUrl } from "@/lib/brandIcon";
 import { safeImageUri } from "@/lib/image";
 import { useIsBookmarked, useToggleBookmark } from "@/data";
+import { LevelBadge } from "./LevelBadge";
 import type { ArticleWithBlog } from "@/data/articles";
 import type { Topic } from "@/types/database";
 
@@ -125,6 +126,19 @@ export function TopicChip({ topic }: { topic: Topic }) {
   );
 }
 
+// 주제칩 + 난이도 배지 한 줄.
+// 카드 단계에서 "내가 읽을 수 있는 글인지"를 3초 안에 판단하게 한다 — 읽다가 막혀서
+// 나가는 걸 막는 게 목적이지, 어려운 글을 숨기는 게 아니다(기대치만 맞춘다).
+function CardChips({ article }: { article: ArticleWithBlog }) {
+  if (!article.topic && !article.level && !article.read_minutes) return null;
+  return (
+    <View style={styles.chipRow}>
+      {article.topic != null ? <TopicChip topic={article.topic} /> : null}
+      <LevelBadge level={article.level} readMinutes={article.read_minutes} />
+    </View>
+  );
+}
+
 // ---- 출처 로고칩 + 이름 + 날짜 메타 라인 ----
 function MetaLine({ article }: { article: ArticleWithBlog }) {
   const { theme } = useTheme();
@@ -178,7 +192,7 @@ export function ArticleCardH({
         </View>
       </View>
       <View style={styles.cardHBody}>
-        {article.topic ? <TopicChip topic={article.topic} /> : null}
+        <CardChips article={article} />
         <Text style={[styles.cardTitle, { color: c.textPrimary }]} numberOfLines={2}>
           {article.title}
         </Text>
@@ -204,7 +218,7 @@ export function ArticleRow({
       style={({ pressed }) => [styles.row, { opacity: pressed ? 0.9 : 1 }]}
     >
       <View style={styles.rowText}>
-        {article.topic ? <TopicChip topic={article.topic} /> : null}
+        <CardChips article={article} />
         <Text style={[styles.rowTitle, { color: c.textPrimary }]} numberOfLines={2}>
           {article.title}
         </Text>
@@ -253,7 +267,7 @@ export function FeaturedCard({
         </View>
       </View>
       <View style={styles.featuredBody}>
-        {article.topic ? <TopicChip topic={article.topic} /> : null}
+        <CardChips article={article} />
         <Text style={[styles.featuredTitle, { color: c.textPrimary }]} numberOfLines={2}>
           {article.title}
         </Text>
@@ -300,7 +314,7 @@ export function ArticleGridCard({
         </View>
       </View>
       <View style={styles.gridBody}>
-        {article.topic ? <TopicChip topic={article.topic} /> : null}
+        <CardChips article={article} />
         <Text style={[styles.gridTitle, { color: c.textPrimary }]} numberOfLines={2}>
           {article.title}
         </Text>
@@ -312,16 +326,17 @@ export function ArticleGridCard({
 
 const styles = StyleSheet.create({
   logo: { alignItems: "center", justifyContent: "center" },
-  logoText: { color: "#fff", fontWeight: "800" },
+  logoText: { color: "#fff", fontWeight: "800", fontFamily: PRETENDARD["800"] },
   favicon: { alignItems: "center", justifyContent: "center", backgroundColor: "#fff", borderWidth: 1, borderColor: "rgba(0,0,0,0.06)", overflow: "hidden" },
 
   topicChip: { alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   topicText: { ...dtype.label },
 
+  chipRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
   metaText: { ...dtype.meta, flex: 1 },
   statsRow: { flexDirection: "row", alignItems: "center", gap: 3 },
-  statText: { ...dtype.meta, fontWeight: "600" },
+  statText: { ...dtype.meta, fontWeight: "600", fontFamily: PRETENDARD["600"] },
 
   bmBtn: { width: 30, height: 30, alignItems: "center", justifyContent: "center" },
   bmOverlay: {

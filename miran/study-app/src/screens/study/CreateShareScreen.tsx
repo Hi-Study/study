@@ -13,6 +13,7 @@ import { currentWeekDates, toISODate } from "@/lib/date";
 import { EMPTY_INSIGHT, cleanInsight, toInsight, type Insight } from "@/lib/insight";
 import { Screen, ScreenHeader } from "@/components/Chrome";
 import { Loading, PillButton, TagInput, TextField } from "@/components";
+import { PRETENDARD } from "@/theme";
 
 type R = RouteProp<RootStackParamList, "CreateShare">;
 
@@ -205,7 +206,7 @@ export function CreateShareScreen({ route }: { route: R }) {
                 },
               ]}
             >
-              <Text style={{ color: on ? c.primary : c.textPrimary, fontWeight: "600" }}>{l}</Text>
+              <Text style={{ color: on ? c.primary : c.textPrimary, fontWeight: "600", fontFamily: PRETENDARD["600"] }}>{l}</Text>
             </Pressable>
           );
         })}
@@ -407,10 +408,10 @@ function InsightFields({
 const styles = StyleSheet.create({
   content: { padding: 20, gap: 14 },
   sectionHead: { flexDirection: "row", alignItems: "center", gap: 8 },
-  sectionTitle: { fontSize: 15, fontWeight: "700" },
+  sectionTitle: { fontSize: 15, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   sectionHint: { fontSize: 12.5, marginTop: 4 },
   reqBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 90 },
-  reqText: { fontSize: 11, fontWeight: "700" },
+  reqText: { fontSize: 11, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   qRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   qRemove: { padding: 4 },
   addQ: {
@@ -425,11 +426,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignSelf: "flex-start",
   },
-  addQText: { fontSize: 13.5, fontWeight: "700" },
+  addQText: { fontSize: 13.5, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   segment: { flexDirection: "row", gap: 4, padding: 4, borderRadius: 8 },
   seg: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: "center" },
-  segText: { fontSize: 14, fontWeight: "600" },
-  label: { fontSize: 13, fontWeight: "600" },
+  segText: { fontSize: 14, fontWeight: "600", fontFamily: PRETENDARD["600"] },
+  label: { fontSize: 13, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   dayRow: { flexDirection: "row", gap: 8 },
   dayChip: { flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 8 },
   hint: { fontSize: 12.5, lineHeight: 18, marginTop: -6 },

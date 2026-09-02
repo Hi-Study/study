@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
-import { dtype } from "@/theme";
+import { dtype , PRETENDARD} from "@/theme";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   title: { ...dtype.cardTitle },
   sub: { ...dtype.meta, marginTop: 2, marginBottom: 12 },
   weekRow: { flexDirection: "row" },
-  weekday: { flex: 1, textAlign: "center", fontSize: 11, lineHeight: 16, fontWeight: "700" },
+  weekday: { flex: 1, textAlign: "center", fontSize: 11, lineHeight: 16, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   grid: { flexDirection: "row", flexWrap: "wrap", marginTop: 6 },
   cell: { width: `${100 / 7}%`, aspectRatio: 1, alignItems: "center", justifyContent: "center" },
   // 정사각형이 아니라 **원**: 가로세로 같은 크기 + borderRadius 999.
@@ -128,5 +128,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  dayText: { fontSize: 13, lineHeight: 18, fontWeight: "600" },
+  dayText: { fontSize: 13, lineHeight: 18, fontWeight: "600", fontFamily: PRETENDARD["600"] },
 });

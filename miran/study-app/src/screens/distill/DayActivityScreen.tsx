@@ -2,10 +2,11 @@
 //   그 하루에 남긴 인사이트 · 하이라이트 · 댓글 · 단어 · 읽은 글을 한 화면에 모아 보여준다.
 //   (별도 쿼리 없이 마이 탭이 이미 쓰는 use* 훅 결과를 날짜로 걸러 재사용한다.)
 import React, { useMemo } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ChevronLeft } from "lucide-react-native";
+import { ChevronLeft, Copy, Share2 } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav, type RootStackParamList } from "@/navigation/types";
@@ -17,11 +18,12 @@ import {
   useMyReads,
   commentSource,
 } from "@/data";
-import { dtype } from "@/theme";
+import { dtype , PRETENDARD} from "@/theme";
 import { highlightBg } from "@/lib/highlight";
 import { OpinionCard } from "@/components/distill/OpinionCard";
 import { ArticleRow } from "@/components/distill/ArticleCards";
 import { dayKey } from "@/components/distill/ActivityCalendar";
+import { buildReferenceMarkdown } from "@/lib/exportRef";
 import { EmptyState, Loading } from "@/components";
 
 type Props = NativeStackScreenProps<RootStackParamList, "DayActivity">;
@@ -79,6 +81,47 @@ export function DayActivityScreen({ route }: Props) {
 
   const total = opinions.length + highlights.length + comments.length + words.length + reads.length;
 
+  // 레퍼런스 문서(마크다운) — 노션에 그대로 붙여넣을 수 있는 형태.
+  //   활동이 없으면 빈 문자열이 나오고 버튼도 안 그린다.
+  const markdown = useMemo(
+    () =>
+      buildReferenceMarkdown({
+        date,
+        opinions: opinions.map((o) => ({
+          articleTitle: o.article?.title ?? "",
+          blogName: o.article?.blog?.name ?? null,
+          articleUrl: o.article?.url ?? null,
+          insight: o.insight,
+        })),
+        highlights: highlights.map((h) => ({
+          quote: h.quote,
+          note: h.note,
+          articleTitle: h.article?.title ?? null,
+        })),
+        comments: comments.map((m) => ({
+          text: m.text,
+          sourceTitle: commentSource(m)?.title ?? null,
+        })),
+        words: words.map((w) => ({ term: w.term, definition: w.definition })),
+        reads: reads.map((a) => ({
+          title: a.title,
+          blogName: a.blog?.name ?? null,
+          url: a.url,
+        })),
+      }),
+    [date, opinions, highlights, comments, words, reads],
+  );
+
+  const onCopy = async () => {
+    if (!markdown) return;
+    await Clipboard.setStringAsync(markdown);
+    Alert.alert("복사했어요", "노션·문서에 그대로 붙여넣으면 돼요.");
+  };
+  const onShare = () => {
+    if (!markdown) return;
+    Share.share({ message: markdown }).catch(() => undefined);
+  };
+
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: c.surfacePage }]} edges={["top", "left", "right"]}>
       <View style={styles.header}>
@@ -99,6 +142,26 @@ export function DayActivityScreen({ route }: Props) {
         <EmptyState title="이 날은 활동이 없어요" hint="글을 읽고 인사이트를 남기면 여기에 쌓여요" />
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {/* 레퍼런스 문서로 내보내기 — 읽은 게 자산으로 남는다는 감각이 재방문 이유가 된다. */}
+          {markdown ? (
+            <View style={[styles.exportBox, { borderColor: c.hairline, backgroundColor: c.surfacePageAlt }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.exportTitle, { color: c.textPrimary }]}>레퍼런스로 내보내기</Text>
+                <Text style={[styles.exportHint, { color: c.textMuted }]}>
+                  이 날 읽은 것을 문서로 정리해 드려요
+                </Text>
+              </View>
+              <Pressable onPress={onCopy} hitSlop={6} style={[styles.exportBtn, { borderColor: c.hairline, backgroundColor: c.surfaceCard }]}>
+                <Copy size={16} color={c.primary} />
+                <Text style={[styles.exportBtnText, { color: c.primary }]}>복사</Text>
+              </Pressable>
+              <Pressable onPress={onShare} hitSlop={6} style={[styles.exportBtn, { borderColor: c.hairline, backgroundColor: c.surfaceCard }]}>
+                <Share2 size={16} color={c.primary} />
+                <Text style={[styles.exportBtnText, { color: c.primary }]}>공유</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
           <Section title="남긴 인사이트" count={opinions.length}>
             <View style={{ gap: 12 }}>
               {opinions.map((o) => (
@@ -194,13 +257,34 @@ const styles = StyleSheet.create({
   headerSub: { ...dtype.meta, marginTop: 1 },
 
   content: { paddingHorizontal: 16, paddingBottom: 40 },
+  exportBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 12,
+  },
+  exportTitle: { ...dtype.cardTitle, fontSize: 15 },
+  exportHint: { ...dtype.meta, marginTop: 1 },
+  exportBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  exportBtnText: { ...dtype.label, fontSize: 12.5 },
   section: { marginTop: 18 },
   sectionHead: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 },
   sectionTitle: { ...dtype.title },
   sectionCount: { ...dtype.label, fontSize: 13 },
 
   row: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 6, marginBottom: 10 },
-  quote: { ...dtype.bodyS, fontWeight: "600", paddingHorizontal: 4, borderRadius: 4 },
+  quote: { ...dtype.bodyS, fontWeight: "600", fontFamily: PRETENDARD["600"], paddingHorizontal: 4, borderRadius: 4 },
   note: { ...dtype.bodyS },
   term: { ...dtype.cardTitle, fontSize: 15 },
   rowMeta: { ...dtype.meta },

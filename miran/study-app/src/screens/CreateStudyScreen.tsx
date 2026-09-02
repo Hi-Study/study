@@ -9,6 +9,7 @@ import { useCreateStudy, getStudy } from "@/data/studies";
 import { CADENCE_OPTIONS } from "@/lib/cadence";
 import { Screen, ScreenHeader } from "@/components/Chrome";
 import { PillButton, TextField } from "@/components";
+import { PRETENDARD } from "@/theme";
 
 interface Result {
   code: string;
@@ -132,7 +133,7 @@ export function CreateStudyScreen() {
                   },
                 ]}
               >
-                <Text style={{ color: on ? theme.colors.primary : theme.colors.textPrimary, fontSize: 13, fontWeight: "600" }}>
+                <Text style={{ color: on ? theme.colors.primary : theme.colors.textPrimary, fontSize: 13, fontWeight: "600", fontFamily: PRETENDARD["600"] }}>
                   {opt}
                 </Text>
               </Pressable>
@@ -155,7 +156,7 @@ export function CreateStudyScreen() {
 const styles = StyleSheet.create({
   formContent: { padding: 20, gap: 16, flexGrow: 1 },
   subtitle: { fontSize: 14, marginTop: -4 },
-  label: { fontSize: 13, fontWeight: "600" },
+  label: { fontSize: 13, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   hint: { fontSize: 12.5, lineHeight: 18, marginTop: 4 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
   chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 90 },
@@ -167,7 +168,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  resultTitle: { fontSize: 22, fontWeight: "700", letterSpacing: -0.4, marginTop: 8 },
+  resultTitle: { fontSize: 22, fontWeight: "700", fontFamily: PRETENDARD["700"], letterSpacing: -0.4, marginTop: 8 },
   resultDesc: { fontSize: 14.5, textAlign: "center", lineHeight: 22 },
   codeBox: {
     width: "100%",
@@ -179,5 +180,5 @@ const styles = StyleSheet.create({
     marginVertical: 16,
   },
   codeLabel: { fontSize: 12, marginBottom: 8 },
-  code: { fontSize: 40, fontWeight: "700", letterSpacing: 6 },
+  code: { fontSize: 40, fontWeight: "700", fontFamily: PRETENDARD["700"], letterSpacing: 6 },
 });

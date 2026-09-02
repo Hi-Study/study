@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { signInWithGoogle } from "@/auth/googleSignIn";
-import { dtype } from "@/theme";
+import { dtype , PRETENDARD} from "@/theme";
 
 export function LoginScreen() {
   const { theme } = useTheme();
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
 
   brand: { flex: 1, alignItems: "center", justifyContent: "center", gap: 16 },
   logo: { width: 72, height: 72, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  logoMark: { color: "#fff", fontSize: 40, fontWeight: "900" },
+  logoMark: { color: "#fff", fontSize: 40, fontWeight: "900", fontFamily: PRETENDARD["900"] },
   title: { ...dtype.display, fontSize: 30 },
   tagline: { ...dtype.body, textAlign: "center", lineHeight: 23 },
 
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   gWrap: { width: 22, height: 22, borderRadius: 11, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#e2e2e2" },
-  gText: { color: "#4285F4", fontSize: 15, fontWeight: "900" },
+  gText: { color: "#4285F4", fontSize: 15, fontWeight: "900", fontFamily: PRETENDARD["900"] },
   googleText: { ...dtype.cardTitle, fontSize: 16 },
   error: { ...dtype.bodyS, textAlign: "center" },
   legal: { ...dtype.meta, textAlign: "center" },

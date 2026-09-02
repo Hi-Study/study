@@ -20,7 +20,7 @@ import {
   type NotificationKind,
 } from "@/data";
 import { useNotifPrefs } from "@/lib/notifPrefs";
-import { dtype } from "@/theme";
+import { dtype , PRETENDARD} from "@/theme";
 import { relativeDate } from "@/components/distill/ArticleCards";
 import { Loading, ErrorState, EmptyState } from "@/components";
 
@@ -214,14 +214,14 @@ const styles = StyleSheet.create({
 
   tabs: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 10 },
   tabChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 7 },
-  tabText: { fontSize: 13, lineHeight: 18, fontWeight: "700" },
+  tabText: { fontSize: 13, lineHeight: 18, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 
   listContent: { paddingHorizontal: 16, paddingBottom: 24 },
   sectionLabel: { ...dtype.title, fontSize: 15, marginBottom: 8 },
   row: { flexDirection: "row", gap: 12, alignItems: "center", paddingVertical: 12 },
   iconWrap: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  label: { ...dtype.meta, fontWeight: "700" },
-  title: { ...dtype.bodyS, fontWeight: "600", marginTop: 3, lineHeight: 20 },
+  label: { ...dtype.meta, fontWeight: "700", fontFamily: PRETENDARD["700"] },
+  title: { ...dtype.bodyS, fontWeight: "600", fontFamily: PRETENDARD["600"], marginTop: 3, lineHeight: 20 },
   time: { ...dtype.meta, marginTop: 4 },
   dot: { width: 8, height: 8, borderRadius: 4 },
 });

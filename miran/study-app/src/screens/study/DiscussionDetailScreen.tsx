@@ -42,6 +42,7 @@ import { useConfirm } from "@/providers/ConfirmProvider";
 import { timeAgo } from "@/lib/date";
 import { looksLikeStaleArticle } from "@/lib/text";
 import { threadComments, type CommentSort } from "@/lib/sortComments";
+import { PRETENDARD } from "@/theme";
 
 type R = RouteProp<RootStackParamList, "DiscussionDetail">;
 
@@ -379,7 +380,7 @@ export function DiscussionDetailScreen({ route }: { route: R }) {
         <View style={[styles.inputBar, { backgroundColor: c.surfaceCard, borderTopColor: c.hairline }]}>
           {editing ? (
             <View style={[styles.replyChip, { backgroundColor: c.tintLavender }]}>
-              <Text style={[styles.replyChipText, { color: c.primary, fontWeight: "700" }]} numberOfLines={1}>
+              <Text style={[styles.replyChipText, { color: c.primary, fontWeight: "700", fontFamily: PRETENDARD["700"] }]} numberOfLines={1}>
                 의견 수정 중
               </Text>
               <Pressable onPress={() => { setEditing(null); setDraft(""); }} hitSlop={8}>
@@ -389,7 +390,7 @@ export function DiscussionDetailScreen({ route }: { route: R }) {
           ) : replyTo ? (
             <View style={[styles.replyChip, { backgroundColor: c.tintLavender }]}>
               <Text style={[styles.replyChipText, { color: c.textSecondary }]} numberOfLines={1}>
-                <Text style={{ color: c.primary, fontWeight: "700" }}>{replyTo.author}</Text>
+                <Text style={{ color: c.primary, fontWeight: "700", fontFamily: PRETENDARD["700"] }}>{replyTo.author}</Text>
                 님에게 답글 · {replyTo.text}
               </Text>
               <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
@@ -564,33 +565,33 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   back: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
-  kicker: { fontSize: 11.5, fontWeight: "700", letterSpacing: 0.6, textTransform: "uppercase" },
-  headerTitle: { fontSize: 19, fontWeight: "700", letterSpacing: -0.3, marginTop: 2 },
+  kicker: { fontSize: 11.5, fontWeight: "700", fontFamily: PRETENDARD["700"], letterSpacing: 0.6, textTransform: "uppercase" },
+  headerTitle: { fontSize: 19, fontWeight: "700", fontFamily: PRETENDARD["700"], letterSpacing: -0.3, marginTop: 2 },
   scroll: { padding: 6, paddingBottom: 96 },
   msg: { flexDirection: "row", gap: 8, padding: 10, borderRadius: 8 },
   reply: { marginLeft: 24, paddingLeft: 10 },
   tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
   tagChip: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 90 },
-  tagChipText: { fontSize: 12, fontWeight: "700" },
+  tagChipText: { fontSize: 12, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   metaLine: { flexDirection: "row", alignItems: "baseline", gap: 7, flexWrap: "wrap" },
-  name: { fontSize: 15, fontWeight: "700" },
+  name: { fontSize: 15, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   meta: { fontSize: 12 },
   body: { fontSize: 15, lineHeight: 22, marginTop: 3 },
-  pinnedLabel: { fontSize: 11, fontWeight: "700", marginBottom: 3 },
+  pinnedLabel: { fontSize: 11, fontWeight: "700", fontFamily: PRETENDARD["700"], marginBottom: 3 },
   linkCard: { marginTop: 8 },
-  linkTitle: { fontSize: 15, fontWeight: "700", lineHeight: 20, marginBottom: 6 },
+  linkTitle: { fontSize: 15, fontWeight: "700", fontFamily: PRETENDARD["700"], lineHeight: 20, marginBottom: 6 },
   linkBtn: { alignSelf: "flex-start", marginTop: 4, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 90 },
-  linkBtnText: { color: "#fff", fontSize: 12.5, fontWeight: "700" },
+  linkBtnText: { color: "#fff", fontSize: 12.5, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   likeBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 2 },
-  likeText: { fontSize: 12.5, fontWeight: "600" },
+  likeText: { fontSize: 12.5, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   divider: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 12, paddingTop: 10, paddingBottom: 4 },
-  dividerText: { fontSize: 12.5, fontWeight: "700" },
+  dividerText: { fontSize: 12.5, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   dividerLine: { flex: 1, height: 1 },
   summaryBox: { marginTop: 4, marginHorizontal: 10, borderWidth: 1, borderRadius: 10, overflow: "hidden" },
   summaryHead: { flexDirection: "row", alignItems: "center", gap: 7, padding: 10 },
-  summaryTitle: { fontSize: 13, fontWeight: "700", flex: 1 },
+  summaryTitle: { fontSize: 13, fontWeight: "700", fontFamily: PRETENDARD["700"], flex: 1 },
   summaryBtn: { borderRadius: 90, paddingVertical: 5, paddingHorizontal: 12 },
-  summaryBtnText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  summaryBtnText: { color: "#fff", fontSize: 12, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   summaryLine: { fontSize: 13.5, lineHeight: 21, marginTop: 4 },
   quote: { marginVertical: 6, paddingLeft: 9, borderLeftWidth: 3 },
   quoteText: { fontSize: 13, lineHeight: 19 },

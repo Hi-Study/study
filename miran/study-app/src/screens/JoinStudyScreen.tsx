@@ -7,6 +7,7 @@ import { useJoinByCode } from "@/data/studies";
 import { sanitizeInviteCode } from "@/lib/invite";
 import { Screen, ScreenHeader } from "@/components/Chrome";
 import { PillButton } from "@/components";
+import { PRETENDARD } from "@/theme";
 
 export function JoinStudyScreen() {
   const { theme } = useTheme();
@@ -96,7 +97,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     textAlign: "center",
     fontSize: 32,
-    fontWeight: "700",
+    fontWeight: "700", fontFamily: PRETENDARD["700"],
     letterSpacing: 10,
   },
   error: { fontSize: 13, marginHorizontal: 2 },

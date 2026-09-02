@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 
 import { nameHashColor, initial } from "@/lib/color";
+import { PRETENDARD } from "@/theme";
 
 interface AvatarProps {
   name: string | null | undefined;
@@ -34,5 +35,5 @@ export function Avatar({ name, size = 30, square = false, style }: AvatarProps) 
 
 const styles = StyleSheet.create({
   base: { alignItems: "center", justifyContent: "center" },
-  text: { color: "#ffffff", fontWeight: "700" },
+  text: { color: "#ffffff", fontWeight: "700", fontFamily: PRETENDARD["700"] },
 });

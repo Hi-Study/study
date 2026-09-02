@@ -16,7 +16,7 @@ import {
   useFavoriteBlogIds,
   useToggleBlogFavorite,
 } from "@/data";
-import { dtype, TOPIC_META, TOPIC_ORDER } from "@/theme";
+import { dtype, TOPIC_META, TOPIC_ORDER , PRETENDARD} from "@/theme";
 import type { Topic } from "@/types/database";
 import { ArticleCardH, ArticleRow, ServiceLogo } from "@/components/distill/ArticleCards";
 import { Loading, ErrorState, EmptyState } from "@/components";
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingBottom: 4 },
   backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   headerSelect: { flexDirection: "row", alignItems: "center", gap: 4, flex: 1 },
-  headerSelectText: { ...dtype.titleL, fontWeight: "800", maxWidth: W * 0.72 },
+  headerSelectText: { ...dtype.titleL, fontWeight: "800", fontFamily: PRETENDARD["800"], maxWidth: W * 0.72 },
 
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
   switchPanel: {
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
 
   chips: { paddingVertical: 10, gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, borderWidth: 1 },
-  chipText: { fontSize: 13, lineHeight: 18, fontWeight: "700" },
+  chipText: { fontSize: 13, lineHeight: 18, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 
   sep: { height: 1 },
 });

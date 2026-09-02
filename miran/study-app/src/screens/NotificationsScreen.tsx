@@ -19,6 +19,7 @@ import { Screen, ScreenHeader } from "@/components/Chrome";
 import { timeAgo } from "@/lib/date";
 import type { NotificationRow } from "@/types/tables";
 import type { NotificationType } from "@/types/database";
+import { PRETENDARD } from "@/theme";
 
 // 타입별 아이콘 + 제목(한 줄 메시지 위에 얹는 헤더)
 const META: Record<NotificationType, { icon: LucideIcon; title: string }> = {
@@ -120,7 +121,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: 12, alignItems: "flex-start", paddingVertical: 14 },
   icon: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
   topLine: { flexDirection: "row", alignItems: "center", gap: 7 },
-  title: { flex: 1, fontSize: 14.5, fontWeight: "700" },
+  title: { flex: 1, fontSize: 14.5, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   time: { fontSize: 12 },
   body: { fontSize: 14, lineHeight: 20, marginTop: 3 },
 });

@@ -2,6 +2,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { PillButton } from "./Buttons";
+import { PRETENDARD } from "@/theme";
 
 export function Loading({ label }: { label?: string }) {
   const { theme } = useTheme();
@@ -66,6 +67,6 @@ export function EmptyState({
 
 const styles = StyleSheet.create({
   center: { alignItems: "center", justifyContent: "center", gap: 8, padding: 32 },
-  title: { fontSize: 15, fontWeight: "600" },
+  title: { fontSize: 15, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   muted: { fontSize: 13, textAlign: "center" },
 });

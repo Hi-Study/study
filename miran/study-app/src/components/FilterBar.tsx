@@ -2,6 +2,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { SearchField } from "./Fields";
+import { PRETENDARD } from "@/theme";
 
 export type DateKey = "all" | "week" | "month";
 
@@ -103,6 +104,6 @@ const styles = StyleSheet.create({
   wrap: { gap: 8 },
   chips: { flexDirection: "row", alignItems: "center", gap: 7, paddingRight: 8 },
   chip: { borderWidth: 1, borderRadius: 90, paddingVertical: 6, paddingHorizontal: 13 },
-  chipText: { fontSize: 12.5, fontWeight: "600" },
+  chipText: { fontSize: 12.5, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   divider: { width: 1, height: 20, marginHorizontal: 2 },
 });

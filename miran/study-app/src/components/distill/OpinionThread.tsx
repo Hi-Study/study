@@ -16,7 +16,7 @@ import {
   type CommentTarget,
   type OpinionCommentRow,
 } from "@/data";
-import { dtype } from "@/theme";
+import { dtype , PRETENDARD} from "@/theme";
 import { relativeDate } from "@/components/distill/ArticleCards";
 import { Avatar } from "@/components/Avatar";
 
@@ -272,16 +272,16 @@ export function OpinionThread({ opinionId, hideLike }: { opinionId: string; hide
 
 const styles = StyleSheet.create({
   thread: { gap: 12, marginTop: 4 },
-  discussTitle: { ...dtype.label, fontSize: 12.5, fontWeight: "800" },
+  discussTitle: { ...dtype.label, fontSize: 12.5, fontWeight: "800", fontFamily: PRETENDARD["800"] },
   actionsRow: { flexDirection: "row", alignItems: "center", gap: 18, paddingVertical: 4 },
   actionBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
-  actionText: { fontSize: 13, lineHeight: 18, fontWeight: "700" },
+  actionText: { fontSize: 13, lineHeight: 18, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 
   comment: { flexDirection: "row", gap: 10 },
   reply: { marginLeft: 26 },
   replyIcon: { marginTop: 8 },
   cmHead: { flexDirection: "row", alignItems: "center", gap: 6 },
-  cmWho: { ...dtype.bodyS, fontWeight: "700" },
+  cmWho: { ...dtype.bodyS, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   cmDate: { ...dtype.meta },
   cmText: { ...dtype.body, marginTop: 3, lineHeight: 22 },
   cmActions: { flexDirection: "row", gap: 14, marginTop: 6 },
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  replyBarText: { ...dtype.bodyS, flex: 1, fontWeight: "600" },
+  replyBarText: { ...dtype.bodyS, flex: 1, fontWeight: "600", fontFamily: PRETENDARD["600"] },
 
   inputRow: { flexDirection: "row", alignItems: "flex-end", gap: 8, marginTop: 2 },
   input: { flex: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 9, maxHeight: 100, ...dtype.body },

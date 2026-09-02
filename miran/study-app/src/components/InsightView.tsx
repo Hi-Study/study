@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { toInsight } from "@/lib/insight";
+import { PRETENDARD } from "@/theme";
 
 /**
  * 공유 글의 "핵심 인사이트"(구조화 회고)를 상세화면에 표시.
@@ -82,15 +83,15 @@ const styles = StyleSheet.create({
   wrap: { gap: 12, marginTop: 8 },
   plain: { fontSize: 15, lineHeight: 22, marginTop: 3 },
   core: { borderRadius: 10, padding: 12, gap: 4 },
-  coreLabel: { fontSize: 12, fontWeight: "800", letterSpacing: 0.3 },
-  coreText: { fontSize: 15.5, lineHeight: 24, fontWeight: "600" },
+  coreLabel: { fontSize: 12, fontWeight: "800", fontFamily: PRETENDARD["800"], letterSpacing: 0.3 },
+  coreText: { fontSize: 15.5, lineHeight: 24, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   quote: { borderLeftWidth: 3, paddingLeft: 10, paddingVertical: 2 },
   quoteText: { fontSize: 14, lineHeight: 21, fontStyle: "italic" },
   field: { gap: 3 },
-  fieldLabel: { fontSize: 12.5, fontWeight: "700" },
+  fieldLabel: { fontSize: 12.5, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   fieldBody: { fontSize: 14.5, lineHeight: 22 },
   qBlock: { gap: 7 },
   qItem: { flexDirection: "row", gap: 8 },
-  qNum: { fontSize: 13, fontWeight: "800", width: 26 },
+  qNum: { fontSize: 13, fontWeight: "800", fontFamily: PRETENDARD["800"], width: 26 },
   qText: { flex: 1, fontSize: 14.5, lineHeight: 21 },
 });

@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useState, type ReactNode } from
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
+import { PRETENDARD } from "@/theme";
 
 export interface ConfirmOptions {
   title: string;
@@ -101,10 +102,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 8,
   },
-  title: { fontSize: 17, fontWeight: "700", letterSpacing: -0.3 },
+  title: { fontSize: 17, fontWeight: "700", fontFamily: PRETENDARD["700"], letterSpacing: -0.3 },
   message: { fontSize: 14, lineHeight: 21, marginTop: 8 },
   row: { flexDirection: "row", gap: 10, marginTop: 20 },
   btn: { flex: 1, height: 46, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   cancelBtn: { borderWidth: 1, backgroundColor: "transparent" },
-  btnText: { fontSize: 15, fontWeight: "700" },
+  btnText: { fontSize: 15, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 });

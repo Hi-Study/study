@@ -6,6 +6,7 @@ import { useSharesFeed, type ShareFeedFilter, type ShareWithMeta } from "@/data/
 import { addDays, formatMonthDay, fromISODate, toISODate } from "@/lib/date";
 import { ShareCard } from "./ShareCard";
 import { EmptyState, ErrorState, Loading } from "./Feedback";
+import { PRETENDARD } from "@/theme";
 
 /** 날짜 라벨(오늘/어제/M월 D일). */
 function dateLabel(iso: string, todayISO: string): string {
@@ -99,5 +100,5 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   listContent: { padding: 16, paddingTop: 12 },
   dateHeader: { paddingVertical: 6, marginHorizontal: -8, marginTop: 4 },
-  dateHeaderText: { fontSize: 12.5, fontWeight: "700" },
+  dateHeaderText: { fontSize: 12.5, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 });

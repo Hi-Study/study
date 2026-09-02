@@ -9,7 +9,7 @@ import { FileText, Link2, PenLine, Search, X } from "lucide-react-native";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
 import { useOpinionsFeed, useBlogs, useCommunityPosts } from "@/data";
-import { dtype } from "@/theme";
+import { dtype , PRETENDARD} from "@/theme";
 import { OpinionCard } from "@/components/distill/OpinionCard";
 import { CommunityCard } from "@/components/distill/CommunityCard";
 import { FilterSheet, emptyFilter, type FilterValue } from "@/components/distill/FilterSheet";
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     paddingTop: 2,
     paddingBottom: 8,
   },
-  countText: { ...dtype.label, fontSize: 13, fontWeight: "700" },
+  countText: { ...dtype.label, fontSize: 13, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 
   listContent: { paddingHorizontal: 16, paddingVertical: 12, paddingBottom: 32 },
 

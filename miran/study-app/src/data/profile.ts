@@ -6,6 +6,7 @@ import { qk } from "@/lib/queryKeys";
 import { useUid } from "@/auth/AuthProvider";
 import type { ThemeMode } from "@/theme";
 import type { UserRow } from "@/types/tables";
+import type { JobRole, Topic } from "@/types/database";
 
 /** 구글 로그인 세션 메타데이터에서 표시 이름 추출(없으면 이메일 아이디, 그래도 없으면 null). */
 export function nameFromSession(session: Session | null): string | null {
@@ -48,6 +49,7 @@ export async function getProfile(uid: string): Promise<UserRow> {
 export interface ProfilePatch {
   name?: string;
   role_title?: string | null;
+  job_role?: JobRole | null;
 }
 
 export async function updateProfile(
@@ -90,5 +92,64 @@ export function useSetTheme() {
   return useMutation({
     mutationFn: (theme: ThemeMode) => setTheme(uid, theme),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.profile(uid) }),
+  });
+}
+
+// ---- 온보딩(직무 · 관심 주제) ----
+//
+// 구글 로그인 직후 1화면에서 직무를 받는다. 이 값 하나로
+//   ① 역할별 AI 요약  ② 직군 배지("기획자 12명이 읽었어요")  ③ 단어장 개인화
+// 가 전부 돌아간다. onboarded_at 이 채워지면 온보딩 화면을 다시 띄우지 않는다.
+
+export interface OnboardingInput {
+  jobRole: JobRole;
+  topics: Topic[];
+}
+
+/** 직무 + 관심 주제를 저장하고 온보딩 완료로 표시. */
+export async function completeOnboarding(uid: string, input: OnboardingInput): Promise<UserRow> {
+  const { data, error } = await supabase
+    .from("users")
+    .update({ job_role: input.jobRole, onboarded_at: new Date().toISOString() })
+    .eq("id", uid)
+    .select("*")
+    .single();
+  if (error) throw error;
+
+  // 관심 주제는 통째로 교체(온보딩에서 고른 것이 최종).
+  await supabase.from("user_topics").delete().eq("user_id", uid);
+  if (input.topics.length > 0) {
+    const { error: tErr } = await supabase
+      .from("user_topics")
+      .insert(input.topics.map((topic) => ({ user_id: uid, topic })));
+    if (tErr) throw tErr;
+  }
+  return data;
+}
+
+export async function listMyTopics(uid: string): Promise<Topic[]> {
+  const { data, error } = await supabase.from("user_topics").select("topic").eq("user_id", uid);
+  if (error) throw error;
+  return (data ?? []).map((r) => r.topic as Topic);
+}
+
+export function useMyTopics() {
+  const uid = useUid();
+  return useQuery({
+    queryKey: qk.myTopics(uid),
+    queryFn: () => listMyTopics(uid),
+    enabled: Boolean(uid),
+  });
+}
+
+export function useCompleteOnboarding() {
+  const uid = useUid();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: OnboardingInput) => completeOnboarding(uid, input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.profile(uid) });
+      qc.invalidateQueries({ queryKey: qk.myTopics(uid) });
+    },
   });
 }

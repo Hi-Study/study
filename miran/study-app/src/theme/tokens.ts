@@ -35,9 +35,29 @@ export const fontWeight = {
   bold: "700",
 } as const;
 
-// Pretendard 를 expo-font 로 번들. fonts.css 스택의 첫 글꼴.
+// Pretendard 를 expo-font 로 번들(theme/fonts.ts 에서 굵기별로 등록).
+//
+// ⚠️ RN 에서 커스텀 폰트는 fontWeight 에 반응하지 않는다 — 굵기마다 패밀리가 따로다.
+//    그래서 스타일에 fontWeight 를 쓸 때는 **반드시 같은 굵기의 fontFamily 를 함께** 준다.
+//    빠뜨리면 그 글자만 시스템 폰트로 떨어져서 화면이 섞여 보인다.
+export const PRETENDARD = {
+  "400": "Pretendard-Regular",
+  "500": "Pretendard-Medium",
+  "600": "Pretendard-SemiBold",
+  "700": "Pretendard-Bold",
+  "800": "Pretendard-ExtraBold",
+  "900": "Pretendard-ExtraBold", // Black 은 사용처가 적어 번들에서 뺐다
+} as const;
+
+export type PretendardWeight = keyof typeof PRETENDARD;
+
+/** 굵기에 맞는 Pretendard 패밀리명. 모르는 값이면 Regular. */
+export function pretendard(weight: string | number): string {
+  return PRETENDARD[String(weight) as PretendardWeight] ?? PRETENDARD["400"];
+}
+
 export const fontFamily = {
-  regular: "Pretendard",
+  regular: PRETENDARD["400"],
 } as const;
 
 // 타입 스케일: size / lineHeight(px) / letterSpacing(px)

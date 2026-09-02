@@ -10,6 +10,7 @@ import {
 import { Search, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
+import { PRETENDARD } from "@/theme";
 
 interface FieldProps extends TextInputProps {
   label?: string;
@@ -93,7 +94,7 @@ export function SearchField({
 }
 
 const styles = StyleSheet.create({
-  label: { fontSize: 13, fontWeight: "600", marginBottom: 6 },
+  label: { fontSize: 13, fontWeight: "600", fontFamily: PRETENDARD["600"], marginBottom: 6 },
   input: {
     borderWidth: 1,
     borderRadius: 8,

@@ -10,6 +10,7 @@ import {
 } from "react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
+import { PRETENDARD } from "@/theme";
 
 export interface MenuItem {
   label: string;
@@ -116,5 +117,5 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   item: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 13, paddingHorizontal: 16 },
-  label: { fontSize: 14.5, fontWeight: "600" },
+  label: { fontSize: 14.5, fontWeight: "600", fontFamily: PRETENDARD["600"] },
 });

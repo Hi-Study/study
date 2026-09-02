@@ -4,6 +4,7 @@ import { Heart, MessageCircle } from "lucide-react-native";
 import { useTheme } from "@/providers/ThemeProvider";
 import { Avatar } from "./Avatar";
 import type { ShareWithMeta } from "@/data/shares";
+import { PRETENDARD } from "@/theme";
 
 /** 공유 글 카드(Slack 채널 행 스타일). 달력/이번 주 목록 공용. */
 export function ShareCard({
@@ -88,9 +89,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   metaLine: { flexDirection: "row", alignItems: "baseline", gap: 6, flexWrap: "wrap" },
-  name: { fontSize: 14.5, fontWeight: "700" },
+  name: { fontSize: 14.5, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   meta: { fontSize: 11.5 },
-  title: { fontSize: 15, fontWeight: "600", marginTop: 2 },
+  title: { fontSize: 15, fontWeight: "600", fontFamily: PRETENDARD["600"], marginTop: 2 },
   preview: { fontSize: 13, marginTop: 2 },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 6 },
   tag: {
@@ -98,7 +99,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 90,
   },
-  tagText: { fontSize: 11, fontWeight: "700" },
+  tagText: { fontSize: 11, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   stats: { flexDirection: "row", gap: 12, marginTop: 7 },
   stat: { flexDirection: "row", alignItems: "center", gap: 3 },
   statText: { fontSize: 12 },

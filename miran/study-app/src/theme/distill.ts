@@ -1,7 +1,14 @@
 // distill 전용 토큰 — 주제(topic) 팔레트·문장 하이라이트 색·타입 스케일(DESIGN_GUIDE §2.4/§2.6/§3).
-import type { Topic } from "@/types/database";
+import { PRETENDARD } from "./tokens";
+import type {
+  ArticleLevel,
+  BlogKind,
+  JobRole,
+  StampKind,
+  Topic,
+} from "@/types/database";
 
-/** 고정 7주제: 라벨 + 글자색 + 칩 배경(tint). */
+/** 고정 8주제: 라벨 + 글자색 + 칩 배경(tint). */
 export const TOPIC_META: Record<Topic, { label: string; color: string; tint: string }> = {
   dev: { label: "개발", color: "#2F5FC9", tint: "#E9F0FB" },
   product: { label: "프로덕트", color: "#6E45C4", tint: "#F0EAFA" },
@@ -10,6 +17,7 @@ export const TOPIC_META: Record<Topic, { label: string; color: string; tint: str
   data_ai: { label: "데이터/AI", color: "#4F46E5", tint: "#EEF0FE" },
   infra: { label: "인프라", color: "#2C9184", tint: "#E1F2EF" },
   career: { label: "커리어", color: "#3C9E79", tint: "#E4F3EC" },
+  marketing: { label: "마케팅", color: "#C2562F", tint: "#FAECE5" },
 };
 
 export const TOPIC_ORDER: Topic[] = [
@@ -20,6 +28,7 @@ export const TOPIC_ORDER: Topic[] = [
   "data_ai",
   "infra",
   "career",
+  "marketing",
 ];
 
 /** 문장 하이라이트(밑줄) 5색 + 위 글자색(항상 어두움). */
@@ -38,13 +47,136 @@ export type HighlightColor = keyof typeof HIGHLIGHT_COLORS;
  *  안드로이드 RN 은 lineHeight 를 줄 높이 상한으로 강제해서, 값이 빠듯하면 한글 글자가
  *  위아래로 잘려 보인다. 게다가 호출부가 `{...dtype.label, fontSize: 14}` 처럼 fontSize 만
  *  덮어쓰는 경우가 많아(칩·카운트·라벨), 스케일이 큰 쪽을 기준으로 여유를 둬야 한다. */
+//  ⚠️ 각 항목에 fontFamily 를 함께 박는다 — RN 커스텀 폰트는 fontWeight 로 굵어지지 않기 때문.
+//     호출부가 `{...dtype.label, fontSize: 14}` 처럼 크기만 덮어써도 굵기·패밀리는 유지된다.
 export const dtype = {
-  display: { fontSize: 28, lineHeight: 38, fontWeight: "800" as const },
-  titleL: { fontSize: 22, lineHeight: 30, fontWeight: "700" as const },
-  title: { fontSize: 18, lineHeight: 26, fontWeight: "700" as const },
-  cardTitle: { fontSize: 16, lineHeight: 23, fontWeight: "600" as const },
-  body: { fontSize: 15, lineHeight: 24, fontWeight: "400" as const },
-  bodyS: { fontSize: 13.5, lineHeight: 20, fontWeight: "400" as const },
-  meta: { fontSize: 12, lineHeight: 17, fontWeight: "500" as const },
-  label: { fontSize: 12, lineHeight: 20, fontWeight: "700" as const },
+  display: { fontSize: 28, lineHeight: 38, fontWeight: "800" as const, fontFamily: PRETENDARD["800"] },
+  titleL: { fontSize: 22, lineHeight: 30, fontWeight: "700" as const, fontFamily: PRETENDARD["700"] },
+  title: { fontSize: 18, lineHeight: 26, fontWeight: "700" as const, fontFamily: PRETENDARD["700"] },
+  cardTitle: { fontSize: 16, lineHeight: 23, fontWeight: "600" as const, fontFamily: PRETENDARD["600"] },
+  body: { fontSize: 15, lineHeight: 24, fontWeight: "400" as const, fontFamily: PRETENDARD["400"] },
+  bodyS: { fontSize: 13.5, lineHeight: 20, fontWeight: "400" as const, fontFamily: PRETENDARD["400"] },
+  meta: { fontSize: 12, lineHeight: 17, fontWeight: "500" as const, fontFamily: PRETENDARD["500"] },
+  label: { fontSize: 12, lineHeight: 20, fontWeight: "700" as const, fontFamily: PRETENDARD["700"] },
 } as const;
+
+/**
+ * 본문 조판(장문 읽기 전용) — 카드용 dtype 과 분리한다.
+ * 카드는 15.5px 가 맞지만 장문은 17px 가 표준(브런치 17~19, 미디엄 21).
+ * 좌우 20 + 17px 이면 한 줄이 약 19~20자 = 한글 장문에서 가장 읽기 좋은 구간(18~24자).
+ * ⚠ lineHeight 는 fontSize 의 1.7배 이상 유지(한글 장문 기준). dtype 주석의 1.35 규칙보다 강하다.
+ */
+export const reading = {
+  /** 본문 문단 */
+  para: { fontSize: 17, lineHeight: 30, letterSpacing: -0.3, fontFamily: PRETENDARD["400"] },
+  /** 본문 소제목 — 본문과 2px 차이면 구분이 안 된다. 크기 + 위 여백으로 띄운다. */
+  heading: { fontSize: 19, lineHeight: 28, letterSpacing: -0.4, fontFamily: PRETENDARD["800"] },
+  /** 목록 항목 */
+  list: { fontSize: 17, lineHeight: 29, letterSpacing: -0.3, fontFamily: PRETENDARD["400"] },
+  /** 문단 사이 간격 — 덩어리가 안 나뉘면 글이 벽처럼 보인다. */
+  blockGap: 20,
+  /** 소제목 위 추가 여백 */
+  headingTop: 28,
+  /** 본문 좌우 여백 */
+  pagePadding: 20,
+  /** 목록 들여쓰기 */
+  listIndent: 16,
+} as const;
+
+/**
+ * 난이도 배지 — **사람을 등급 매기지 않고 '글의 성격'을 말한다.**
+ * "개발자용" 같은 라벨은 비개발자를 밀어내고, 빨강은 "깊은 글 = 나쁜 글"로 읽히게 만든다.
+ * 그래서 빨강을 쓰지 않는다. 거르는 장치가 아니라 기대치를 맞추는 장치다.
+ */
+export const LEVEL_META: Record<
+  ArticleLevel,
+  { label: string; hint: string; color: string; tint: string }
+> = {
+  easy: {
+    label: "술술 읽혀요",
+    hint: "배경지식 없이 읽을 수 있어요",
+    color: "#2C9184",
+    tint: "#E1F2EF",
+  },
+  terms: {
+    label: "용어 몇 개만",
+    hint: "모르는 단어는 눌러서 뜻을 볼 수 있어요",
+    color: "#C0842F",
+    tint: "#FAF0E1",
+  },
+  code: {
+    label: "코드까지 들어가요",
+    hint: "구현 상세가 있어요",
+    color: "#2F5FC9",
+    tint: "#E9F0FB",
+  },
+};
+
+export const LEVEL_ORDER: ArticleLevel[] = ["easy", "terms", "code"];
+
+/**
+ * 원탭 스탬프 — 글을 다 읽고 버튼 하나만 누르는 반응.
+ * 인사이트를 못 쓰는 다수에게서 큐레이션 데이터를 얻는 통로다.
+ * 각 버튼이 뒤에서 하는 일:
+ *   apply    → 홈 "바로 써먹은 사례" 섹션의 재료
+ *   reason   → 결정 카드가 잘 뽑힌 글인지 확인하는 신호
+ *   disagree → "같이 읽는 글"에 넣기 좋은 논쟁적인 글
+ *   hard     → 이 글에 용어 예고가 필요하다는 신호(단어장 연결)
+ */
+export const STAMP_META: Record<
+  StampKind,
+  { emoji: string; label: string; color: string; tint: string }
+> = {
+  apply: { emoji: "💡", label: "우리도 써먹겠다", color: "#C0842F", tint: "#FAF0E1" },
+  reason: { emoji: "🎯", label: "결정 근거가 인상적", color: "#6E45C4", tint: "#F0EAFA" },
+  disagree: { emoji: "🤔", label: "반대 의견 있음", color: "#C24A82", tint: "#FAE9F1" },
+  hard: { emoji: "😵", label: "용어가 어려웠다", color: "#2C9184", tint: "#E1F2EF" },
+};
+
+export const STAMP_ORDER: StampKind[] = ["apply", "reason", "disagree", "hard"];
+
+/**
+ * 직무 — 온보딩에서 받고, 역할별 요약·직군 배지·단어장 개인화가 전부 이 값을 쓴다.
+ * `summaryMode` 는 그 직무에게 기본으로 보여줄 AI 요약 관점.
+ */
+export const JOB_ROLE_META: Record<
+  JobRole,
+  { label: string; emoji: string; plural: string; summaryMode: "plain" | "planner" | "explain" }
+> = {
+  planner: { label: "기획", emoji: "📋", plural: "기획자", summaryMode: "planner" },
+  designer: { label: "디자인", emoji: "🎨", plural: "디자이너", summaryMode: "planner" },
+  marketer: { label: "마케팅", emoji: "📣", plural: "마케터", summaryMode: "planner" },
+  dev: { label: "개발", emoji: "💻", plural: "개발자", summaryMode: "plain" },
+  data: { label: "데이터", emoji: "📊", plural: "데이터 직군", summaryMode: "plain" },
+  other: { label: "기타", emoji: "🙂", plural: "멤버", summaryMode: "explain" },
+};
+
+export const JOB_ROLE_ORDER: JobRole[] = [
+  "planner",
+  "designer",
+  "marketer",
+  "dev",
+  "data",
+  "other",
+];
+
+/** 수집 소스 성격 — 홈 로고 그리드를 "개발 글"만으로 보이지 않게 묶는 라벨. */
+export const BLOG_KIND_META: Record<BlogKind, { label: string }> = {
+  tech: { label: "기술" },
+  design: { label: "디자인" },
+  product: { label: "프로덕트" },
+  culture: { label: "문화·브랜드" },
+};
+
+export const BLOG_KIND_ORDER: BlogKind[] = ["tech", "product", "design", "culture"];
+
+/** 단어 도메인 라벨 — 마이 "자주 막히는 영역". */
+export const WORD_DOMAIN_LABEL: Record<string, string> = {
+  dev: "개발",
+  infra: "인프라",
+  data: "데이터",
+  design: "디자인",
+  marketing: "마케팅",
+  product: "프로덕트",
+  biz: "비즈니스",
+};

@@ -13,6 +13,7 @@ import { RedDot } from "@/components";
 import { HomeScreen } from "@/screens/study/HomeScreen";
 import { SearchScreen } from "@/screens/study/SearchScreen";
 import { MyPageScreen } from "@/screens/study/MyPageScreen";
+import { PRETENDARD } from "@/theme";
 
 const Tab = createBottomTabNavigator<StudyTabParamList>();
 
@@ -68,7 +69,7 @@ function StudyTabs() {
           shadowOpacity: 0,
           shadowColor: "transparent",
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600", fontFamily: PRETENDARD["600"] },
       }}
     >
       <Tab.Screen

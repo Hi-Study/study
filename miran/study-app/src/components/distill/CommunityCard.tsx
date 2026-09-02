@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Heart, MessageSquare } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
-import { dtype } from "@/theme";
+import { dtype , PRETENDARD} from "@/theme";
 import type { CommunityPost } from "@/data/community";
 import { Avatar } from "@/components/Avatar";
 import { relativeDate } from "@/components/distill/ArticleCards";
@@ -70,5 +70,5 @@ const styles = StyleSheet.create({
   title: { ...dtype.cardTitle, fontSize: 15 },
   body: { ...dtype.bodyS, lineHeight: 20 },
   meta: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
-  metaText: { ...dtype.meta, fontWeight: "600" },
+  metaText: { ...dtype.meta, fontWeight: "600", fontFamily: PRETENDARD["600"] },
 });

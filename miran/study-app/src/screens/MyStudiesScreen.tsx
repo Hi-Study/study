@@ -19,6 +19,7 @@ import {
   Tag,
 } from "@/components";
 import { Screen } from "@/components/Chrome";
+import { PRETENDARD } from "@/theme";
 
 export function MyStudiesScreen() {
   const { theme } = useTheme();
@@ -176,8 +177,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  wsTileText: { color: "#fff", fontWeight: "800", fontSize: 17 },
-  wsTitle: { fontSize: 19, fontWeight: "800", letterSpacing: -0.4 },
+  wsTileText: { color: "#fff", fontWeight: "800", fontFamily: PRETENDARD["800"], fontSize: 17 },
+  wsTitle: { fontSize: 19, fontWeight: "800", fontFamily: PRETENDARD["800"], letterSpacing: -0.4 },
   wsSub: { fontSize: 11.5, marginTop: 1 },
   list: { gap: 2 },
   row: {
@@ -189,7 +190,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   rowTitleLine: { flexDirection: "row", alignItems: "center", gap: 6 },
-  rowTitle: { fontSize: 15.5, fontWeight: "600", letterSpacing: -0.3, flexShrink: 1 },
+  rowTitle: { fontSize: 15.5, fontWeight: "600", fontFamily: PRETENDARD["600"], letterSpacing: -0.3, flexShrink: 1 },
   rowSub: { fontSize: 12.5, marginTop: 1 },
   rowRight: { alignItems: "flex-end", gap: 4 },
   rowMembers: { fontSize: 11 },

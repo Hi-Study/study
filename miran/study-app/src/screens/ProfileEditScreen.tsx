@@ -6,6 +6,7 @@ import { useRootNav } from "@/navigation/types";
 import { useProfile, useUpdateProfile } from "@/data/profile";
 import { Avatar, Loading, PillButton, TextField } from "@/components";
 import { Screen, ScreenHeader } from "@/components/Chrome";
+import { PRETENDARD } from "@/theme";
 
 export function ProfileEditScreen() {
   const { theme } = useTheme();
@@ -73,7 +74,7 @@ export function ProfileEditScreen() {
 const styles = StyleSheet.create({
   content: { padding: 16, gap: 16 },
   preview: { alignItems: "center", paddingVertical: 8, gap: 4 },
-  previewName: { fontSize: 18, fontWeight: "600", marginTop: 8 },
+  previewName: { fontSize: 18, fontWeight: "600", fontFamily: PRETENDARD["600"], marginTop: 8 },
   previewRole: { fontSize: 13 },
   card: { borderWidth: 1, borderRadius: 12, padding: 16 },
   hint: { fontSize: 12, marginTop: 10, lineHeight: 18 },

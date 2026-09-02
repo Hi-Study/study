@@ -7,6 +7,7 @@ import { useSetTheme } from "@/data/profile";
 import { signOut } from "@/auth/googleSignIn";
 import { Screen, ScreenHeader, SectionLabel } from "@/components/Chrome";
 import type { ThemeMode } from "@/theme";
+import { PRETENDARD } from "@/theme";
 
 export function DisplaySettingsScreen() {
   const { theme, mode, setOverride } = useTheme();
@@ -80,9 +81,9 @@ function Opt({
       ]}
     >
       <View style={[styles.swatch, { backgroundColor: swatchBg, borderColor: c.hairline }]}>
-        <Text style={{ color: swatchFg, fontSize: 13, fontWeight: "600" }}>Aa</Text>
+        <Text style={{ color: swatchFg, fontSize: 13, fontWeight: "600", fontFamily: PRETENDARD["600"] }}>Aa</Text>
       </View>
-      <Text style={{ fontSize: 14, fontWeight: "600", color: on ? c.primary : c.textPrimary }}>
+      <Text style={{ fontSize: 14, fontWeight: "600", fontFamily: PRETENDARD["600"], color: on ? c.primary : c.textPrimary }}>
         {label} 모드
       </Text>
     </Pressable>
@@ -111,5 +112,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 15,
   },
-  accountText: { fontSize: 15, fontWeight: "600" },
+  accountText: { fontSize: 15, fontWeight: "600", fontFamily: PRETENDARD["600"] },
 });

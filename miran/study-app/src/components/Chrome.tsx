@@ -14,6 +14,7 @@ import { ChevronLeft } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { GhostIconButton } from "./Buttons";
+import { PRETENDARD } from "@/theme";
 
 /**
  * 화면 바깥 컨테이너(안전영역 + 페이지 배경).
@@ -134,6 +135,6 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1 },
   headerRight: { flexDirection: "row", alignItems: "center", gap: 8 },
-  title: { fontSize: 22, fontWeight: "700", letterSpacing: -0.4 },
-  section: { fontSize: 13, fontWeight: "600", marginTop: 4 },
+  title: { fontSize: 22, fontWeight: "700", fontFamily: PRETENDARD["700"], letterSpacing: -0.4 },
+  section: { fontSize: 13, fontWeight: "600", fontFamily: PRETENDARD["600"], marginTop: 4 },
 });

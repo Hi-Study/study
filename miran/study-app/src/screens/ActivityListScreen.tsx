@@ -22,6 +22,7 @@ import {
 import { EmptyState, ErrorState, Loading } from "@/components";
 import { Screen, ScreenHeader } from "@/components/Chrome";
 import { timeAgo } from "@/lib/date";
+import { PRETENDARD } from "@/theme";
 
 type R = RouteProp<RootStackParamList, "ActivityList">;
 
@@ -137,6 +138,6 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 2 },
   row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 },
   icon: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
-  text: { fontSize: 14.5, fontWeight: "600" },
+  text: { fontSize: 14.5, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   time: { fontSize: 12, marginTop: 3 },
 });

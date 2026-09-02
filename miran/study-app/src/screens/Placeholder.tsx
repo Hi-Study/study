@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
+import { PRETENDARD } from "@/theme";
 
 /**
  * 아직 구현되지 않은 화면용 임시 표시. 네비게이션이 실제로 동작하도록
@@ -23,6 +24,6 @@ export function Placeholder({ title }: { title: string }) {
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8, padding: 24 },
-  title: { fontSize: 17, fontWeight: "700" },
+  title: { fontSize: 17, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   hint: { fontSize: 13, textAlign: "center" },
 });

@@ -9,9 +9,12 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { View } from "react-native";
 
 import { useAuth } from "@/auth/AuthProvider";
+import { env } from "@/lib/env";
 import { useTheme } from "@/providers/ThemeProvider";
+import { useProfile } from "@/data";
 import { Loading, ErrorState } from "@/components";
 import { LoginScreen } from "@/screens/LoginScreen";
+import { OnboardingScreen } from "@/screens/OnboardingScreen";
 import { MyStudiesScreen } from "@/screens/MyStudiesScreen";
 import { CreateStudyScreen } from "@/screens/CreateStudyScreen";
 import { JoinStudyScreen } from "@/screens/JoinStudyScreen";
@@ -77,12 +80,37 @@ function Gate() {
     );
   }
   // 세션이 없거나 '익명(게스트) 세션'이면 → 로그인 화면(구글).
-  //   ⚠️ 단, 개발 모드(Expo Go 등, __DEV__)에서는 익명 세션도 허용 — 구글 로그인 없이 화면 확인용.
-  //   운영 빌드(__DEV__=false)에서는 종전대로 익명이면 로그인 화면.
-  if (!session || (session.user.is_anonymous && !__DEV__)) {
+  //   ⚠️ 예외는 EXPO_PUBLIC_ALLOW_ANON_BROWSE=1 을 켰을 때뿐(화면 확인용 둘러보기).
+  //   기본값 + 운영 빌드에서는 앱 진입 시 항상 로그인 화면부터 뜬다.
+  if (!session || (session.user.is_anonymous && !env.allowAnonBrowse)) {
     return <LoginScreen />;
   }
 
+  return <OnboardingGate />;
+}
+
+/**
+ * 온보딩 게이트 — 직무(job_role)를 아직 안 받았으면 온보딩 1화면을 먼저 띄운다.
+ * 직무는 역할별 요약 · 직군 배지 · 단어장 개인화의 **전제**라서 앱보다 먼저 받는다.
+ * ⚠️ 프로필을 못 읽어도(네트워크 오류 등) 앱을 막지 않는다 — 온보딩은 다음에 다시 뜬다.
+ */
+function OnboardingGate() {
+  const { theme } = useTheme();
+  const profile = useProfile();
+
+  if (profile.isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.colors.surfacePage }}>
+        <Loading label="불러오는 중…" />
+      </View>
+    );
+  }
+  if (profile.data && !profile.data.onboarded_at) return <OnboardingScreen />;
+  return <AppStack />;
+}
+
+function AppStack() {
+  const { theme } = useTheme();
   return (
     <NavigationContainer
       theme={navTheme(theme.mode === "dark" ? DarkTheme : DefaultTheme, theme.colors)}

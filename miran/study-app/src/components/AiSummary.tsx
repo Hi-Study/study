@@ -4,6 +4,7 @@ import { Sparkles } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { SUMMARY_MODES, type SummaryMap, type SummaryMode } from "@/lib/summary";
+import { PRETENDARD } from "@/theme";
 
 /** AI 요약 카드 — 원문요약/기획자관점/쉽게풀기 3개 모드 탭. 모드별로 따로 캐시·생성. */
 export function AiSummary({
@@ -88,7 +89,7 @@ export function AiSummary({
 const styles = StyleSheet.create({
   box: { marginTop: 10, borderWidth: 1, borderRadius: 10, overflow: "hidden" },
   head: { flexDirection: "row", alignItems: "center", gap: 7, padding: 10 },
-  title: { fontSize: 13, fontWeight: "700" },
+  title: { fontSize: 13, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   tabs: { flexDirection: "row", borderBottomWidth: 1 },
   tab: {
     flex: 1,
@@ -97,13 +98,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
   },
-  tabText: { fontSize: 12.5, fontWeight: "700" },
+  tabText: { fontSize: 12.5, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   body: { padding: 12 },
   line: { fontSize: 13.5, lineHeight: 21, marginTop: 4 },
   center: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 },
   hint: { fontSize: 12.5 },
   regen: { marginTop: 10, alignSelf: "flex-start" },
-  regenText: { fontSize: 12.5, fontWeight: "700" },
+  regenText: { fontSize: 12.5, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   genBtn: { alignSelf: "flex-start", borderRadius: 90, paddingVertical: 7, paddingHorizontal: 14 },
-  genText: { color: "#fff", fontSize: 12.5, fontWeight: "700" },
+  genText: { color: "#fff", fontSize: 12.5, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 });
