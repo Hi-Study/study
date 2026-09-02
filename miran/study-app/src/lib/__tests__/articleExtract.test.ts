@@ -32,3 +32,36 @@ describe("extractArticle (온디바이스 추출 — 서버와 동일 휴리스�
     expect(extractArticle("<html><body><p>짧다</p></body></html>").text).toBeNull();
   });
 });
+
+describe("og:image 절대경로 해석", () => {
+  const body = `<article>${"<p>본문으로 인정될 만큼 충분히 긴 실제 문장을 넉넉하게 적었습니다. </p>".repeat(6)}</article>`;
+
+  const withOg = (content: string) =>
+    `<html><head><meta property="og:image" content="${content}"></head><body>${body}</body></html>`;
+
+  it("절대 URL 은 그대로", () => {
+    expect(extractArticle(withOg("https://x/i.png"), "https://blog.example.com/post/1").image).toBe(
+      "https://x/i.png",
+    );
+  });
+
+  it("상대경로는 글 URL 기준으로 절대화 — 이걸 안 하면 썸네일이 통째로 빈다", () => {
+    expect(extractArticle(withOg("/static/cover.png"), "https://blog.example.com/post/1").image).toBe(
+      "https://blog.example.com/static/cover.png",
+    );
+  });
+
+  it("프로토콜 상대(//) 는 https 로", () => {
+    expect(extractArticle(withOg("//cdn.example.com/a.png")).image).toBe(
+      "https://cdn.example.com/a.png",
+    );
+  });
+
+  it("base 를 모르면 상대경로는 버린다(렌더 불가)", () => {
+    expect(extractArticle(withOg("/static/cover.png")).image).toBeNull();
+  });
+
+  it("data: 인라인 이미지는 대표 이미지로 쓰지 않는다", () => {
+    expect(extractArticle(withOg("data:image/png;base64,AAAA"), "https://b.com/p").image).toBeNull();
+  });
+});

@@ -45,6 +45,38 @@ select cron.schedule(
 );
 
 -- ============================================================
+-- 4) 결정 카드 · 질문 · 난이도 · 용어 채우기(enrich) — 매시 10분.
+--    수집(정각) 직후 아직 분석 안 된 글을 한 번에 5건씩 처리한다.
+--    ⚠️ enrich 는 본문에 트레이드오프 서술이 없으면 decision 을 null 로 두고 질문도 안 만든다.
+--       그래서 "level 이 비어 있는가"를 미처리 기준으로 쓴다(decision 은 정상적으로도 null 이 될 수 있음).
+-- ============================================================
+select cron.unschedule('distill-enrich-hourly')
+where exists (select 1 from cron.job where jobname = 'distill-enrich-hourly');
+
+select cron.schedule(
+  'distill-enrich-hourly',
+  '10 * * * *',
+  $$
+  select net.http_post(
+    url := 'https://qripaoexmfcyrrdbcbfl.supabase.co/functions/v1/summarize',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' ||
+        (select decrypted_secret from vault.decrypted_secrets where name = 'distill_service_key')
+    ),
+    body := jsonb_build_object('article_id', a.id, 'target', 'enrich'),
+    timeout_milliseconds := 120000
+  )
+  from (
+    select id from public.articles
+     where level is null and body is not null
+     order by published_at desc nulls last
+     limit 5
+  ) a;
+  $$
+);
+
+-- ============================================================
 -- 운영 조회(참고)
 -- ============================================================
 -- 등록된 잡:            select jobid, jobname, schedule, active from cron.job;
@@ -56,3 +88,12 @@ select cron.schedule(
 --                            'Authorization','Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name='distill_service_key')),
 --                          body := '{}'::jsonb, timeout_milliseconds := 150000);
 -- 잡 삭제:              select cron.unschedule('distill-collect-hourly');
+--                      select cron.unschedule('distill-enrich-hourly');
+-- enrich 수동 1회:      select net.http_post(
+--                          url := 'https://qripaoexmfcyrrdbcbfl.supabase.co/functions/v1/summarize',
+--                          headers := jsonb_build_object('Content-Type','application/json',
+--                            'Authorization','Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name='distill_service_key')),
+--                          body := jsonb_build_object('article_id','<ARTICLE_UUID>','target','enrich'),
+--                          timeout_milliseconds := 120000);
+-- 결정 카드 품질 검수:   select title, level, question, decision from public.articles
+--                       where level is not null order by created_at desc limit 50;

@@ -27,6 +27,7 @@ import {
   extractArticle,
   fetchHtml,
   htmlToText,
+  firstBodyImage,
   metaContent,
   stripFooter,
 } from "../_shared/extract.ts";
@@ -82,7 +83,7 @@ const DAANGN_MEDIUM_FEED = "https://medium.com/feed/daangn";
 const SEED_UPDATES_URL = "https://seed-design.io/updates";
 
 // WordPress 계열 피드 백필: since 설정 시 ?paged=2,3… 로 과거 페이지를 순회한다.
-const PAGINATED_FEED = new Set<string>(["nds"]);
+const PAGINATED_FEED = new Set<string>(["nds", "bcut"]);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -96,13 +97,32 @@ Deno.serve(async (req) => {
     const onlyKey: string | undefined = payload?.blog ?? qp.get("blog") ?? undefined;
     const limit = Math.min(Math.max(Number(payload?.limit ?? qp.get("limit")) || PER_BLOG_LIMIT, 1), 20);
     // since: 백필 기준일. 유효한 날짜면 이후 글만, 블로그별 최대 SINCE_CAP 개.
+    // refresh: 이미 저장된 글도 **다시 수집해 덮어쓴다**(?refresh=1).
+    //   추출기를 고친 뒤 기존 데이터를 되살릴 때 쓴다. 기본값(꺼짐)에서는 신규만 넣는다.
+    //   ⚠️ 덮어쓸 때도 값이 비면 기존 값을 지우지 않는다(아래 collectBlog 참고).
+    const refresh =
+      payload?.refresh === true || payload?.refresh === 1 || qp.get("refresh") === "1";
+    // offset: 목록의 앞에서 몇 개를 건너뛸지. refresh 백필에서 **다음 묶음으로 넘어가는** 수단.
+    //   refresh 는 이미 저장된 글을 걸러내지 않으므로 offset 없이는 매번 같은 앞부분만 반복된다.
+    const offset = Math.max(Number(payload?.offset ?? qp.get("offset")) || 0, 0);
     const sinceRaw = payload?.since ?? qp.get("since");
     const since: string | null =
       typeof sinceRaw === "string" && !isNaN(Date.parse(sinceRaw))
         ? new Date(sinceRaw).toISOString()
         : null;
 
-    let query = supabase.from("blogs").select("id,key,name,homepage,rss_url,collect").eq("active", true);
+    // refetch: 목록을 거치지 않고 **DB 의 기존 글을 URL 로 다시 긁는다**(과거 글 백필용).
+    const refetch = payload?.refetch === true || qp.get("refetch") === "1";
+    if (refetch) {
+      const n = Math.min(Math.max(Number(payload?.limit ?? qp.get("limit")) || 20, 1), 60);
+      const result = await refetchArticles(supabase, onlyKey, n, offset);
+      return json({ ok: true, ...result });
+    }
+
+    let query = supabase
+      .from("blogs")
+      .select("id,key,name,homepage,rss_url,collect,kind")
+      .eq("active", true);
     if (onlyKey) query = query.eq("key", onlyKey);
     const { data: blogs, error } = await query;
     if (error) return json({ error: error.message }, 500);
@@ -110,7 +130,10 @@ Deno.serve(async (req) => {
     const report: Record<string, unknown>[] = [];
     for (const blog of (blogs ?? []) as Blog[]) {
       try {
-        report.push({ blog: blog.key, ...(await collectBlog(supabase, blog, limit, since)) });
+        report.push({
+          blog: blog.key,
+          ...(await collectBlog(supabase, blog, limit, since, refresh, offset)),
+        });
       } catch (e) {
         report.push({ blog: blog.key, error: e instanceof Error ? e.message : String(e) });
       }
@@ -127,39 +150,160 @@ Deno.serve(async (req) => {
   }
 });
 
+/**
+ * 이미 저장된 글을 **URL 로 다시 긁어** 본문·대표이미지를 갱신한다.
+ *
+ * 왜 따로 필요한가: 목록 기반 재수집(refresh)은 **피드/사이트맵에 아직 남아 있는 글만** 닿는다.
+ * RSS 는 보통 최근 10~20건만 싣기 때문에, 추출기를 고쳐도 과거 글(올리브영 190건 등)은
+ * 영원히 손이 닿지 않는다. 이 모드는 목록을 거치지 않고 DB 의 articles 를 직접 훑는다.
+ *
+ * 안전장치:
+ *   · 이미 본문 이미지와 대표 이미지를 갖춘 글은 건드리지 않는다(skipped).
+ *   · 다시 긁은 결과가 비거나 더 짧으면 기존 값을 유지한다(덮어써서 손해 보지 않게).
+ */
+// deno-lint-ignore no-explicit-any
+async function refetchArticles(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  blogKey: string | undefined,
+  limit: number,
+  offset: number,
+): Promise<Record<string, unknown>> {
+  let sel = supabase
+    .from("articles")
+    .select("id,url,body,og_image,blog:blogs!inner(key)")
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .range(offset, offset + limit - 1);
+  if (blogKey) sel = sel.eq("blogs.key", blogKey);
+
+  const { data, error } = await sel;
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as {
+    id: string;
+    url: string;
+    body: string | null;
+    og_image: string | null;
+  }[];
+  if (rows.length === 0) return { mode: "refetch", offset, picked: 0, note: "대상 없음" };
+
+  let fixed = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const a of rows) {
+    const hasMarker = (a.body ?? "").includes("[[img:");
+    if (hasMarker && a.og_image) {
+      skipped++;
+      continue; // 이미 멀쩡한 글은 건드리지 않는다
+    }
+
+    let page = await fetchExtract(a.url, BROWSER_UA);
+    if ((page?.body.length ?? 0) < 200) {
+      const alt = await fetchExtract(a.url, CRAWLER_UA);
+      if ((alt?.body.length ?? 0) > (page?.body.length ?? 0)) page = alt;
+    }
+    if (!page) {
+      failed++;
+      continue;
+    }
+
+    const patch: Record<string, unknown> = {};
+
+    // 본문: 이미지 마커가 새로 생겼거나 더 길어졌을 때만 교체.
+    const newHasMarker = page.body.includes("[[img:");
+    if (page.body.length >= 200 && (newHasMarker !== hasMarker ? newHasMarker : page.body.length > (a.body?.length ?? 0))) {
+      patch.body = page.body;
+    }
+
+    // 대표 이미지: 없을 때만 채운다(있는 걸 덮어쓰지 않는다).
+    if (!a.og_image) {
+      const img = page.image ?? firstBodyImage((patch.body as string) ?? page.body);
+      if (img) patch.og_image = img;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      skipped++;
+      continue;
+    }
+    const { error: upErr } = await supabase.from("articles").update(patch).eq("id", a.id);
+    if (upErr) failed++;
+    else fixed++;
+  }
+
+  return { mode: "refetch", blog: blogKey ?? "(전체)", offset, picked: rows.length, fixed, skipped, failed };
+}
+
 async function collectBlog(
   // deno-lint-ignore no-explicit-any
   supabase: any,
   blog: Blog,
   limit: number,
   since: string | null,
+  refresh = false,
+  offset = 0,
 ): Promise<Record<string, unknown>> {
   const items = await listItems(blog, limit, since);
   if (items.length === 0) return { found: 0, inserted: 0, note: "목록 없음" };
 
-  // 이미 저장된 url 제외 → 신규만 처리(불필요한 페이지 요청 절약).
+  // 이미 저장된 url 조회 — **100개씩 나눠서** 묻는다.
+   //   URL 을 수백 개 한 번에 넘기면 쿼리스트링이 너무 길어 통째로 실패하고,
+   //   그러면 have 가 비어서 "전부 신규"로 잘못 집계된다(실측: 카카오 498건).
   const urls = items.map((i) => i.url);
-  const { data: existing } = await supabase.from("articles").select("url").in("url", urls);
-  const have = new Set<string>((existing ?? []).map((e: { url: string }) => e.url));
+  const have = new Set<string>();
+  for (let k = 0; k < urls.length; k += 100) {
+    const { data } = await supabase
+      .from("articles")
+      .select("url")
+      .in("url", urls.slice(k, k + 100));
+    for (const e of (data ?? []) as { url: string }[]) have.add(e.url);
+  }
+
+  // refresh 면 이미 저장된 글도 대상에 넣는다(추출기 개선분을 기존 글에 반영하는 용도).
+  //   대신 offset 으로 묶음을 옮겨가며 돌려야 전체를 훑을 수 있다.
   const cap = since ? SINCE_CAP : limit;
-  const fresh = items.filter((i) => !have.has(i.url)).slice(0, cap);
-  if (fresh.length === 0) return { found: items.length, inserted: 0 };
+  const pool = refresh ? items : items.filter((i) => !have.has(i.url));
+  const fresh = pool.slice(offset, offset + cap);
+  if (fresh.length === 0) {
+    return { found: items.length, pool: pool.length, offset, inserted: 0, note: "대상 없음" };
+  }
 
   const rows: Record<string, unknown>[] = [];
   const skipped: string[] = [];
   for (const it of fresh) {
     const built = await buildArticle(blog, it, since);
-    if (built) rows.push({ blog_id: blog.id, ...built });
-    else skipped.push(it.url);
+    if (!built) {
+      skipped.push(it.url);
+      continue;
+    }
+    // 덮어쓸 때 값이 빈 칸이면 컬럼을 아예 빼서 **기존 값을 지우지 않는다**.
+    //   (재수집에서 og:image 를 못 얻었다고 이미 있던 썸네일을 날리면 손해다.)
+    const row: Record<string, unknown> = { blog_id: blog.id };
+    for (const [k, v] of Object.entries(built)) {
+      if (v === null || v === undefined || v === "") continue;
+      row[k] = v;
+    }
+    rows.push(row);
   }
   if (rows.length === 0) return { found: items.length, inserted: 0, skipped: skipped.length };
 
+  // refresh 면 기존 행을 실제로 갱신해야 하므로 ignoreDuplicates 를 끈다.
+  //   upsert 는 rows 에 담긴 컬럼만 덮어쓰므로 조회수·좋아요·인사이트 수와
+  //   enrich 로 채운 level/decision/question/terms 는 그대로 보존된다.
   const { error } = await supabase
     .from("articles")
-    .upsert(rows, { onConflict: "url", ignoreDuplicates: true });
+    .upsert(rows, { onConflict: "url", ignoreDuplicates: !refresh });
   if (error) throw new Error(error.message);
 
-  return { found: items.length, inserted: rows.length, skipped: skipped.length };
+  const updated = refresh ? rows.filter((r) => have.has(r.url as string)).length : 0;
+  return {
+    found: items.length,
+    pool: pool.length,
+    offset,
+    inserted: rows.length - updated,
+    updated,
+    skipped: skipped.length,
+    done: offset + cap >= pool.length, // true 면 이 블로그는 더 돌릴 필요 없음
+  };
 }
 
 // 블로그 → 후보 아이템 목록(본문은 아직 없음, url/title/메타만 채워질 수 있음).
@@ -321,10 +465,10 @@ function pageDate(html: string): string | null {
 async function fetchExtract(url: string, ua: string): Promise<PageData | null> {
   try {
     const html = await fetchHtml(url, ua);
-    const ex = extractArticle(html);
+    const ex = extractArticle(html, url); // url = 상대경로 이미지 해석 기준
     let body = ex.text ?? "";
     if (body.length < 400) {
-      const state = extractStateBody(html);
+      const state = extractStateBody(html, url);
       if (state && state.length > body.length) body = state;
     }
     return {
@@ -356,7 +500,8 @@ async function buildArticle(
 
   // 피드 본문(content:encoded)이 있으면 방식 무관하게 사용(rss_full, 당근 Medium RSS 등).
   if (it.contentHtml) {
-    body = stripFooter(htmlToText(it.contentHtml));
+    // 피드 본문 안의 상대경로 이미지(<img src="/content/images/...">)를 글 URL 기준으로 절대화.
+    body = stripFooter(htmlToText(it.contentHtml, it.url));
   }
 
   // 본문 부족(≥400자 미달) · 제목 없음 · 이미지 없음 · 발행일 없음 중 하나라도면 페이지에서 보강.
@@ -377,6 +522,10 @@ async function buildArticle(
       if (!published) published = page.published;
     }
   }
+
+  // 대표 이미지 폴백 — og:image 를 끝내 못 얻었으면 본문 첫 이미지를 쓴다.
+  //   빈 썸네일 카드보다 본문 이미지가 낫고, 실측상 이 폴백 하나로 올리브영 190건이 살아난다.
+  if (!image) image = firstBodyImage(body);
 
   // 페이지에서 발행일을 얻은 뒤 다시 since 검사(목록에 날짜 없던 당근 등 대응).
   if (since && published && published < since) return null;

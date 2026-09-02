@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
       ReturnType<typeof extractArticle>;
     try {
       const html = await fetchHtml(url);
-      article = extractArticle(html);
+      article = extractArticle(html, url);
     } catch {
       // 원문 확보 실패(페이월/봇차단 등) → 도메인만 저장
     }

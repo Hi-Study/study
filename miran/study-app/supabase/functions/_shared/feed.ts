@@ -119,7 +119,8 @@ export function parseFeed(xml: string): FeedItem[] {
  *       Next(<script id="__NEXT_DATA__">{…}), Nuxt2(window.__NUXT__={…}).
  * 파싱 불가(함수식 등)면 null → 호출부가 extractArticle 로 폴백.
  */
-export function extractStateBody(html: string): string | null {
+/** @param base 글 URL — 상태 JSON 안 본문의 상대경로 이미지를 절대경로로 만드는 기준. */
+export function extractStateBody(html: string, base?: string): string | null {
   let jsonStr: string | null = null;
   // Nuxt3: JSON 배열 페이로드(문자열 풀). id 또는 data-nuxt-data 로 식별.
   const nuxt3 = html.match(
@@ -147,7 +148,7 @@ export function extractStateBody(html: string): string | null {
     };
     walk(j);
     if (best.length < 200) return null;
-    const t = stripFooter(htmlToText(best));
+    const t = stripFooter(htmlToText(best, base));
     return t.length > 150 ? t : null;
   } catch {
     return null;

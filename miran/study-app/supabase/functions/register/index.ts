@@ -86,12 +86,12 @@ Deno.serve(async (req) => {
     } catch {
       html = "";
     }
-    let ex = html ? extractArticle(html) : null;
+    let ex = html ? extractArticle(html, clean) : null;
     let body = ex?.text ?? "";
     if (body.length < 300) {
       try {
         const html2 = await fetchHtml(clean, BROWSER_UA);
-        const ex2 = extractArticle(html2);
+        const ex2 = extractArticle(html2, clean);
         if ((ex2.text?.length ?? 0) > body.length) {
           html = html2;
           ex = ex2;

@@ -104,8 +104,27 @@ function stripFooter(text: string): string {
   return end < 0 ? text.trim() : lines.slice(0, end).join("\n").trim();
 }
 
-export function extractArticle(html: string): ExtractedArticle {
-  const image = metaContent(html, "og:image");
+/**
+ * 상대경로 og:image 를 절대경로로. base 를 모르면 상대경로는 버린다(렌더 불가).
+ * 서버(_shared/extract.ts)의 absoluteUrl 과 같은 규칙 — 한쪽만 고치지 말 것.
+ */
+function absoluteUrl(url: string | null, base?: string): string | null {
+  const u = (url ?? "").trim();
+  if (!u) return null;
+  if (/^https?:\/\//i.test(u)) return u;
+  if (/^\/\//.test(u)) return "https:" + u;
+  if (/^data:/i.test(u)) return null;
+  if (!base) return null;
+  try {
+    return new URL(u, base).toString();
+  } catch {
+    return null;
+  }
+}
+
+/** @param base 글 URL — og:image 가 상대경로일 때 절대경로로 만드는 기준. */
+export function extractArticle(html: string, base?: string): ExtractedArticle {
+  const image = absoluteUrl(metaContent(html, "og:image"), base);
   const excerpt = metaContent(html, "og:description") ?? metaContent(html, "description");
   let text = "";
 
@@ -154,5 +173,5 @@ export async function fetchArticleOnDevice(url: string): Promise<ExtractedArticl
     },
   });
   const html = await res.text();
-  return extractArticle(html);
+  return extractArticle(html, url);
 }
