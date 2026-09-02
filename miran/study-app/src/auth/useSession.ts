@@ -43,8 +43,9 @@ export function useSession(): SessionState {
       try {
         const { data } = await supabase.auth.getSession();
         if (!mounted) return;
-        // 개발 모드(Expo Go 등): 세션이 없으면 구글 로그인 대신 익명 세션으로 둘러보기.
-        if (!data.session && __DEV__) {
+        // EXPO_PUBLIC_ALLOW_ANON_BROWSE=1 일 때만: 세션이 없으면 구글 로그인 대신 익명 세션으로 둘러보기.
+        // 기본값(플래그 없음)에서는 session=null 로 ready → 로그인 화면이 뜬다.
+        if (!data.session && env.allowAnonBrowse) {
           await supabase.auth.signInAnonymously();
           return; // onAuthStateChange 가 세션을 반영
         }
