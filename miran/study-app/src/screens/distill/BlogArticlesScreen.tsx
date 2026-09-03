@@ -45,7 +45,15 @@ export function BlogArticlesScreen({ route }: Props) {
 
   const countQ = useArticlesFeedCount({ blogId });
   const popularQ = useArticlesFeed({ blogId, sort: "popular" });
-  const popular = (popularQ.data?.pages[0]?.rows ?? []).slice(0, 10);
+  // ⚠️ 인기 지표(조회수·인사이트)가 거의 다 0 이면 인기순 정렬이 최신순과 같아진다.
+  //    실측(2026-09-04): 779건 중 조회수>0 은 19건, 인사이트>0 은 6건.
+  //    그 상태에서 "이 기업 인기글"을 띄우면 바로 아래 최신글과 같은 목록이 두 번 나온다.
+  //    그래서 **실제로 지표가 붙은 글이 3건 이상일 때만** 이 섹션을 보여준다.
+  const popularAll = popularQ.data?.pages[0]?.rows ?? [];
+  const engaged = popularAll.filter(
+    (a) => (a.view_count ?? 0) > 0 || (a.opinion_count ?? 0) > 0 || (a.like_count ?? 0) > 0,
+  );
+  const popular = engaged.length >= 3 ? popularAll.slice(0, 10) : [];
 
   const q = useArticlesFeed({ blogId, topic: topic ?? undefined });
   const rows = q.data?.pages.flatMap((p) => p.rows) ?? [];

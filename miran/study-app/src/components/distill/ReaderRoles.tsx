@@ -31,9 +31,11 @@ export function ReaderRoles({ articleId, myRole }: Props) {
 
   return (
     <View style={styles.row}>
-      {sorted.slice(0, 3).map((r) => {
+      {sorted.slice(0, 2).map((r, idx) => {
         const meta = JOB_ROLE_META[r.jobRole];
         const isMine = r.jobRole === myRole;
+        // 문장은 첫 칩에만 — 여러 개에 반복되면 읽기 싫어진다.
+        const suffix = idx === 0 ? "명이 읽고 있어요" : "명";
         return (
           <View
             key={r.jobRole}
@@ -47,7 +49,7 @@ export function ReaderRoles({ articleId, myRole }: Props) {
           >
             <Text style={styles.emoji}>{meta.emoji}</Text>
             <Text style={[styles.text, { color: isMine ? c.primary : c.textSecondary }]}>
-              {meta.plural} {r.count}명
+              {meta.plural} {r.count}{suffix}
             </Text>
           </View>
         );

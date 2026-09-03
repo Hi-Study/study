@@ -26,7 +26,7 @@ export function DecisionCard({ decision }: Props) {
 
   return (
     <View style={[styles.card, { backgroundColor: c.surfacePageAlt, borderColor: c.accentTintBorder }]}>
-      <Text style={[styles.head, { color: c.primary }]}>이 팀이 내린 결정</Text>
+      <Text style={[styles.head, { color: c.primary }]}>어떤 문제를 어떻게 풀었나</Text>
       <View style={styles.rows}>
         {rows.map((r) => (
           <View key={r.label} style={styles.row}>

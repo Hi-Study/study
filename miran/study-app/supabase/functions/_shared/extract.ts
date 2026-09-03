@@ -52,15 +52,44 @@ const IMG_CHROME_RE =
  *
  * base 를 모르면(피드 파싱 등) 바꿀 수 없으므로 빈 문자열을 돌려주고 호출부가 버린다.
  */
+/**
+ * 이미지 URL 이 **말이 되는지** 본다.
+ *
+ * 실측 사고: 네이버 D2 글에 `https://d2.naver.comd2/EDITOR/thumbnail/...` 이 저장돼 있었다.
+ * 도메인 뒤 슬래시가 빠져 호스트가 `d2.naver.comd2` 가 됐는데, URL 파서는 이걸 정상으로 본다
+ * (형식상 유효한 호스트라서). 그래서 **최상위 도메인이 글자로만 이뤄졌는지**로 거른다
+ * — `comd2` 처럼 숫자가 섞이면 붙어버린 경로다.
+ *
+ * 이런 값은 저장하지도, 화면에 쓰지도 않는다(카드가 빈 회색 박스로 남는 원인).
+ */
+export function isSaneImageUrl(u: string | null | undefined): boolean {
+  if (!u) return false;
+  try {
+    const { protocol, hostname, pathname } = new URL(u);
+    if (protocol !== "http:" && protocol !== "https:") return false;
+    const labels = hostname.split(".");
+    if (labels.length < 2) return false;
+    const tld = labels[labels.length - 1];
+    if (!/^[a-z]{2,24}$/i.test(tld)) return false; // comd2 · com123 등 붙어버린 경로
+    return pathname.length > 1 || Boolean(new URL(u).search);
+  } catch {
+    return false;
+  }
+}
+
 export function absoluteUrl(url: string, base?: string): string {
   const u = url.trim();
   if (!u) return "";
-  if (/^https?:\/\//i.test(u)) return u;
-  if (/^\/\//.test(u)) return "https:" + u;   // 프로토콜 상대
+  if (/^https?:\/\//i.test(u)) return isSaneImageUrl(u) ? u : "";
+  if (/^\/\//.test(u)) {
+    const abs = "https:" + u; // 프로토콜 상대
+    return isSaneImageUrl(abs) ? abs : "";
+  }
   if (/^data:/i.test(u)) return "";           // 인라인 base64 는 렌더 대상 아님
   if (!base) return "";
   try {
-    return new URL(u, base).toString();       // "/static/a.png", "../b.png" 모두 처리
+    const abs = new URL(u, base).toString(); // "/static/a.png", "../b.png" 모두 처리
+    return isSaneImageUrl(abs) ? abs : "";
   } catch {
     return "";
   }
@@ -117,7 +146,7 @@ export function imgToMarker(tag: string, base?: string): string {
 export function firstBodyImage(body: string | null | undefined): string | null {
   if (!body) return null;
   const m = body.match(/\[\[img:(https?:\/\/[^\]]+)\]\]/);
-  return m ? m[1] : null;
+  return m && isSaneImageUrl(m[1]) ? m[1] : null;
 }
 
 /**

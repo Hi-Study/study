@@ -37,6 +37,7 @@ function Field({
   onChangeText,
   placeholder,
   required,
+  hint,
   multiline = true,
 }: {
   label: string;
@@ -44,6 +45,8 @@ function Field({
   onChangeText: (t: string) => void;
   placeholder?: string;
   required?: boolean;
+  /** 라벨 아래 붙는 안내(생각해볼 질문). 입력창과 한 덩어리로 보이게 한다. */
+  hint?: string | null;
   multiline?: boolean;
 }) {
   const { theme } = useTheme();
@@ -54,6 +57,7 @@ function Field({
         {label}
         {required ? <Text style={{ color: c.primary }}> *</Text> : null}
       </Text>
+      {hint ? <Text style={[styles.hint, { color: c.primary }]}>{hint}</Text> : null}
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -155,27 +159,16 @@ export function CreateOpinionScreen({ route }: Props) {
             </View>
           ) : null}
 
-          {/* ② 질문 1개 — 있으면 **항상** 보여준다.
-                 예전엔 하이라이트가 없을 때만 띄웠는데, 밑줄을 그은 사람에게도
-                 질문은 쓸 재료라서 가릴 이유가 없다. */}
-          {question ? (
-            <View style={[styles.draftCard, { backgroundColor: c.primaryTint, borderColor: c.accentTintBorder }]}>
-              <Text style={[styles.draftLabel, { color: c.primary }]}>생각해볼 질문</Text>
-              <Text style={[styles.draftQuestion, { color: c.textPrimary }]}>{question}</Text>
-            </View>
-          ) : null}
-
-          {/* 독후감 3항목 (회의록 §글 등록) */}
+          {/* 독후감 3항목 — 질문은 **첫 칸 안에** 넣는다.
+               예전엔 질문 카드가 따로 떠 있고 그 아래 입력 3칸이 또 있어서
+               "질문에 답하는 곳"과 "쓰는 곳"이 분리돼 보였다. */}
           <Field
-            label={question && draft.usedCount === 0 ? "이 질문에 답해보면" : "인상 깊은 부분"}
+            label="인상 깊은 부분"
             required
+            hint={question}
             value={insight.core}
             onChangeText={(t) => set({ core: t })}
-            placeholder={
-              question && draft.usedCount === 0
-                ? "한 문장이어도 괜찮아요"
-                : "이 글에서 가장 인상 깊었던 점"
-            }
+            placeholder={question ? "한 문장이어도 괜찮아요" : "이 글에서 가장 인상 깊었던 점"}
           />
           <Field
             label="접목하고 싶은 방법"
@@ -219,6 +212,7 @@ const styles = StyleSheet.create({
   content: { padding: 16, gap: 18, paddingBottom: 40 },
   field: { gap: 8 },
   label: { ...dtype.label, fontSize: 13 },
+  hint: { ...dtype.bodyS, fontSize: 13.5, lineHeight: 20, marginTop: -2 },
   input: {
     borderWidth: 1,
     borderRadius: 12,
