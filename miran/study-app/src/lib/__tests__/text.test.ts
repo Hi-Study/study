@@ -1,4 +1,5 @@
 import {
+  codeMarkerText,
   classifyReadingBlock,
   domainOf,
   groupSentencesIntoBlocks,
@@ -162,5 +163,23 @@ describe("domainOf", () => {
   });
   it("잘못된 URL 은 최대한 도메인처럼 반환", () => {
     expect(domainOf("naver.me/abcd")).toBe("naver.me");
+  });
+});
+
+describe("codeMarkerText — 코드 블록 마커 복원", () => {
+  it("마커에서 줄바꿈을 되살린다", () => {
+    const marker = "[[code:const a = 1;↵const b = 2;]]";
+    expect(codeMarkerText(marker)).toBe("const a = 1;\nconst b = 2;");
+  });
+
+  it("들여쓰기를 보존한다 — 코드는 이게 생명이다", () => {
+    const marker = "[[code:function f() {↵  return 1;↵}]]";
+    expect(codeMarkerText(marker)).toBe("function f() {\n  return 1;\n}");
+  });
+
+  it("코드 마커가 아니면 null", () => {
+    expect(codeMarkerText("그냥 문단입니다.")).toBeNull();
+    expect(codeMarkerText("[[img:https://x/a.png]]")).toBeNull();
+    expect(codeMarkerText(null)).toBeNull();
   });
 });

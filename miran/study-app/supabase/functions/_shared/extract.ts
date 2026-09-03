@@ -136,6 +136,37 @@ function looksEscapedHtml(s: string): boolean {
 }
 
 /** @param base 글 URL — 본문 안 상대경로 이미지를 절대경로로 만드는 기준. */
+// 코드 블록 안의 줄바꿈을 담아둘 자리표시자.
+//   본문은 "한 줄 = 한 블록" 규칙으로 묶이므로(groupSentencesIntoBlocks) 마커 안에
+//   진짜 개행이 있으면 블록이 쪼개진다. 이미지 마커와 같은 이유로 한 줄로 만든다.
+const NL = "↵"; // ↵
+
+/**
+ * <pre> 블록을 [[code:…]] 마커로 바꾼다.
+ *
+ * 왜: 지금은 코드가 평문으로 섞여 들어가 산문과 구분이 안 되고 들여쓰기도 날아간다
+ *     (실측: 카카오페이 Kotlin 예제가 문단 사이에 그대로 붙어 있었다).
+ *     마커로 남겨두면 앱이 등폭 글꼴 + 가로 스크롤 블록으로 그릴 수 있다.
+ */
+export function preToMarker(inner: string): string {
+  // <pre> 안의 태그(<code>, <span class=…> 하이라이팅)는 걷어내고 텍스트만 남긴다.
+  let t = inner.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "");
+  t = decodeEntities(t);
+  t = t.replace(/\r\n?/g, "\n").replace(/\n{3,}/g, "\n\n").replace(/^\n+|\n+$/g, "");
+  if (!t.trim()) return " ";
+  // 너무 긴 코드는 잘라 둔다(본문이 코드로 뒤덮이지 않게).
+  const MAX = 2000;
+  if (t.length > MAX) t = t.slice(0, MAX) + "\n…";
+  return `\n[[code:${t.split("\n").join(NL)}]]\n`;
+}
+
+/** 마커에서 코드 원문을 복원한다(앱에서 사용). */
+export function codeMarkerText(text: string | null | undefined): string | null {
+  if (!text) return null;
+  const m = text.trim().match(/^\[\[code:([\s\S]+?)\]\]$/);
+  return m ? m[1].split(NL).join("\n") : null;
+}
+
 export function htmlToText(html: string, base?: string): string {
   // 이스케이프된 HTML 이면 **먼저 한 번 풀어서** 진짜 태그로 만든 뒤 처리한다.
   let s = looksEscapedHtml(html) ? decodeEntities(html) : html;
@@ -149,6 +180,9 @@ export function htmlToText(html: string, base?: string): string {
   s = s
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/(p|div|h[1-6]|li|section|article|tr|blockquote)>/gi, "\n");
+  // <pre> 코드 블록을 먼저 마커로 빼둔다 — 아래에서 태그를 지우기 전에 해야 한다.
+  s = s.replace(/<pre\b[^>]*>([\s\S]*?)<\/pre>/gi, (_m, inner) => preToMarker(inner));
+
   // <img> 는 버리지 말고 [[img:URL]] 마커로 보존(앱에서 이미지로 렌더).
   // 여러 lazy-load 속성/srcset 을 폭넓게 지원하고, 이모지·스페이서·트래킹 픽셀은 제외.
   s = s.replace(/<img\b[^>]*>/gi, (tag) => imgToMarker(tag, base));
@@ -158,7 +192,9 @@ export function htmlToText(html: string, base?: string): string {
   // 줄 단위 정리
   return s
     .split("\n")
-    .map((l) => l.replace(/[ \t ]+/g, " ").trim())
+    // ⚠️ 코드 마커 줄은 건드리지 않는다. 공백을 접으면 **들여쓰기가 무너져** 코드를 못 읽는다
+    //    (마커는 개행을 치환해 한 줄이라 여기서 같이 뭉개졌다).
+    .map((l) => (l.startsWith("[[code:") ? l : l.replace(/[ \t ]+/g, " ").trim()))
     .filter((l) => l.length > 0)
     .join("\n");
 }
@@ -256,14 +292,17 @@ export function extractArticle(html: string, base?: string): Extracted {
   }
 
   // 2) 문단 밀도: 실제 문장이 담긴 <p> 만 모음(블로그 범용 — 목차/GNB/사이드바 자동 배제)
-  //    ⚠️ <p> 만 보면 **본문 이미지를 통째로 잃는다**. 요즘 블로그는 이미지를 <figure> 나
-  //       <p> 밖 독립 <img> 로 넣기 때문(실측: 강남언니 — 본문 9,000자에 마커 0개).
-  //       그래서 <p> · <figure> · 독립 <img> 를 **문서 순서대로** 함께 훑고,
-  //       "본문이냐" 판정(300자 이상)은 종전대로 산문 길이로만 한다(이미지가 기준을 흐리지 않게).
+  //    ⚠️ <p> 만 보면 **이미지와 코드 블록을 통째로 잃는다**.
+  //       이미지는 <figure>·독립 <img> 로 들어가고(실측: 강남언니 본문 9,000자에 마커 0개),
+  //       코드는 <pre> 로 들어간다(실측: 카카오페이 한 글에 <pre> 13개가 전부 사라졌다).
+  //       그래서 <pre> · <p> · <figure> · 독립 <img> 를 **문서 순서대로** 함께 훑고,
+  //       "본문이냐" 판정(300자 이상)은 종전대로 산문 길이로만 한다
+  //       (이미지·코드가 기준을 흐리지 않게).
   if (!text) {
     const blocks: string[] = [];
     let proseLen = 0;
-    const re = /<p\b[^>]*>([\s\S]*?)<\/p>|<figure\b[^>]*>([\s\S]*?)<\/figure>|<img\b[^>]*>/gi;
+    const re =
+      /<pre\b[^>]*>([\s\S]*?)<\/pre>|<p\b[^>]*>([\s\S]*?)<\/p>|<figure\b[^>]*>([\s\S]*?)<\/figure>|<img\b[^>]*>/gi;
     const imagesOnly = (chunk: string): string =>
       (htmlToText(chunk, base).match(/\[\[img:[^\]]+\]\]/g) ?? [])
         .filter((mk) => !IMG_CHROME_RE.test(mk))
@@ -274,7 +313,13 @@ export function extractArticle(html: string, base?: string): Extracted {
     const items: { at: number; text: string; prose: boolean }[] = [];
     for (const m of html.matchAll(re)) {
       const at = m.index ?? 0;
-      const inner = m[1];
+      // 코드 블록은 마커로 그대로 보존한다(산문 길이에는 넣지 않는다).
+      if (m[1] !== undefined) {
+        const marker = preToMarker(m[1]);
+        if (marker.includes("[[code:")) items.push({ at, text: marker.trim(), prose: false });
+        continue;
+      }
+      const inner = m[2];
       if (inner !== undefined) {
         // <p> — 40자 이상 문장 + 링크(<a>) 1개 이하 → 메뉴/목차/각주 링크 뭉치 배제
         const t = htmlToText(inner, base);

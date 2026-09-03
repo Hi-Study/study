@@ -21,7 +21,13 @@ import {
   useDeleteArticleHighlight,
   type ArticleHighlightRow,
 } from "@/data";
-import { splitSentences, groupSentencesIntoBlocks, imageMarkerUrl } from "@/lib/text";
+import {
+  splitSentences,
+  groupSentencesIntoBlocks,
+  imageMarkerUrl,
+  codeMarkerText,
+} from "@/lib/text";
+import { CodeBlock } from "./CodeBlock";
 import { safeImageUri } from "@/lib/image";
 import { reading , PRETENDARD} from "@/theme";
 import { HIGHLIGHT_COLORS, HIGHLIGHT_TEXT, highlightBg } from "@/lib/highlight";
@@ -184,8 +190,12 @@ function HighlightableText({
     <View style={styles.blocks}>
       {blocks.map((b, bi) => {
         // 이미지 마커 줄([[img:URL]])은 텍스트 대신 이미지로 렌더(하이라이트 대상 아님).
-        const imgUrl = imageMarkerUrl(b.items.map((x) => x.seg).join(""));
+        const raw = b.items.map((x) => x.seg).join("");
+        const imgUrl = imageMarkerUrl(raw);
         if (imgUrl) return <BodyImage key={bi} url={imgUrl} />;
+        // 코드 블록은 하이라이트 대상이 아니다(문장 단위로 밑줄 그을 것이 없다).
+        const code = codeMarkerText(raw);
+        if (code) return <CodeBlock key={bi} code={code} fontScale={fontScale} />;
         // 사용자 폰트 크기 토글(가/가)은 기준값에 곱해서 적용 — 설정과 충돌하지 않는다.
         const base =
           b.kind === "heading" ? reading.heading : b.kind === "list" ? reading.list : reading.para;
@@ -217,6 +227,9 @@ function BodyImage({ url }: { url: string }) {
   const { theme } = useTheme();
   const c = theme.colors;
   const [ratio, setRatio] = useState(16 / 9);
+  // 못 불러오는 이미지는 **자리를 남기지 않는다**. 회색 빈 박스가 문단 사이에 끼면
+  // 글이 끊긴 것처럼 보여서 아예 없는 편이 낫다(핫링크 차단·만료된 CDN 경로 등).
+  const [failed, setFailed] = useState(false);
   const uri = safeImageUri(url) ?? url; // 한글 등 비ASCII URL 인코딩
   useEffect(() => {
     let ok = true;
@@ -231,11 +244,13 @@ function BodyImage({ url }: { url: string }) {
       ok = false;
     };
   }, [uri]);
+  if (failed) return null;
   return (
     <Image
       source={{ uri }}
       style={[styles.bodyImage, { aspectRatio: ratio, backgroundColor: c.surfaceSunken }]}
       resizeMode="cover"
+      onError={() => setFailed(true)}
     />
   );
 }

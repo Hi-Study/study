@@ -131,6 +131,14 @@ export function tokenizeWords(sentence: string): string[] {
  * 수집기가 `<img>` 를 이 마커로 보존하고, 렌더러는 이 줄을 이미지로 그린다.
  * ⚠️ URL 안의 '.' 때문에 splitSentences 로 조각날 수 있어, "줄(블록) 전체"를 join 한 값으로 검사할 것.
  */
+/** 코드 블록 마커에서 원문을 복원. 추출기(_shared/extract.ts)와 같은 규칙이다. */
+const CODE_NL = "↵";
+export function codeMarkerText(text: string | null | undefined): string | null {
+  if (!text) return null;
+  const m = text.trim().match(/^\[\[code:([\s\S]+?)\]\]$/);
+  return m ? m[1].split(CODE_NL).join("\n") : null;
+}
+
 export function imageMarkerUrl(text: string | null | undefined): string | null {
   if (!text) return null;
   const m = text.trim().match(/^\[\[img:(https?:\/\/.+?)\]\]$/);

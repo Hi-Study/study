@@ -115,7 +115,8 @@ Deno.serve(async (req) => {
     const refetch = payload?.refetch === true || qp.get("refetch") === "1";
     if (refetch) {
       const n = Math.min(Math.max(Number(payload?.limit ?? qp.get("limit")) || 20, 1), 60);
-      const result = await refetchArticles(supabase, onlyKey, n, offset);
+      const force = payload?.force === true || qp.get("force") === "1";
+      const result = await refetchArticles(supabase, onlyKey, n, offset, force);
       return json({ ok: true, ...result });
     }
 
@@ -168,6 +169,7 @@ async function refetchArticles(
   blogKey: string | undefined,
   limit: number,
   offset: number,
+  force = false,
 ): Promise<Record<string, unknown>> {
   let sel = supabase
     .from("articles")
@@ -192,7 +194,9 @@ async function refetchArticles(
 
   for (const a of rows) {
     const hasMarker = (a.body ?? "").includes("[[img:");
-    if (hasMarker && a.og_image) {
+    // force: 추출기를 고친 뒤 **전부 다시** 긁을 때 쓴다(코드 블록 마커 도입 등).
+    //   평소엔 멀쩡한 글을 건너뛰어 시간을 아끼지만, 규칙이 바뀌면 그 판단이 낡는다.
+    if (!force && hasMarker && a.og_image) {
       skipped++;
       continue; // 이미 멀쩡한 글은 건드리지 않는다
     }
@@ -211,7 +215,8 @@ async function refetchArticles(
 
     // 본문: 이미지 마커가 새로 생겼거나 더 길어졌을 때만 교체.
     const newHasMarker = page.body.includes("[[img:");
-    if (page.body.length >= 200 && (newHasMarker !== hasMarker ? newHasMarker : page.body.length > (a.body?.length ?? 0))) {
+    const better = newHasMarker !== hasMarker ? newHasMarker : page.body.length > (a.body?.length ?? 0);
+    if (page.body.length >= 200 && (force || better)) {
       patch.body = page.body;
     }
 

@@ -6,7 +6,8 @@ import { Bookmark, Eye, MessageSquare } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { TOPIC_META, dtype , PRETENDARD} from "@/theme";
-import { faviconDomain, faviconUrl } from "@/lib/brandIcon";
+import { ArticleThumb } from "./ArticleThumb";
+import { ServiceLogo } from "./ServiceLogo";
 import { safeImageUri } from "@/lib/image";
 import { useIsBookmarked, useToggleBookmark } from "@/data";
 import { ImprovementTag } from "./ImprovementTag";
@@ -68,52 +69,7 @@ export function relativeDate(iso: string | null): string {
 
 // ---- 서비스 로고칩 — 브랜드 파비콘(기업 아이콘), 없거나 실패 시 브랜드색+이니셜 ----
 // blogKey 로 브랜드 도메인을 우선 해석(네이버 계열 통일·Medium 호스팅 보정). brandIcon.ts 참고.
-export function ServiceLogo({
-  name,
-  brandColor,
-  size = 44,
-  homepage,
-  blogKey,
-}: {
-  name: string;
-  brandColor?: string | null;
-  size?: number;
-  homepage?: string | null;
-  blogKey?: string | null;
-}) {
-  const [failed, setFailed] = useState(false);
-  const domain = useMemo(() => faviconDomain(blogKey, homepage), [blogKey, homepage]);
-
-  if (domain && !failed) {
-    return (
-      <View
-        style={[
-          styles.favicon,
-          { width: size, height: size, borderRadius: size * 0.28 },
-        ]}
-      >
-        <Image
-          source={{ uri: faviconUrl(domain) }}
-          style={{ width: size * 0.66, height: size * 0.66 }}
-          resizeMode="contain"
-          onError={() => setFailed(true)}
-        />
-      </View>
-    );
-  }
-
-  const bg = brandColor ?? "#4F46E5";
-  return (
-    <View
-      style={[
-        styles.logo,
-        { width: size, height: size, borderRadius: size * 0.28, backgroundColor: bg },
-      ]}
-    >
-      <Text style={[styles.logoText, { fontSize: size * 0.4 }]}>{name.slice(0, 1)}</Text>
-    </View>
-  );
-}
+export { ServiceLogo };
 
 // ---- 주제칩 ----
 export function TopicChip({ topic }: { topic: Topic }) {
@@ -184,16 +140,11 @@ export function ArticleCardH({
         { width, backgroundColor: c.surfaceCard, borderColor: c.hairline, opacity: pressed ? 0.9 : 1 },
       ]}
     >
-      <View style={[styles.thumbH, { backgroundColor: c.surfaceSunken }]}>
-        {article.og_image ? (
-          <Image source={{ uri: safeImageUri(article.og_image) }} style={styles.thumbImg} resizeMode="cover" />
-        ) : (
-          <ServiceLogo name={article.blog?.name ?? "?"} brandColor={article.blog?.brand_color} homepage={article.blog?.homepage} blogKey={article.blog?.key} size={34} />
-        )}
+      <ArticleThumb article={article} style={styles.thumbH}>
         <View style={[styles.bmOverlay, { backgroundColor: c.surfaceCard }]}>
           <CardBookmark articleId={article.id} />
         </View>
-      </View>
+      </ArticleThumb>
       <View style={styles.cardHBody}>
         <CardChips article={article} />
         <Text style={[styles.cardTitle, { color: c.textPrimary }]} numberOfLines={2}>
@@ -227,16 +178,11 @@ export function ArticleRow({
         </Text>
         <MetaLine article={article} />
       </View>
-      <View style={[styles.thumbRow, { backgroundColor: c.surfaceSunken }]}>
-        {article.og_image ? (
-          <Image source={{ uri: safeImageUri(article.og_image) }} style={styles.thumbImg} resizeMode="cover" />
-        ) : (
-          <ServiceLogo name={article.blog?.name ?? "?"} brandColor={article.blog?.brand_color} homepage={article.blog?.homepage} blogKey={article.blog?.key} size={34} />
-        )}
+      <ArticleThumb article={article} style={styles.thumbRow}>
         <View style={[styles.bmOverlay, { backgroundColor: c.surfaceCard }]}>
           <CardBookmark articleId={article.id} />
         </View>
-      </View>
+      </ArticleThumb>
     </Pressable>
   );
 }
@@ -259,16 +205,11 @@ export function FeaturedCard({
         { backgroundColor: c.surfaceCard, borderColor: c.hairline, opacity: pressed ? 0.95 : 1 },
       ]}
     >
-      <View style={[styles.featuredThumb, { backgroundColor: c.surfaceSunken }]}>
-        {article.og_image ? (
-          <Image source={{ uri: safeImageUri(article.og_image) }} style={styles.thumbImg} resizeMode="cover" />
-        ) : (
-          <ServiceLogo name={article.blog?.name ?? "?"} brandColor={article.blog?.brand_color} homepage={article.blog?.homepage} blogKey={article.blog?.key} size={34} />
-        )}
+      <ArticleThumb article={article} style={styles.featuredThumb}>
         <View style={[styles.bmOverlay, { backgroundColor: c.surfaceCard }]}>
           <CardBookmark articleId={article.id} />
         </View>
-      </View>
+      </ArticleThumb>
       <View style={styles.featuredBody}>
         <CardChips article={article} />
         <Text style={[styles.featuredTitle, { color: c.textPrimary }]} numberOfLines={2}>
@@ -300,22 +241,11 @@ export function ArticleGridCard({
         { width, backgroundColor: c.surfaceCard, borderColor: c.hairline, opacity: pressed ? 0.9 : 1 },
       ]}
     >
-      <View style={[styles.gridThumb, { backgroundColor: c.surfaceSunken }]}>
-        {article.og_image ? (
-          <Image source={{ uri: safeImageUri(article.og_image) }} style={styles.thumbImg} resizeMode="cover" />
-        ) : (
-          <ServiceLogo
-            name={article.blog?.name ?? "?"}
-            brandColor={article.blog?.brand_color}
-            homepage={article.blog?.homepage}
-            blogKey={article.blog?.key}
-            size={34}
-          />
-        )}
+      <ArticleThumb article={article} style={styles.gridThumb}>
         <View style={[styles.bmOverlay, { backgroundColor: c.surfaceCard }]}>
           <CardBookmark articleId={article.id} />
         </View>
-      </View>
+      </ArticleThumb>
       <View style={styles.gridBody}>
         <CardChips article={article} />
         <Text style={[styles.gridTitle, { color: c.textPrimary }]} numberOfLines={2}>
