@@ -9,7 +9,7 @@ import { TOPIC_META, dtype , PRETENDARD} from "@/theme";
 import { faviconDomain, faviconUrl } from "@/lib/brandIcon";
 import { safeImageUri } from "@/lib/image";
 import { useIsBookmarked, useToggleBookmark } from "@/data";
-import { LevelBadge } from "./LevelBadge";
+import { ImprovementTag } from "./ImprovementTag";
 import type { ArticleWithBlog } from "@/data/articles";
 import type { Topic } from "@/types/database";
 
@@ -126,15 +126,18 @@ export function TopicChip({ topic }: { topic: Topic }) {
   );
 }
 
-// 주제칩 + 난이도 배지 한 줄.
-// 카드 단계에서 "내가 읽을 수 있는 글인지"를 3초 안에 판단하게 한다 — 읽다가 막혀서
-// 나가는 걸 막는 게 목적이지, 어려운 글을 숨기는 게 아니다(기대치만 맞춘다).
+// 주제칩(누가 쓴 글이냐) + 개선 유형 태그(무엇을 개선했냐) 한 줄.
+//   두 축을 나란히 둔다. 카드 단계에서 "이 글이 내가 찾던 사례인지"를 고르게 하는 게 목적.
 function CardChips({ article }: { article: ArticleWithBlog }) {
-  if (!article.topic && !article.level && !article.read_minutes) return null;
   return (
     <View style={styles.chipRow}>
       {article.topic != null ? <TopicChip topic={article.topic} /> : null}
-      <LevelBadge level={article.level} readMinutes={article.read_minutes} />
+      <ImprovementTag
+        decision={article.decision}
+        title={article.title}
+        tags={article.tags}
+        readMinutes={article.read_minutes}
+      />
     </View>
   );
 }

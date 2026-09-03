@@ -23,9 +23,10 @@ import { ChevronLeft } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav, type RootStackParamList } from "@/navigation/types";
-import { useCreateOpinion, useArticleHighlights } from "@/data";
+import { useCreateOpinion, useArticleHighlights, useArticle } from "@/data";
 import { cleanInsight, EMPTY_INSIGHT, type Insight } from "@/lib/insight";
 import { draftFromHighlights } from "@/lib/insightDraft";
+import { questionFromDecision } from "@/lib/decision";
 import { dtype , PRETENDARD} from "@/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "CreateOpinion">;
@@ -70,12 +71,21 @@ function Field({
 }
 
 export function CreateOpinionScreen({ route }: Props) {
-  const { articleId, question } = route.params;
+  const { articleId } = route.params;
   const { theme } = useTheme();
   const c = theme.colors;
   const nav = useRootNav();
   const create = useCreateOpinion(articleId);
   const highlightsQ = useArticleHighlights(articleId); // 본인 것만 반환하는 훅
+  const articleQ = useArticle(articleId);
+
+  // 질문은 **여기서 직접 조립**한다. 예전엔 route.params 로 받았는데,
+  //   하단 CTA("내 생각도 남겨볼까요?")와 글 등록 직후 경로가 그 값을 안 넘겨서
+  //   그쪽으로 들어오면 질문이 아예 안 떴다(실측 버그).
+  const question = questionFromDecision(
+    articleQ.data?.decision,
+    articleQ.data?.blog?.name,
+  );
 
   const [insight, setInsight] = useState<Insight>({ ...EMPTY_INSIGHT });
   const [prefilled, setPrefilled] = useState(false);
@@ -145,8 +155,10 @@ export function CreateOpinionScreen({ route }: Props) {
             </View>
           ) : null}
 
-          {/* ② 질문 1개 — 하이라이트가 없을 때만. 빈 종이보다 질문이 답하기 쉽다. */}
-          {draft.usedCount === 0 && question ? (
+          {/* ② 질문 1개 — 있으면 **항상** 보여준다.
+                 예전엔 하이라이트가 없을 때만 띄웠는데, 밑줄을 그은 사람에게도
+                 질문은 쓸 재료라서 가릴 이유가 없다. */}
+          {question ? (
             <View style={[styles.draftCard, { backgroundColor: c.primaryTint, borderColor: c.accentTintBorder }]}>
               <Text style={[styles.draftLabel, { color: c.primary }]}>생각해볼 질문</Text>
               <Text style={[styles.draftQuestion, { color: c.textPrimary }]}>{question}</Text>

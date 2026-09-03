@@ -1,5 +1,6 @@
 // distill 전용 토큰 — 주제(topic) 팔레트·문장 하이라이트 색·타입 스케일(DESIGN_GUIDE §2.4/§2.6/§3).
 import { PRETENDARD } from "./tokens";
+import type { ImprovementType } from "@/lib/improvement";
 import type {
   ArticleLevel,
   BlogKind,
@@ -180,3 +181,39 @@ export const WORD_DOMAIN_LABEL: Record<string, string> = {
   product: "프로덕트",
   biz: "비즈니스",
 };
+
+/**
+ * "무엇을 개선한 사례인가" 태그 — 글을 묶어 보는 축.
+ *
+ * 기존 TOPIC_META(개발·프로덕트·디자인…)는 **누가 쓴 글이냐**를 말한다.
+ * 이건 **무엇을 개선했냐**를 말한다. 두 축을 나란히 둔다.
+ *
+ * ⚠️ 난이도 배지(LEVEL_META)를 대체한다. 난이도는 "용어가 나오는가"가 기준이었는데
+ *    기술블로그 글은 거의 다 용어가 나와서 85%가 한 칸에 몰렸다(실측 82/96).
+ *    변별력 없는 축은 화면만 어지럽힌다.
+ */
+export const IMPROVEMENT_META: Record<
+  ImprovementType,
+  { label: string; emoji: string; color: string; tint: string }
+> = {
+  ux: { label: "UI/UX 개선", emoji: "🎨", color: "#C24A82", tint: "#FAE9F1" },
+  perf: { label: "성능 개선", emoji: "⚡", color: "#C0842F", tint: "#FAF0E1" },
+  cost: { label: "비용 절감", emoji: "💰", color: "#2C9184", tint: "#E1F2EF" },
+  reliability: { label: "장애·안정성", emoji: "🛡️", color: "#2F5FC9", tint: "#E9F0FB" },
+  devex: { label: "개발 생산성", emoji: "🔧", color: "#6E45C4", tint: "#F0EAFA" },
+  data: { label: "데이터·실험", emoji: "📊", color: "#4F46E5", tint: "#EEF0FE" },
+  org: { label: "조직·프로세스", emoji: "👥", color: "#3C9E79", tint: "#E4F3EC" },
+  brand: { label: "브랜드·마케팅", emoji: "📣", color: "#C2562F", tint: "#FAECE5" },
+};
+
+/** 필터 칩 노출 순서 — 비개발자가 먼저 볼 것부터. */
+export const IMPROVEMENT_ORDER: ImprovementType[] = [
+  "ux",
+  "brand",
+  "org",
+  "data",
+  "reliability",
+  "perf",
+  "cost",
+  "devex",
+];

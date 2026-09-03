@@ -3,6 +3,7 @@
 //   수집 시 AI 배치가 articles.decision 에 채우고, 본문에 트레이드오프 서술이 없으면 null 로 둔다.
 //   ⚠️ 억지로 만들지 않는다 — 없는 글은 화면에서 카드를 통째로 숨기고 스탬프만 보여준다.
 import type { ArticleDecision } from "@/types/database";
+import { objectParticle, subjectParticle } from "@/lib/josa";
 
 export const EMPTY_DECISION: ArticleDecision = {
   problem: "",
@@ -43,30 +44,9 @@ export function hasDecision(raw: unknown): boolean {
  *   — 같은 대상을 긍정/부정으로 적은 것이라 질문이 성립하지 않는다.
  * 엣지 함수(summarize)의 comparablePair 와 **같은 규칙**이다. 한쪽만 고치지 말 것.
  */
-/** 받침이 있으면 true. 한글이 아닌 끝(영문·숫자)은 false 로 본다. */
-function hasFinalConsonant(word: string): boolean {
-  const ch = word.trim().slice(-1);
-  const code = ch.charCodeAt(0);
-  if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return false;
-  return (code - 0xac00) % 28 !== 0;
-}
-
-/**
- * 주격 조사 — 받침이 있으면 "은", 없으면 "는".
- * "올리브영는 왜…", "당근는 왜…" 처럼 틀리던 것을 고친다(실측).
- */
-export function subjectParticle(word: string): "은" | "는" {
-  return hasFinalConsonant(word) ? "은" : "는";
-}
-
-/**
- * 목적격 조사 — 받침이 있으면 "을", 없으면 "를".
- * 이걸 안 하면 "과거 장애 패턴 대조을 골랐을까요?" 처럼 어색해진다(실측).
- * 한글이 아닌 끝(영문·숫자)은 관용을 따라 "를".
- */
-export function objectParticle(word: string): "을" | "를" {
-  return hasFinalConsonant(word) ? "을" : "를";
-}
+// 조사 규칙은 lib/josa.ts 로 모았다(질문 · 개선 한 줄 요약이 같이 쓴다).
+// 기존 호출부·테스트를 위해 여기서 그대로 재수출한다.
+export { subjectParticle, objectParticle } from "@/lib/josa";
 
 export function comparablePair(chosen: string, rejected: string): boolean {
   if (!chosen || !rejected) return false;

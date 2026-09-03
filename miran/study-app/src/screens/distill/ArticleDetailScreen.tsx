@@ -48,7 +48,7 @@ import {
 } from "@/data";
 import { ServiceLogo, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
 import { ArticleHighlightSection } from "@/components/distill/ArticleHighlightSection";
-import { LevelBadge } from "@/components/distill/LevelBadge";
+import { ImprovementTag } from "@/components/distill/ImprovementTag";
 import { DecisionCard } from "@/components/distill/DecisionCard";
 import { StampBar } from "@/components/distill/StampBar";
 import { ReaderRoles } from "@/components/distill/ReaderRoles";
@@ -156,7 +156,12 @@ export function ArticleDetailScreen({ route }: Props) {
           {/* 주제칩 · 읽기시간 · 공유·북마크 */}
           <View style={styles.metaTop}>
             {a.topic ? <TopicChip topic={a.topic} /> : null}
-            <LevelBadge level={a.level} readMinutes={a.read_minutes} />
+            <ImprovementTag
+              decision={a.decision}
+              title={a.title}
+              tags={a.tags}
+              readMinutes={a.read_minutes}
+            />
             <View style={{ flex: 1 }} />
             <Pressable
               onPress={() => Share.share({ message: `${a.title}\n${a.url}` }).catch(() => undefined)}
@@ -181,6 +186,14 @@ export function ArticleDetailScreen({ route }: Props) {
 
           {/* 제목 */}
           <Text style={[styles.title, { color: c.textPrimary }]}>{a.title}</Text>
+
+          {/* 무엇을 개선한 사례인지 한 줄 — 결정 카드가 있을 때만 나온다. */}
+          <ImprovementTag
+            decision={a.decision}
+            title={a.title}
+            tags={a.tags}
+            withSummary
+          />
 
           {/* 키워드 태그 */}
           {a.tags && a.tags.length > 0 ? (
@@ -292,7 +305,7 @@ export function ArticleDetailScreen({ route }: Props) {
               {question ? (
                 <Pressable
                   style={[styles.questionCard, { backgroundColor: c.primaryTint, borderColor: c.accentTintBorder }]}
-                  onPress={() => nav.navigate("CreateOpinion", { articleId: a.id, question })}
+                  onPress={() => nav.navigate("CreateOpinion", { articleId: a.id })}
                 >
                   <Text style={[styles.questionLabel, { color: c.primary }]}>생각해볼 질문</Text>
                   <Text style={[styles.questionText, { color: c.textPrimary }]}>{question}</Text>
