@@ -27,7 +27,11 @@ import { useRootNav, type RootStackParamList } from "@/navigation/types";
 import { useCreateOpinion, useArticleHighlights, useArticle, useDraftAnswer } from "@/data";
 import { cleanInsight, EMPTY_INSIGHT, type Insight } from "@/lib/insight";
 import { draftFromHighlights, draftPromptSource } from "@/lib/insightDraft";
-import { isUsableQuestion, questionFromDecision } from "@/lib/decision";
+import {
+  applyQuestionFromDecision,
+  isUsableQuestion,
+  questionFromDecision,
+} from "@/lib/decision";
 import { applyQuestion, fallbackQuestion } from "@/lib/improvement";
 import { dtype , PRETENDARD} from "@/theme";
 
@@ -185,7 +189,10 @@ export function CreateOpinionScreen({ route }: Props) {
     fallbackQuestion(qInput);
   // ② 그래서 **우리는 무엇을 하나** — 접목을 끄집어내는 질문.
   //    읽고 끝나면 남는 게 없다. 이 앱이 팔아야 할 건 결국 두 번째 질문의 답이다.
-  const question2 = (isUsableQuestion(savedApply) ? savedApply : null) ?? applyQuestion(qInput);
+  const question2 =
+    (isUsableQuestion(savedApply) ? savedApply : null) ??
+    applyQuestionFromDecision(articleQ.data?.decision) ??
+    applyQuestion(qInput);
 
   const fromRegister = route.params?.fromRegister === true;
   const [insight, setInsight] = useState<Insight>({ ...EMPTY_INSIGHT });

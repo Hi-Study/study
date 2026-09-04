@@ -51,8 +51,13 @@ describe("questionFromDecision (자유 생성 금지 — 조립만)", () => {
     );
   });
 
-  it("버린 대안이 없으면 null — 억지로 만들지 않는다", () => {
-    expect(questionFromDecision({ ...FULL, rejected: "" }, "토스")).toBeNull();
+  // ⚠️ 예전엔 "버린 대안이 없으면 null" 이었다. 그래서 결정 카드 70건 중 15건에만
+  //    질문이 붙었다 — problem·constraint·metric 이라는 재료를 두고도 버린 셈이다.
+  //    이제 재료가 있는 만큼 아래 단계로 내려가며 만든다.
+  it("버린 대안이 없으면 제약으로 내려가 질문을 만든다", () => {
+    const q = questionFromDecision({ ...FULL, rejected: "" }, "토스");
+    expect(q).toContain("PG 응답이 3초까지 지연");
+    expect(q).toContain("재시도 3회 + 멱등키");
   });
 
   it("선택이 없어도 null", () => {
@@ -106,7 +111,9 @@ describe("comparablePair — 어색한 질문을 아예 만들지 않는다", ()
   });
 
   it("한쪽이 다른 쪽을 포함하면 탈락", () => {
-    expect(questionFromDecision({ ...FULL, chosen: "단일 테이블 구조", rejected: "단일 테이블" }, null)).toBeNull();
+    // 대조로는 못 쓰지만(같은 대상) 제약 단계로 내려가 질문은 만들어진다.
+    const q = questionFromDecision({ ...FULL, chosen: "단일 테이블 구조", rejected: "단일 테이블" }, null);
+    expect(q).not.toContain("대신");
   });
 
   it("비교 가능한 짧은 명사구 한 쌍은 통과", () => {
@@ -134,6 +141,7 @@ describe("objectParticle · 서술형 꼬리", () => {
 
   it("서술형 꼬리(…선택)는 질문을 만들지 않는다", () => {
     // "MRAID 표준을 선택을 골랐을까요?" 같은 중복을 막는다(실측).
+    // 조사를 이미 달고 있어서 어느 단계에서도 끼울 수 없다 → 질문을 만들지 않는다.
     const d = { ...FULL, chosen: "MRAID 표준을 선택", rejected: "다른 규약" };
     expect(questionFromDecision(d, "토스")).toBeNull();
   });

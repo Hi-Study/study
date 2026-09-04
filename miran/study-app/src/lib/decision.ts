@@ -3,7 +3,7 @@
 //   수집 시 AI 배치가 articles.decision 에 채우고, 본문에 트레이드오프 서술이 없으면 null 로 둔다.
 //   ⚠️ 억지로 만들지 않는다 — 없는 글은 화면에서 카드를 통째로 숨기고 스탬프만 보여준다.
 import type { ArticleDecision } from "@/types/database";
-import { objectParticle, subjectParticle } from "@/lib/josa";
+import { instrumentalParticle, objectParticle, subjectParticle } from "@/lib/josa";
 
 export const EMPTY_DECISION: ArticleDecision = {
   problem: "",
@@ -69,16 +69,84 @@ export function comparablePair(chosen: string, rejected: string): boolean {
  *
  * @param blogName 출처 기업명(있으면 "토스는 왜…" 로 주어를 붙인다)
  */
+/**
+ * 문장으로 끼워 넣어도 되는 짧은 명사구인지. 길거나 부정 서술이면 질문이 망가진다.
+ *
+ * ⚠️ **조사를 이미 달고 있는 서술구**도 막는다. "MRAID 표준을 선택" 을 그대로 끼우면
+ *    "MRAID 표준을 선택을 골랐을까요?" 가 된다(실측). "CI 기반 본인인증 도입" 처럼
+ *    조사 없는 명사구는 통과시킨다 — 그건 문장에 자연스럽게 들어간다.
+ */
+function usablePhrase(v: string, max = 24): boolean {
+  const t = v.trim();
+  if (t.length === 0 || t.length > max) return false;
+  if (/않|안 하|안 함|없이|미사용|제외/.test(t)) return false;
+  return !/(을|를|이|가|은|는)\s*(선택|도입|적용|채택|사용|변경|전환)$/.test(t);
+}
+
+/**
+ * 문장을 질문 앞머리로 쓸 수 있게 다듬는다 — **마침표만 뗀다.**
+ *
+ * ⚠️ 종결어미(함·음·임)까지 떼어 봤다가 되돌렸다. "제공하고 싶음" → "제공하고 싶" 이
+ *    되어 말이 잘렸다(실측). 어미를 건드리는 대신 **줄표(—)로 끊어** 뒤 문장과 잇는다.
+ *    조사를 억지로 붙이면("…부족라는") 더 어색해진다.
+ */
+function asClause(v: string): string {
+  return v.trim().replace(/[.。]$/, "").trim();
+}
+
+/**
+ * 결정 카드로 **인사이트 질문**을 조립한다.
+ *
+ * ⚠️ 예전엔 대조쌍(A 대신 B)이 있어야만 질문을 만들었다. 그래서 결정 카드가 있는
+ *    70건 중 **15건**에만 질문이 붙었다. 그런데 카드에는 rejected 말고도
+ *    problem(70) · constraint(63) · metric(19) 이 들어 있다 — 재료가 있는데
+ *    한 가지 형태만 고집해서 나머지를 버린 것이다.
+ *    아래로 갈수록 재료가 적어지지만, **있는 재료로 만들 수 있는 가장 구체적인 질문**을 만든다.
+ */
 export function questionFromDecision(
   raw: unknown,
   blogName?: string | null,
 ): string | null {
   const d = toDecision(raw);
-  if (!comparablePair(d.chosen, d.rejected)) return null;
-
   const name = blogName?.trim() ?? "";
-  const subject = name ? `${name}${subjectParticle(name)} 왜 ` : "왜 ";
-  return `${subject}${d.rejected} 대신 ${d.chosen}${objectParticle(d.chosen)} 골랐을까요?`;
+  const who = name ? `${name}${subjectParticle(name)} ` : "";
+
+  // ① 버린 대안이 온전하면 트레이드오프를 정면으로 묻는다 — 가장 좋은 질문이다.
+  if (comparablePair(d.chosen, d.rejected)) {
+    return `${who}왜 ${d.rejected} 대신 ${d.chosen}${objectParticle(d.chosen)} 골랐을까요?`;
+  }
+  // ② 제약이 있으면 "그 조건이 없었다면?" 이 판단의 이유를 끌어낸다.
+  if (usablePhrase(d.chosen) && usablePhrase(d.constraint, 40)) {
+    return `${asClause(d.constraint)} — 이 조건이 없었다면 ${who}${d.chosen}${objectParticle(d.chosen)} 그대로 골랐을까요?`;
+  }
+  // ③ 문제와 해법만 있어도 "우리라면?" 을 물을 수 있다.
+  if (usablePhrase(d.chosen) && usablePhrase(d.problem, 40)) {
+    return `${asClause(d.problem)} — 이 문제를 ${d.chosen}${instrumentalParticle(d.chosen)} 풀었는데, 우리라면 같은 선택을 할까요?`;
+  }
+  // ④ 숫자 결과만 남았을 때 — 그 숫자가 나온 이유를 묻는다.
+  if (usablePhrase(d.metric, 40) && usablePhrase(d.chosen)) {
+    return `${d.chosen}${objectParticle(d.chosen)} 골랐더니 ${asClause(d.metric)} — 무엇이 이 차이를 만들었을까요?`;
+  }
+  return null;
+}
+
+/**
+ * 결정 카드로 **접목 질문**을 조립한다("그래서 우리 일엔 어떻게").
+ * 여기도 재료가 있는 만큼 구체적으로 묻는다. 없으면 null 이고 호출부가 유형 템플릿으로 내려간다.
+ */
+export function applyQuestionFromDecision(raw: unknown): string | null {
+  const d = toDecision(raw);
+  // 숫자 결과가 있으면 "우리는 무엇으로 잴까"가 가장 실행에 가깝다.
+  if (usablePhrase(d.metric, 40)) {
+    return `${asClause(d.metric)} — 우리 일에서는 무엇으로 이 변화를 재 볼 수 있을까요?`;
+  }
+  if (usablePhrase(d.chosen)) {
+    return `${d.chosen}${objectParticle(d.chosen)} 우리 일에 그대로 옮긴다면, 어디부터 손대시겠어요?`;
+  }
+  if (usablePhrase(d.problem, 40)) {
+    return `${asClause(d.problem)} — 우리에게도 같은 문제가 있나요? 있다면 어디에서 드러나나요?`;
+  }
+  return null;
 }
 
 /**
