@@ -38,7 +38,9 @@ export function LevelBadge({ level, readMinutes, withHint = false }: Props) {
       <View style={styles.row}>
         {meta ? (
           <View style={[styles.chip, { backgroundColor: c.surfaceSunken }]}>
-            <Text style={[styles.text, { color: c.textSecondary }]}>{meta.label}</Text>
+            <Text style={[styles.text, { color: c.textSecondary }]} numberOfLines={1}>
+              {meta.label}
+            </Text>
           </View>
         ) : null}
         {mins ? (
