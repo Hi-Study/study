@@ -27,7 +27,7 @@ import { useRootNav, type RootStackParamList } from "@/navigation/types";
 import { useCreateOpinion, useArticleHighlights, useArticle, useDraftAnswer } from "@/data";
 import { cleanInsight, EMPTY_INSIGHT, type Insight } from "@/lib/insight";
 import { draftFromHighlights, draftPromptSource } from "@/lib/insightDraft";
-import { questionFromDecision } from "@/lib/decision";
+import { isUsableQuestion, questionFromDecision } from "@/lib/decision";
 import { applyQuestion, fallbackQuestion } from "@/lib/improvement";
 import { dtype , PRETENDARD} from "@/theme";
 
@@ -171,13 +171,21 @@ export function CreateOpinionScreen({ route }: Props) {
     title: articleQ.data?.title,
     tags: articleQ.data?.tags,
   };
-  // ① 이 글에서 **무엇을 봤나** — 인사이트를 끄집어내는 질문.
+  // 질문은 **좋은 것부터** 고른다.
+  //   ① enrich 가 저장해 둔 질문(LLM 이 쓰고 서버 게이트를 통과한 것) — 이 글에만 있는
+  //      고유명사·수치가 들어 있어 제일 구체적이다.
+  //   ② 결정 카드로 조립한 질문("왜 A 대신 B를 골랐을까요?") — 사실만으로 만들어져 안전하다.
+  //   ③ 개선 유형 기반 템플릿 — 넓지만 답은 나온다.
+  // 아래로 갈수록 넓어지되 **끝까지 답할 수 있는** 질문을 준다. 빈 상자는 주지 않는다.
+  const saved = articleQ.data?.question ?? null;
+  const savedApply = articleQ.data?.apply_question ?? null;
   const question =
+    (isUsableQuestion(saved) ? saved : null) ??
     questionFromDecision(articleQ.data?.decision, articleQ.data?.blog?.name) ??
     fallbackQuestion(qInput);
   // ② 그래서 **우리는 무엇을 하나** — 접목을 끄집어내는 질문.
   //    읽고 끝나면 남는 게 없다. 이 앱이 팔아야 할 건 결국 두 번째 질문의 답이다.
-  const question2 = applyQuestion(qInput);
+  const question2 = (isUsableQuestion(savedApply) ? savedApply : null) ?? applyQuestion(qInput);
 
   const fromRegister = route.params?.fromRegister === true;
   const [insight, setInsight] = useState<Insight>({ ...EMPTY_INSIGHT });

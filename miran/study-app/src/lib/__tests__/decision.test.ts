@@ -1,7 +1,7 @@
 import {
   objectParticle,
   subjectParticle,
-  decisionRows,
+
   hasDecision,
   isUsableQuestion,
   questionFromDecision,
@@ -67,39 +67,25 @@ describe("questionFromDecision (자유 생성 금지 — 조립만)", () => {
 });
 
 describe("isUsableQuestion (저장된 질문 검증 게이트)", () => {
-  it("두 선택지가 문장에 다 살아 있어야 통과", () => {
-    const q = "토스는 왜 무제한 재시도 대신 재시도 3회 + 멱등키를 골랐을까요?";
-    expect(isUsableQuestion(q, FULL)).toBe(true);
+  // ⚠️ 예전엔 "대조쌍으로 조립된 질문"만 통과시켜서, LLM 이 잘 쓴 질문까지 전부 버려졌다
+  //    (779건 중 15건만 남았다). 이제 enrich 가 고유명사 포함 여부까지 검사한 것만
+  //    저장하므로, 앱은 **일반론만** 걸러낸다.
+  it("구체적인 질문은 통과", () => {
+    expect(isUsableQuestion("토스는 왜 무제한 재시도 대신 멱등키를 골랐을까요?")).toBe(true);
+    expect(isUsableQuestion("Lynx를 웹뷰 대신 고른 기준이 우리 앱에도 맞을까요?")).toBe(true);
   });
 
   it("어느 글에나 붙는 일반적인 질문은 탈락", () => {
-    expect(isUsableQuestion("이 글의 핵심은 무엇인가요?", FULL)).toBe(false);
-    expect(isUsableQuestion("여러분의 서비스에도 적용할 수 있을까요?", FULL)).toBe(false);
+    expect(isUsableQuestion("이 글의 핵심은 무엇인가요?")).toBe(false);
+    expect(isUsableQuestion("어떤 점이 가장 인상 깊으셨나요?")).toBe(false);
+    expect(isUsableQuestion("저자가 말하려는 바는 무엇인가요?")).toBe(false);
   });
 
-  it("너무 짧거나 비면 탈락", () => {
-    expect(isUsableQuestion("", FULL)).toBe(false);
-    expect(isUsableQuestion(null, FULL)).toBe(false);
-    expect(isUsableQuestion("왜요?", FULL)).toBe(false);
-  });
-
-  it("결정 카드가 반쪽이면 어떤 질문도 통과 못 함", () => {
-    expect(isUsableQuestion("무제한 재시도 대신 재시도 3회", { ...FULL, rejected: "" })).toBe(false);
-  });
-});
-
-describe("decisionRows (화면 표시용)", () => {
-  // ⚠️ "선택한 방법"은 일부러 빠져 있다 — 제목 아래 한 줄이 이미 그 말을 해서
-  //    카드가 같은 내용을 두 번 말하고 있었다.
-  it("값이 있는 항목만 순서대로 — 선택한 방법은 넣지 않는다", () => {
-    expect(decisionRows({ problem: "문제", chosen: "선택" })).toEqual([
-      { label: "무슨 문제", value: "문제" },
-    ]);
-  });
-
-  it("전부 있으면 4줄(문제·제약·버린 대안·결과)", () => {
-    expect(decisionRows(FULL)).toHaveLength(4);
-    expect(decisionRows(FULL).map((r) => r.label)).not.toContain("선택한 방법");
+  it("너무 짧거나·비었거나·물음표가 없으면 탈락", () => {
+    expect(isUsableQuestion("")).toBe(false);
+    expect(isUsableQuestion(null)).toBe(false);
+    expect(isUsableQuestion("왜요?")).toBe(false);
+    expect(isUsableQuestion("멱등키를 쓰면 재시도가 안전해집니다")).toBe(false);
   });
 });
 
@@ -108,7 +94,6 @@ describe("comparablePair — 어색한 질문을 아예 만들지 않는다", ()
     // "공통 컴포넌트화 대신 공통 컴포넌트로 만들지 않음을 골랐을까요?" 를 막는다.
     const bad = { ...FULL, rejected: "공통 컴포넌트화", chosen: "공통 컴포넌트로 만들지 않음" };
     expect(questionFromDecision(bad, "카카오페이")).toBeNull();
-    expect(isUsableQuestion("아무 질문", bad)).toBe(false);
   });
 
   it("부정 서술이 섞이면 탈락", () => {

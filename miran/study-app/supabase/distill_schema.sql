@@ -1005,3 +1005,10 @@ as $fn$
 $fn$;
 
 grant execute on function public.all_top_reader_roles() to anon, authenticated;
+
+-- ============================================================
+-- 32) 감상문 질문 2개 — 인사이트용(articles.question) + 접목용(apply_question).
+--     하나는 "이 글에서 무엇을 봤나", 하나는 "그래서 우리는 무엇을 하나".
+--     읽고 끝나면 남는 게 없으므로 두 번째가 이 서비스의 값어치다.
+-- ============================================================
+alter table public.articles add column if not exists apply_question text;

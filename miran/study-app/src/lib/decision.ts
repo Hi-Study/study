@@ -85,28 +85,26 @@ export function questionFromDecision(
  * 저장된 질문이 쓸 만한지 검증 — 결정 카드의 두 선택지가 문장에 살아 있어야 통과.
  * AI 가 만든 질문을 그대로 믿지 않고 이 게이트를 통과한 것만 화면에 띄운다.
  */
-export function isUsableQuestion(question: string | null | undefined, raw: unknown): boolean {
+/**
+ * DB 에 저장된 질문을 **그대로 써도 되는지** 본다.
+ *
+ * 예전 규칙은 "대조쌍으로 조립된 질문"만 통과시켰다. 그래서 LLM 이 잘 쓴 질문도
+ * 전부 버려지고 779건 중 15건만 남았다. 이제 enrich 가 게이트를 통과한 질문만
+ * 저장하므로, 앱은 **일반론만 걸러내면** 된다(서버와 같은 금지어·길이 기준).
+ *
+ * ⚠️ 여기서 통과 못 해도 화면에 질문은 뜬다 — lib/improvement 의 템플릿으로 내려간다.
+ */
+const GENERIC_QUESTION =
+  /이 글|본문|저자|필자|핵심은|인상 ?깊|무엇을 배웠|어떤 점이|느낀 점|소감|정리해 ?보|요약해/;
+
+export function isUsableQuestion(question: string | null | undefined): boolean {
   const q = (question ?? "").trim();
-  if (q.length < 8) return false;
-  const d = toDecision(raw);
-  if (!comparablePair(d.chosen, d.rejected)) return false;
-  return q.includes(d.chosen) && q.includes(d.rejected);
+  if (q.length < 15 || q.length > 90) return false;
+  if (!q.endsWith("?")) return false;
+  return !GENERIC_QUESTION.test(q);
 }
 
 /** 결정 카드에서 화면에 뿌릴 항목들(값이 있는 것만, 표시 순서대로). */
-/**
- * 결정 카드에 그릴 행.
- *
- * ⚠️ **"선택한 방법"은 넣지 않는다.** 제목 바로 아래 한 줄이 이미 그 말을 하고 있어서
- *    ("PRD 자동화로 사용자 경험을 개선한 사례") 카드가 같은 내용을 두 번 말하는 꼴이었다.
- *    카드가 할 일은 한 줄이 못 담는 것 — **무슨 문제였고, 뭘 버렸고, 얼마나 나아졌나** 다.
- */
-export function decisionRows(raw: unknown): { label: string; value: string }[] {
-  const d = toDecision(raw);
-  return [
-    { label: "무슨 문제", value: d.problem },
-    { label: "어떤 제약", value: d.constraint },
-    { label: "버린 대안", value: d.rejected },
-    { label: "결과", value: d.metric },
-  ].filter((r) => r.value.length > 0);
-}
+// ⚠️ decisionRows(결정 카드 표 만들기)는 삭제했다. 카드 자체를 화면에서 뺐다 —
+//    결과 수치는 제목 아래 한 줄이 괄호로 말하고, 문제·제약은 AI 요약과 겹쳤다.
+//    decision 은 계속 쓴다: **한 줄 태그(improvement.ts)와 감상문 질문**의 재료다.

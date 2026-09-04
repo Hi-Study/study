@@ -52,7 +52,6 @@ import { ArticleHighlightSection } from "@/components/distill/ArticleHighlightSe
 import { ImprovementLine } from "@/components/distill/ImprovementLine";
 import { ArticleThumb } from "@/components/distill/ArticleThumb";
 import { LevelBadge } from "@/components/distill/LevelBadge";
-import { DecisionCard } from "@/components/distill/DecisionCard";
 import { StampBar } from "@/components/distill/StampBar";
 import { ReaderRoles } from "@/components/distill/ReaderRoles";
 import { OpinionThread } from "@/components/distill/OpinionThread";
@@ -255,9 +254,13 @@ export function ArticleDetailScreen({ route }: Props) {
 
           {tab === "original" ? (
             <View style={styles.originalWrap}>
-              {/* 결정 카드 — "어떤 테크"가 아니라 "무슨 문제를 어떻게 풀었나".
-                  값이 없으면 컴포넌트가 스스로 아무것도 안 그린다. */}
-              <DecisionCard decision={a.decision} />
+              {/* ⚠️ 결정 카드(문제·제약·버린 대안·결과)를 여기 두었다가 **뺐다.**
+                  · 결과 수치는 제목 아래 한 줄이 이미 괄호로 말한다
+                    ("파티셔닝으로 속도를 끌어올린 사례 (조회 3초→0.4초)").
+                  · 남는 문제·제약은 바로 아래 AI 요약이 다시 말한다.
+                  · 실측 70건 중 33건은 버린 대안·결과가 비어 있어 카드가 껍데기였다.
+                  decision 자체는 계속 쓴다 — 카드로 보여주는 대신 **한 줄 태그와
+                  감상문 질문의 재료**로 들어간다. 그게 이 데이터의 값어치다. */}
 
               {/* AI 요약(3관점) — 원문 최상단 고정 */}
               <AiSummaryPanel

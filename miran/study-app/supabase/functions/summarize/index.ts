@@ -329,6 +329,7 @@ const ENRICH_SYS =
   "너는 기술·기획 아티클을 읽고 구조화하는 한국어 분석기다. 반드시 아래 JSON 하나만 출력해라" +
   "(설명·코드펜스 금지).\n" +
   '{"decision":{"problem":"","constraint":"","chosen":"","rejected":"","metric":""},' +
+  '"questions":{"insight":"","apply":""},' +
   '"level":"easy|terms|code","terms":[{"term":"","plain":"","why":"","domain":""}]}\n' +
   "규칙:\n" +
   "1) decision 은 **본문에 실제로 쓰인 내용만** 채운다. 특히 rejected(버린 대안)는 글이 " +
@@ -343,7 +344,46 @@ const ENRICH_SYS =
   "3) level: easy=배경지식 없이 읽힘, terms=도메인 용어가 나옴, code=코드/아키텍처 상세가 있음.\n" +
   "4) terms 는 비전공자가 막힐 용어만 **최대 4개**. plain 은 한 문장, why 는 반 문장으로 짧게. " +
   "domain 은 dev|infra|data|design|marketing|product|biz 중 하나.\n" +
-  "5) 모든 값은 한국어. 문장은 짧게.";
+  "5) questions 는 이 글을 다 읽은 사람이 **답을 쓸 수 있는 질문** 2개다.\n" +
+  "   · insight: 이 글이 내린 **판단·트레이드오프**를 파고드는 질문.\n" +
+  "   · apply: 읽는 사람의 **자기 일**로 옮기게 하는 질문. '우리'가 들어가야 한다.\n" +
+  "   두 질문 모두 아래를 지켜라.\n" +
+  "   (a) 이 글에만 해당되는 **고유명사·기술명·수치**를 최소 하나 그대로 넣는다.\n" +
+  "       좋음: 'Lynx를 웹뷰 대신 고른 기준이 우리 앱에도 그대로 적용될까요?'\n" +
+  "       나쁨: '핵심은 무엇인가요?' '어떤 점이 인상 깊었나요?' (어느 글에나 붙는다)\n" +
+  "   (b) 25~60자. 물음표로 끝낸다.\n" +
+  "   (c) 예/아니오로 끝나는 질문 금지. '왜''무엇을''어디부터'로 답을 끌어내라.\n" +
+  "   (d) '이 글', '저자', '필자', '본문'이라는 말을 쓰지 마라. 읽은 사람은 이미 글을 안다.\n" +
+  "   (e) 본문에 없는 사실을 전제로 묻지 마라. 확신이 없으면 빈 문자열로 둬라.\n" +
+  "6) 모든 값은 한국어. 문장은 짧게.";
+
+/**
+ * LLM 이 만든 질문이 **쓸 만한지** 본다. 통과 못 하면 버리고 앱이 템플릿으로 폴백한다.
+ *
+ * ⚠️ 자유 생성을 그냥 믿으면 "핵심은 무엇인가요?" 같은, 어느 글에나 붙어서 아무도
+ *    답하지 않는 질문이 쌓인다. 게이트의 핵심은 마지막 줄 — **이 글에만 있는 단어**가
+ *    들어 있느냐다. 제목·결정 카드에서 뽑은 토큰과 겹치는지로 확인한다.
+ */
+const GENERIC_Q =
+  /이 글|본문|저자|필자|핵심은|인상 ?깊|무엇을 배웠|어떤 점이|느낀 점|소감|정리해 ?보|요약해/;
+
+function usableQuestion(q: string, specifics: string[]): string | null {
+  const t = q.trim();
+  if (t.length < 20 || t.length > 80) return null;
+  if (!t.endsWith("?")) return null;
+  if (GENERIC_Q.test(t)) return null;
+  const hit = specifics.some((w) => t.includes(w));
+  return hit ? t : null;
+}
+
+/** 제목·결정 카드에서 "이 글에만 있는 단어" 후보를 뽑는다(2자 이상 토큰). */
+function specificTokens(title: string, d: Record<string, string>): string[] {
+  const raw = [title, d.chosen, d.rejected, d.problem, d.metric].join(" ");
+  return raw
+    .split(/[^0-9A-Za-z가-힣%.]+/)
+    .map((w) => w.replace(/(을|를|이|가|은|는|의|로|과|와|에서)$/, "").trim())
+    .filter((w) => w.length >= 2);
+}
 
 // LLM 이 코드펜스를 붙이거나 앞뒤에 말을 덧붙여도 JSON 만 건져낸다.
 function parseJsonLoose(raw: string): Record<string, unknown> | null {
@@ -446,10 +486,18 @@ async function enrichArticle(articleId: string) {
     return a.slice(0, 5) !== b.slice(0, 5); // 앞부분이 같으면 같은 대상
   }
 
-  const question =
+  // 질문은 두 갈래로 만든다.
+  //   ① 대조쌍(A 대신 B)이 온전하면 **조립**이 가장 안전하다 — 사실만으로 만들어진다.
+  //   ② 아니면 LLM 이 쓴 질문을 게이트에 통과시킨 것만 쓴다.
+  // 둘 다 없으면 null 로 두고, 앱이 유형 기반 템플릿으로 폴백한다.
+  const qs = (parsed.questions ?? {}) as Record<string, unknown>;
+  const specifics = specificTokens(String(art.title ?? ""), decision);
+  const builtQuestion =
     hasDecision && comparablePair(decision.chosen, decision.rejected)
       ? `${blogName ? `${blogName}${subjectParticle(blogName)} 왜 ` : "왜 "}${decision.rejected} 대신 ${decision.chosen}${objectParticle(decision.chosen)} 골랐을까요?`
       : null;
+  const question = builtQuestion ?? usableQuestion(str(qs.insight), specifics);
+  const applyQuestion = usableQuestion(str(qs.apply), specifics);
 
   const lvl = str(parsed.level);
   const level = lvl === "easy" || lvl === "terms" || lvl === "code" ? lvl : null;
@@ -471,13 +519,14 @@ async function enrichArticle(articleId: string) {
     .update({
       decision: hasDecision ? decision : null,
       question,
+      apply_question: applyQuestion,
       level,
       terms,
       read_minutes: readMinutes(body),
     })
     .eq("id", articleId);
 
-  return { ok: true, hasDecision, question, level, terms: terms.length };
+  return { ok: true, hasDecision, question, applyQuestion, level, terms: terms.length };
 }
 
 // 토론 주제 + 여는 글(+원문) 요약 — 모드별.

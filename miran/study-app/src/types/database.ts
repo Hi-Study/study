@@ -137,6 +137,8 @@ export interface Database {
           read_minutes: number | null;
           decision: ArticleDecision | null;
           question: string | null;
+          /** 접목 질문(§32) — "그래서 우리 일엔 어떻게 쓸까요?" */
+          apply_question: string | null;
           terms: ArticleTerm[];
           ai_summaries: Record<string, string>;
           like_count: number;
@@ -161,6 +163,7 @@ export interface Database {
           read_minutes?: number | null;
           decision?: ArticleDecision | null;
           question?: string | null;
+          apply_question?: string | null;
           terms?: ArticleTerm[];
           ai_summaries?: Record<string, string>;
           like_count?: number;
