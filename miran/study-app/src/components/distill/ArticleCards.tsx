@@ -101,7 +101,11 @@ function CardChips({ article }: { article: ArticleWithBlog }) {
 }
 
 /**
- * "기획자 3명이 읽고 있어요" — **목록 카드에도** 붙인다.
+ * "기획자 3명이 읽었어요" — **목록 카드에도** 붙인다.
+ *
+ * ⚠️ 문구는 **"읽었어요"** 다. 예전엔 "읽고 있어요"였는데 이 수치는 글을 **끝까지
+ *    (스크롤 90%) 읽은 사람 수**라 시제가 안 맞았다. 지금 읽는 중인 사람 수가 아니다.
+ *    수치와 문구가 어긋나면 다른 숫자도 못 믿게 된다.
  *
  * 상세에만 있으면 정작 들어갈 글을 고르는 목록에서 이 신호를 못 쓴다. 비개발자가
  * 남을지 말지는 목록에서 갈린다 — 개발자 글만 보이면 그 자리에서 나간다.
@@ -120,7 +124,7 @@ function ReaderHint({ articleId }: { articleId: string }) {
     <View style={styles.readerRow}>
       <Users size={12} color={c.textMuted} strokeWidth={2} />
       <Text style={[styles.readerText, { color: c.textMuted }]} numberOfLines={1}>
-        {meta.plural} {top.count}명이 읽고 있어요
+        {meta.plural} {top.count}명이 읽었어요
       </Text>
     </View>
   );

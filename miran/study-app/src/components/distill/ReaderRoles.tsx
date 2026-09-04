@@ -1,4 +1,7 @@
-// 직군 배지 — "기획자 12명이 읽고 있어요".
+// 직군 배지 — "기획자 12명이 읽었어요".
+//
+// ⚠️ "읽고 있어요"가 아니라 **"읽었어요"**. 이 수치는 글을 끝까지(스크롤 90%) 읽은
+//    사람 수라, 지금 읽는 중인 사람 수가 아니다. 수치와 문구가 어긋나면 못 믿는다.
 //
 // 비개발자가 들어와서 개발자만 보이면 그 자리에서 나간다. 반대로 같은 직군이 이미
 // 이 글을 읽고 있다는 사실이 보이면 남는다. 그래서 **내 직무를 맨 앞에** 놓는다.
@@ -40,7 +43,7 @@ export function ReaderRoles({ articleId, myRole }: Props) {
         const meta = JOB_ROLE_META[r.jobRole];
         const isMine = r.jobRole === myRole;
         // 문장은 첫 칩에만 — 여러 개에 반복되면 읽기 싫어진다.
-        const suffix = idx === 0 ? "명이 읽고 있어요" : "명";
+        const suffix = idx === 0 ? "명이 읽었어요" : "명";
         const fg = isMine ? c.primary : c.textSecondary;
         return (
           <View

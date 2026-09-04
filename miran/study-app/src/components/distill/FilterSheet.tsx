@@ -32,7 +32,7 @@ const SORT_LABEL: Record<FeedSort, string> = { latest: "최신순", popular: "�
 const TAB_LABEL: Record<Tab, string> = {
   blog: "기업",
   topic: "카테고리",
-  level: "개발 지식",
+  level: "난이도",
   sort: "정렬",
 };
 const ALL_BLOGS = "전체 기업";
@@ -100,10 +100,10 @@ export function FilterSheet({
   // 하나만 고르면 라벨을 그대로 보여준다 — "개발 지식 1" 보다 "누구나 이해 가능" 이 훨씬 명확하다.
   const levelLabel =
     value.levels.size === 0
-      ? "개발 지식"
+      ? "난이도"
       : value.levels.size === 1
         ? LEVEL_META[[...value.levels][0]].label
-        : `개발 지식 ${value.levels.size}`;
+        : `난이도 ${value.levels.size}`;
   const blogLabel = value.blogIds.size === 0 ? "기업" : `기업 ${value.blogIds.size}`;
 
   // 인사 배너용 — 이름 + 지금 보는 기업의 전체 글 수(카테고리 필터와 무관).
