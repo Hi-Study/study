@@ -82,9 +82,11 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   searchUtil: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
 
-  filterRow: { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 10 },
-  countText: { ...dtype.label, fontSize: 13 },
+  // 칩 바 ↔ 개수 ↔ 목록 사이 리듬. 간격 스케일(4·8·12·16)만 쓴다.
+  filterRow: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
+  countText: { ...dtype.label },
 
-  listContent: { paddingHorizontal: 16, paddingBottom: 32 },
+  // ⚠️ paddingTop 이 없어서 첫 글이 개수 줄에 붙어 있었다.
+  listContent: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 32 },
   sep: { height: 1 },
 });

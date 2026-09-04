@@ -64,7 +64,7 @@ const KEYWORDS: Record<ImprovementType, string[]> = {
   ],
 };
 
-/** 태그 라벨(한 줄 요약 조립에도 쓴다). */
+/** 유형 이름(내부용·필터 라벨). 화면에 그대로 뿌리지 않는다 — 아래 PHRASE 를 쓴다. */
 export const IMPROVEMENT_LABEL: Record<ImprovementType, string> = {
   ux: "UI/UX",
   perf: "성능",
@@ -74,6 +74,24 @@ export const IMPROVEMENT_LABEL: Record<ImprovementType, string> = {
   data: "데이터·실험",
   org: "조직·프로세스",
   brand: "브랜드·마케팅",
+};
+
+/**
+ * 화면에 나가는 **문장 꼬리**.
+ *
+ * ⚠️ 예전엔 위 LABEL 을 그대로 끼워 넣어 "데이터·실험을 개선한 사례",
+ *    "개발 생산성을 개선한 사례" 같은 문장이 나왔다. 분류 이름은 개발자가 만든 말이라
+ *    기획자·디자이너가 읽으면 무슨 뜻인지 모른다. 유형마다 **동사까지 맞춘 표현**을 둔다.
+ */
+const IMPROVEMENT_PHRASE: Record<ImprovementType, string> = {
+  ux: "사용자 경험을 개선한 사례",
+  perf: "속도를 끌어올린 사례",
+  cost: "비용을 줄인 사례",
+  reliability: "장애를 줄인 사례",
+  devex: "개발 속도를 높인 사례",
+  data: "데이터 활용을 개선한 사례",
+  org: "일하는 방식을 바꾼 사례",
+  brand: "브랜드 경험을 바꾼 사례",
 };
 
 /** 점수가 같을 때의 우선순위 — 앞쪽이 이긴다. 흔한 devex 를 뒤로 두어 남발을 막는다. */
@@ -135,24 +153,55 @@ export function classifyImprovement(input: ImprovementInput): ImprovementType | 
 }
 
 /**
- * 카드에 붙일 한 줄 — "~로 ~을 개선한 사례".
- * 결정 카드의 `chosen` 이 있어야 만든다(없으면 null → 한 줄을 안 보여준다).
+ * 카드에 붙일 한 줄.
+ *
+ * **두 단계로 만든다.** 예전엔 결정 카드의 `chosen`(방법)이 있어야만 문장을 만들어서,
+ * 실측 779건 중 **45건에만** 한 줄이 떴다. 나머지는 카드가 텅 비어 "어떤 글은 태그가
+ * 있고 어떤 글은 없는" 상태가 됐다. 원인은 LLM 분석(decision)이 70건밖에 안 끝난 것.
+ *
+ *   ① 방법을 알 때  → "파티셔닝으로 속도를 끌어올린 사례 (3초→0.4초)"
+ *   ② 방법을 모를 때 → "속도를 끌어올린 사례"
+ *
+ * ②는 유형(제목·태그·결정카드 키워드)만으로도 말할 수 있는 **사실**이다. 방법을 지어내지
+ * 않는다 — 모르는 건 말하지 않고, 아는 것만 말한다. 분석이 끝나면 저절로 ①로 올라간다.
  * 숫자 결과(`metric`)가 있으면 괄호로 덧붙인다 — 그게 이 서비스의 핵심 가치다.
  */
 export function improvementSummary(
   decision: unknown,
   type: ImprovementType | null,
 ): string | null {
+  if (!type) return null;
   const d = toDecision(decision);
-  if (!d.chosen || !type) return null;
-  // 방법이 문장이거나 부정 서술이면 한 줄이 망가진다(실측):
-  //   "공통 컴포넌트로 만들지 않음으로 UI/UX를 개선한 사례"
-  //   "Claude Agent SDK와 AgentCore Gateway, Runtime, Web Search를 활용한 전환으로…"
-  // 이럴 땐 한 줄을 접는다 — 태그는 그대로 남으니 정보가 사라지진 않는다.
-  if (d.chosen.length > 20) return null;
-  if (/않|안 하|없이|미사용|제외/.test(d.chosen)) return null;
+  const tail = IMPROVEMENT_PHRASE[type];
 
-  const label = IMPROVEMENT_LABEL[type];
-  const head = `${d.chosen}${instrumentalParticle(d.chosen)} ${label}${objectParticle(label)} 개선한 사례`;
+  // 방법이 문장이거나 부정 서술이면 앞머리를 붙이지 않는다(실측):
+  //   "공통 컴포넌트로 만들지 않음으로 …"
+  //   "Claude Agent SDK와 AgentCore Gateway, Runtime, Web Search를 활용한 전환으로 …"
+  const usableMethod =
+    Boolean(d.chosen) && d.chosen.length <= 20 && !/않|안 하|없이|미사용|제외/.test(d.chosen);
+
+  const head = usableMethod ? `${d.chosen}${instrumentalParticle(d.chosen)} ${tail}` : tail;
   return d.metric ? `${head} (${d.metric})` : head;
+}
+
+/**
+ * 감상문 질문의 **폴백 사다리.**
+ *
+ * 원래 질문은 결정 카드의 대조쌍(A 대신 B)이 있어야 만들어졌다. 실측 779건 중 **15건.**
+ * 나머지 글은 감상문 화면에 질문이 아예 안 떴다. 재료가 줄어들수록 질문이 넓어지되,
+ * **끝까지 답할 수 있는 질문**을 준다 — "인사이트를 적어보세요" 같은 빈 상자는 안 준다.
+ */
+export function fallbackQuestion(input: ImprovementInput): string {
+  const d = toDecision(input.decision);
+  // ② 무엇을 골랐는지는 아는데 비교 대상이 없을 때.
+  if (d.chosen && d.chosen.length <= 20 && !/않|안 하|없이|미사용|제외/.test(d.chosen)) {
+    return `${d.chosen}${objectParticle(d.chosen)} 택한 이유가 우리 상황에도 그대로 해당될까요?`;
+  }
+  // ③ 개선 유형만 아는 경우 — 유형별 표현을 그대로 재사용한다.
+  const type = classifyImprovement(input);
+  if (type) {
+    return `이 글에서 ${IMPROVEMENT_PHRASE[type].replace(/ 사례$/, "")} 방법 중, 우리 팀이 당장 따라 할 수 있는 건 뭘까요?`;
+  }
+  // ④ 아무 신호도 없을 때. 넓지만 진짜 답이 나오는 질문.
+  return "이 글에서 우리 팀에 가장 쓸모 있었던 한 가지는 무엇인가요?";
 }

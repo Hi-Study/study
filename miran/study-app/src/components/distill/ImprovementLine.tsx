@@ -18,7 +18,7 @@ import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
-import { IMPROVEMENT_LINE_ICON, dtype } from "@/theme";
+import { IMPROVEMENT_META, dtype } from "@/theme";
 import { classifyImprovement, improvementSummary } from "@/lib/improvement";
 
 interface Props {
@@ -37,7 +37,7 @@ export function ImprovementLine({ decision, title, tags, lines = 2 }: Props) {
   const summary = improvementSummary(decision, type);
   if (!summary || !type) return null;
 
-  const Icon = IMPROVEMENT_LINE_ICON;
+  const Icon = IMPROVEMENT_META[type].icon;
 
   return (
     <View style={styles.wrap}>

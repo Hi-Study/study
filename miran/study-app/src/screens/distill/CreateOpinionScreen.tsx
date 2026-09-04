@@ -27,6 +27,7 @@ import { useCreateOpinion, useArticleHighlights, useArticle } from "@/data";
 import { cleanInsight, EMPTY_INSIGHT, type Insight } from "@/lib/insight";
 import { draftFromHighlights } from "@/lib/insightDraft";
 import { questionFromDecision } from "@/lib/decision";
+import { fallbackQuestion } from "@/lib/improvement";
 import { dtype , PRETENDARD} from "@/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "CreateOpinion">;
@@ -86,10 +87,17 @@ export function CreateOpinionScreen({ route }: Props) {
   // 질문은 **여기서 직접 조립**한다. 예전엔 route.params 로 받았는데,
   //   하단 CTA("내 생각도 남겨볼까요?")와 글 등록 직후 경로가 그 값을 안 넘겨서
   //   그쪽으로 들어오면 질문이 아예 안 떴다(실측 버그).
-  const question = questionFromDecision(
-    articleQ.data?.decision,
-    articleQ.data?.blog?.name,
-  );
+  //
+  // ⚠️ **질문은 항상 있다.** 대조쌍(A 대신 B)이 있는 글은 779건 중 15건뿐이라,
+  //    예전엔 나머지 글에서 질문 칸이 통째로 사라졌다. 재료가 없으면 폴백 사다리로
+  //    내려가되 끝까지 "답할 수 있는" 질문을 준다(lib/improvement.fallbackQuestion).
+  const question =
+    questionFromDecision(articleQ.data?.decision, articleQ.data?.blog?.name) ??
+    fallbackQuestion({
+      decision: articleQ.data?.decision,
+      title: articleQ.data?.title,
+      tags: articleQ.data?.tags,
+    });
 
   const [insight, setInsight] = useState<Insight>({ ...EMPTY_INSIGHT });
   // 질문에 대한 답 — 3항목과 별도로 받고, 저장할 때 해석(interpretation)에 합친다.

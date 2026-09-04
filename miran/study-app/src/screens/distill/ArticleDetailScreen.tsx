@@ -49,7 +49,8 @@ import {
 } from "@/data";
 import { ServiceLogo, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
 import { ArticleHighlightSection } from "@/components/distill/ArticleHighlightSection";
-import { ImprovementTag } from "@/components/distill/ImprovementTag";
+import { ImprovementLine } from "@/components/distill/ImprovementLine";
+import { ArticleThumb } from "@/components/distill/ArticleThumb";
 import { LevelBadge } from "@/components/distill/LevelBadge";
 import { DecisionCard } from "@/components/distill/DecisionCard";
 import { StampBar } from "@/components/distill/StampBar";
@@ -147,12 +148,10 @@ export function ArticleDetailScreen({ route }: Props) {
         onScrollEndDrag={(e) => setReadPos(articleId, e.nativeEvent.contentOffset.y)}
         onMomentumScrollEnd={(e) => setReadPos(articleId, e.nativeEvent.contentOffset.y)}
       >
-        {/* 히어로 */}
-        <View style={[styles.hero, { backgroundColor: c.surfaceSunken }]}>
-          {a.og_image ? (
-            <Image source={{ uri: safeImageUri(a.og_image) }} style={styles.heroImg} resizeMode="cover" />
-          ) : null}
-        </View>
+        {/* 히어로 — 대표 이미지가 없거나 링크가 깨졌으면 **기본 이미지**(브랜드 색 + 로고 + 제목).
+            예전엔 회색 빈 상자만 남아서 "이미지를 못 가져온 앱"처럼 보였다.
+            목록 썸네일과 같은 컴포넌트를 쓴다 — 폴백 규칙이 두 벌이면 또 어긋난다. */}
+        <ArticleThumb article={a} large style={styles.hero} />
 
         <View style={styles.body}>
           {/* 주제칩 · 읽기시간 · 공유·북마크 */}
@@ -184,13 +183,11 @@ export function ArticleDetailScreen({ route }: Props) {
           {/* 제목 */}
           <Text style={[styles.title, { color: c.textPrimary }]}>{a.title}</Text>
 
-          {/* 무엇을 개선한 사례인지 한 줄 — 결정 카드가 있을 때만 나온다. */}
-          <ImprovementTag
-            decision={a.decision}
-            title={a.title}
-            tags={a.tags}
-            withSummary
-          />
+          {/* 무엇을 개선한 사례인지 한 줄.
+              ⚠️ 예전엔 여기에 "데이터·실험", "개발 생산성" 같은 **분류 이름 칩**도 같이 띄웠다.
+                 그건 개발자가 만든 말이라 기획자·디자이너가 읽으면 무슨 뜻인지 모른다.
+                 분류는 문장 안에 녹이고("속도를 끌어올린 사례") 칩은 없앤다. */}
+          <ImprovementLine decision={a.decision} title={a.title} tags={a.tags} lines={3} />
 
           {/* 키워드 태그 */}
           {a.tags && a.tags.length > 0 ? (
@@ -515,7 +512,6 @@ const styles = StyleSheet.create({
   content: { paddingBottom: 24 },
 
   hero: { width: "100%", aspectRatio: 16 / 9 },
-  heroImg: { width: "100%", height: "100%" },
 
   // 본문 좌우 여백 — 17px 본문 + 20 여백이면 한 줄이 약 19~20자(한글 장문 최적 구간).
   // ⚠️ 세로 간격은 **여기 gap 하나로만** 준다. 예전엔 요소마다 marginBottom 을 달았는데,

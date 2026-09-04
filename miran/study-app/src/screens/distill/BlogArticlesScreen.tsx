@@ -19,6 +19,7 @@ import {
 import { dtype, TOPIC_META, TOPIC_ORDER , PRETENDARD} from "@/theme";
 import type { Topic } from "@/types/database";
 import { ArticleCardH, ArticleRow, ServiceLogo } from "@/components/distill/ArticleCards";
+import { classifyImprovement, improvementSummary } from "@/lib/improvement";
 import { Loading, ErrorState, EmptyState } from "@/components";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BlogArticles">;
@@ -45,15 +46,31 @@ export function BlogArticlesScreen({ route }: Props) {
 
   const countQ = useArticlesFeedCount({ blogId });
   const popularQ = useArticlesFeed({ blogId, sort: "popular" });
-  // ⚠️ 인기 지표(조회수·인사이트)가 거의 다 0 이면 인기순 정렬이 최신순과 같아진다.
-  //    실측(2026-09-04): 779건 중 조회수>0 은 19건, 인사이트>0 은 6건.
-  //    그 상태에서 "이 기업 인기글"을 띄우면 바로 아래 최신글과 같은 목록이 두 번 나온다.
-  //    그래서 **실제로 지표가 붙은 글이 3건 이상일 때만** 이 섹션을 보여준다.
+  // 캐러셀에 뭘 담을지 — **지표가 있으면 인기글, 없으면 개선 사례.**
+  //
+  // 왜 두 갈래인가: 인기 지표(조회수·인사이트)가 거의 다 0 이다.
+  //   실측(2026-09-04) 779건 중 조회수>0 은 21건, 인사이트>0 은 6건.
+  //   그래서 "인기순"이 사실상 최신순과 같아지고, 바로 아래 최신글과 **같은 목록이
+  //   두 번** 나온다. 예전엔 그래서 섹션을 통째로 숨겼는데 — 그러면 기업 상세에
+  //   큐레이션이 아예 사라진다(실제로 "영역이 없어졌다"는 지적을 받았다).
+  //   숨기는 대신 **말이 되는 다른 묶음**으로 바꾼다: 개선 사례가 붙은 글.
+  //   이건 최신순과 확실히 다르고, 이 서비스가 원래 팔려는 것이기도 하다.
   const popularAll = popularQ.data?.pages[0]?.rows ?? [];
   const engaged = popularAll.filter(
     (a) => (a.view_count ?? 0) > 0 || (a.opinion_count ?? 0) > 0 || (a.like_count ?? 0) > 0,
   );
-  const popular = engaged.length >= 3 ? popularAll.slice(0, 10) : [];
+  const byImprovement = popularAll.filter((a) =>
+    Boolean(
+      improvementSummary(
+        a.decision,
+        classifyImprovement({ decision: a.decision, title: a.title, tags: a.tags }),
+      ),
+    ),
+  );
+  const useEngagement = engaged.length >= 3;
+  const curated = useEngagement ? popularAll.slice(0, 10) : byImprovement.slice(0, 10);
+  const popular = curated.length >= 3 ? curated : [];
+  const curationTitle = useEngagement ? "이 기업 인기글" : "이 기업의 개선 사례";
 
   const q = useArticlesFeed({ blogId, topic: topic ?? undefined });
   const rows = q.data?.pages.flatMap((p) => p.rows) ?? [];
@@ -168,7 +185,7 @@ export function BlogArticlesScreen({ route }: Props) {
             {/* 인기글 큐레이션 */}
             {popular.length > 0 ? (
               <View style={styles.curation}>
-                <Text style={[styles.sectionLabel, { color: c.textPrimary }]}>이 기업 인기글</Text>
+                <Text style={[styles.sectionLabel, { color: c.textPrimary }]}>{curationTitle}</Text>
                 <FlatList
                   data={popular}
                   keyExtractor={(a) => a.id}

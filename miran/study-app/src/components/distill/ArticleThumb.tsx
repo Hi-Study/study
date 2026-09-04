@@ -84,5 +84,5 @@ const styles = StyleSheet.create({
   wrap: { alignItems: "center", justifyContent: "center", overflow: "hidden" },
   img: { width: "100%", height: "100%" },
   fallback: { alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 16 },
-  fbTitle: { ...dtype.bodyS, fontSize: 13, lineHeight: 18, textAlign: "center" },
+  fbTitle: { ...dtype.bodyS, textAlign: "center" },
 });

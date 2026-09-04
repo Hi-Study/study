@@ -214,9 +214,9 @@ const styles = StyleSheet.create({
   title: { ...dtype.title },
   searchUtil: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
 
-  mainTabs: { flexDirection: "row", borderBottomWidth: 1, marginBottom: 4 },
+  mainTabs: { flexDirection: "row", borderBottomWidth: 1, marginBottom: 8 },
   mainTab: { flex: 1, alignItems: "center", paddingVertical: 12 },
-  mainTabText: { ...dtype.cardTitle, fontSize: 15 },
+  mainTabText: { ...dtype.cardTitle },
   mainTabBar: { position: "absolute", bottom: -1, height: 2, left: "25%", right: "25%", borderRadius: 2 },
 
   filterRow: {
@@ -224,10 +224,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingTop: 2,
-    paddingBottom: 8,
+    paddingTop: 8,
+    paddingBottom: 12,
   },
-  countText: { ...dtype.label, fontSize: 13, fontWeight: "700", fontFamily: PRETENDARD["700"] },
+  countText: { ...dtype.label },
 
   listContent: { paddingHorizontal: 16, paddingVertical: 12, paddingBottom: 32 },
 
@@ -240,11 +240,12 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
+    // DESIGN_SYSTEM §3 그림자 스펙 그대로(0.18 / 12 / (0,6) / elevation 8).
     shadowColor: "#000",
-    shadowOpacity: 0.22,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 5,
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
   },
 
   wBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
@@ -260,6 +261,6 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   wIcon: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  wOptTitle: { ...dtype.cardTitle, fontSize: 15 },
+  wOptTitle: { ...dtype.cardTitle },
   wOptSub: { ...dtype.bodyS, marginTop: 2 },
 });

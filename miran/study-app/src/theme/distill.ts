@@ -10,7 +10,6 @@ import {
   Palette,
   ShieldCheck,
   Target,
-  TrendingUp,
   User,
   Users,
   Wallet,
@@ -114,17 +113,22 @@ export const reading = {
  *    "심화"가 됐다. 색의 의미가 깨진다(DESIGN_SYSTEM §1 — 주제 색은 의미 색으로만).
  *    카드에서 색을 쓰는 건 **주제 칩 하나뿐이다.**
  */
+/**
+ * ⚠️ 라벨은 **"개발 지식이 얼마나 필요한가"** 를 말한다.
+ *    입문/보통/심화는 "글이 쉬운가 어려운가"로 읽혀서 애매했다. 이 서비스에 들어온
+ *    기획자·디자이너·마케터가 알고 싶은 건 딱 하나 — **개발을 몰라도 읽히는가.**
+ */
 export const LEVEL_META: Record<ArticleLevel, { label: string; hint: string }> = {
   easy: {
-    label: "입문",
+    label: "개발지식 필요 없음",
     hint: "배경지식 없이 읽을 수 있어요",
   },
   terms: {
-    label: "보통",
+    label: "용어 몇 개만",
     hint: "도메인 용어가 몇 개 나와요. 눌러서 뜻을 볼 수 있어요",
   },
   code: {
-    label: "심화",
+    label: "개발지식 필요",
     hint: "코드·구현 상세까지 들어가요",
   },
 };
@@ -216,8 +220,6 @@ export const IMPROVEMENT_META: Record<ImprovementType, { label: string; icon: Lu
   brand: { label: "브랜드·마케팅", icon: Megaphone },
 };
 
-/** 개선 한 줄(카드) 앞에 붙는 공용 아이콘 — 유형별로 다르게 하면 목록이 시끄럽다. */
-export const IMPROVEMENT_LINE_ICON: LucideIcon = TrendingUp;
 
 /** 필터 칩 노출 순서 — 비개발자가 먼저 볼 것부터. */
 export const IMPROVEMENT_ORDER: ImprovementType[] = [

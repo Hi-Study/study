@@ -2,6 +2,7 @@ import {
   IMPROVEMENT_LABEL,
   classifyImprovement,
   improvementSummary,
+  fallbackQuestion,
 } from "@/lib/improvement";
 import { instrumentalParticle } from "@/lib/josa";
 
@@ -56,18 +57,24 @@ describe("classifyImprovement — 무엇을 개선한 사례인가", () => {
 });
 
 describe("improvementSummary — ~로 ~을 개선한 사례", () => {
-  it("선택한 방법 + 태그 라벨로 한 줄을 만든다", () => {
+  it("선택한 방법 + 유형 표현으로 한 줄을 만든다", () => {
     const d = dec({ chosen: "모노리포 유지" });
-    expect(improvementSummary(d, "devex")).toBe("모노리포 유지로 개발 생산성을 개선한 사례");
+    expect(improvementSummary(d, "devex")).toBe("모노리포 유지로 개발 속도를 높인 사례");
   });
 
   it("숫자 결과가 있으면 괄호로 덧붙인다", () => {
     const d = dec({ chosen: "파티셔닝", metric: "조회 3초→0.4초" });
-    expect(improvementSummary(d, "perf")).toBe("파티셔닝으로 성능을 개선한 사례 (조회 3초→0.4초)");
+    expect(improvementSummary(d, "perf")).toBe("파티셔닝으로 속도를 끌어올린 사례 (조회 3초→0.4초)");
   });
 
-  it("선택한 방법이 없으면 null", () => {
-    expect(improvementSummary(dec({}), "ux")).toBeNull();
+  // ⚠️ 방법(결정 카드)을 몰라도 **유형만 알면 문장을 만든다.**
+  //    예전엔 여기서 null 을 돌려줘 실측 779건 중 45건에만 한 줄이 떴다.
+  it("방법을 몰라도 유형만 알면 짧은 문장을 만든다", () => {
+    expect(improvementSummary(dec({}), "ux")).toBe("사용자 경험을 개선한 사례");
+    expect(improvementSummary(null, "perf")).toBe("속도를 끌어올린 사례");
+  });
+
+  it("유형조차 없으면 null — 없는 말을 지어내지 않는다", () => {
     expect(improvementSummary(dec({ chosen: "무언가" }), null)).toBeNull();
   });
 
@@ -84,21 +91,40 @@ describe("IMPROVEMENT_LABEL", () => {
   });
 });
 
-describe("한 줄 요약 가드 — 망가진 문장은 아예 안 만든다", () => {
-  it("방법이 부정 서술이면 접는다", () => {
-    // "공통 컴포넌트로 만들지 않음으로 UI/UX를 개선한 사례" 를 막는다(실측).
+describe("한 줄 요약 가드 — 망가진 앞머리는 떼고 뒤만 남긴다", () => {
+  it("방법이 부정 서술이면 앞머리를 뗀다", () => {
+    // "공통 컴포넌트로 만들지 않음으로 사용자 경험을 개선한 사례" 를 막는다(실측).
     const d = dec({ chosen: "공통 컴포넌트로 만들지 않음" });
-    expect(improvementSummary(d, "ux")).toBeNull();
+    expect(improvementSummary(d, "ux")).toBe("사용자 경험을 개선한 사례");
   });
 
-  it("방법이 문장처럼 길면 접는다(20자 초과)", () => {
+  it("방법이 문장처럼 길면 앞머리를 뗀다(20자 초과)", () => {
     const d = dec({ chosen: "Claude Agent SDK와 AgentCore Gateway를 활용한 전환" });
-    expect(improvementSummary(d, "org")).toBeNull();
+    expect(improvementSummary(d, "org")).toBe("일하는 방식을 바꾼 사례");
   });
 
-  it("짧은 명사구면 정상 생성", () => {
+  it("짧은 명사구면 앞머리까지 붙인다", () => {
     expect(improvementSummary(dec({ chosen: "DLQ 프로세스 도입" }), "reliability")).toBe(
-      "DLQ 프로세스 도입으로 장애 대응을 개선한 사례",
+      "DLQ 프로세스 도입으로 장애를 줄인 사례",
     );
+  });
+});
+
+describe("fallbackQuestion — 질문은 항상 있다", () => {
+  it("① 대조쌍이 없어도 선택을 알면 그 선택을 묻는다", () => {
+    const q = fallbackQuestion({ decision: dec({ chosen: "모노리포 유지" }) });
+    expect(q).toContain("모노리포 유지");
+    expect(q.endsWith("?")).toBe(true);
+  });
+
+  it("② 결정 카드가 없어도 유형만 알면 그 유형을 묻는다", () => {
+    const q = fallbackQuestion({ title: "응답 속도를 3초에서 0.4초로 줄인 방법" });
+    expect(q).toContain("속도를 끌어올린");
+  });
+
+  it("③ 아무 신호가 없어도 빈 상자를 주지 않는다", () => {
+    const q = fallbackQuestion({ title: "" });
+    expect(q.length).toBeGreaterThan(10);
+    expect(q.endsWith("?")).toBe(true);
   });
 });
