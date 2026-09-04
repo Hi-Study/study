@@ -514,8 +514,10 @@ const styles = StyleSheet.create({
   heroImg: { width: "100%", height: "100%" },
 
   // 본문 좌우 여백 — 17px 본문 + 20 여백이면 한 줄이 약 19~20자(한글 장문 최적 구간).
-  body: { paddingHorizontal: reading.pagePadding, paddingTop: 16 },
-  metaTop: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
+  // ⚠️ 세로 간격은 **여기 gap 하나로만** 준다. 예전엔 요소마다 marginBottom 을 달았는데,
+  //    새 요소(개선 한 줄·직군 배지)를 넣을 때 여백을 빠뜨려 서로 붙어버렸다.
+  body: { paddingHorizontal: reading.pagePadding, paddingTop: 16, gap: 14 },
+  metaTop: { flexDirection: "row", alignItems: "center", gap: 10 },
   readTime: { ...dtype.meta },
   bookmarkBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
   fontRow: { flexDirection: "row", justifyContent: "flex-end", gap: 8 },
@@ -538,13 +540,13 @@ const styles = StyleSheet.create({
   likeBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
   likeCount: { ...dtype.meta, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 
-  title: { ...dtype.titleL, marginBottom: 12 },
+  title: { ...dtype.titleL },
 
-  tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
+  tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tagChip: { borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4 },
   tagText: { ...dtype.meta, fontWeight: "600", fontFamily: PRETENDARD["600"] },
 
-  source: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+  source: { flexDirection: "row", alignItems: "center", gap: 8 },
   sourceText: { ...dtype.bodyS, flex: 1 },
 
   sourceLink: {
@@ -555,7 +557,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     paddingVertical: 10,
-    marginBottom: 20,
   },
   sourceLinkText: { ...dtype.cardTitle },
 
@@ -566,7 +567,14 @@ const styles = StyleSheet.create({
   questionText: { ...dtype.cardTitle, fontSize: 16, lineHeight: 24 },
   questionCta: { ...dtype.label, fontSize: 13, marginTop: 2 },
 
-  tabs: { flexDirection: "row", borderWidth: 1, borderRadius: 12, padding: 3, marginBottom: 16, gap: 3 },
+  tabs: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 3,
+    gap: 3,
+    marginTop: 6, // 본문 시작 전 한 박자 쉬어간다
+  },
   tab: { flex: 1, paddingVertical: 8, borderRadius: 9, alignItems: "center" },
   tabText: { ...dtype.cardTitle, fontSize: 14 },
 

@@ -221,11 +221,16 @@ async function refetchArticles(
       patch.body = page.body;
     }
 
-    // 대표 이미지: 없거나 **깨진 값**일 때 채운다.
-    //   실측: `https://d2.naver.comd2/...` 처럼 호스트가 붙어버린 값이 저장돼 있었는데,
-    //   "있으면 건드리지 않는다" 규칙 때문에 재수집으로도 영영 안 고쳐졌다.
-    if (!a.og_image || !isSaneImageUrl(a.og_image)) {
-      const img = page.image ?? firstBodyImage((patch.body as string) ?? page.body);
+    // 대표 이미지.
+    //   ⚠️ **원문의 og:image 가 정답이다.** 본문 첫 이미지는 그게 없을 때만 쓰는 대타인데,
+    //      대타로 한 번 채워지면 "값이 있으니 유지"에 걸려 영영 안 바뀌었다.
+    //      실측(2026-09-05): 최신 25건 중 16건이 원문 대표이미지와 다른 그림이었다.
+    //   그래서 force 재수집에서는 원문 og:image 가 있으면 **무조건 그걸로 되돌린다.**
+    const pageOg = isSaneImageUrl(page.image) ? page.image : null;
+    if (force && pageOg) {
+      patch.og_image = pageOg;
+    } else if (!a.og_image || !isSaneImageUrl(a.og_image)) {
+      const img = pageOg ?? firstBodyImage((patch.body as string) ?? page.body);
       if (img) patch.og_image = img;
     }
 

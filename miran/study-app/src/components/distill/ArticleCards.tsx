@@ -11,6 +11,7 @@ import { ServiceLogo } from "./ServiceLogo";
 import { safeImageUri } from "@/lib/image";
 import { useIsBookmarked, useToggleBookmark } from "@/data";
 import { LevelBadge } from "./LevelBadge";
+import { ImprovementLine } from "./ImprovementLine";
 import type { ArticleWithBlog } from "@/data/articles";
 import type { Topic } from "@/types/database";
 
@@ -147,6 +148,12 @@ export function ArticleCardH({
         <Text style={[styles.cardTitle, { color: c.textPrimary }]} numberOfLines={2}>
           {article.title}
         </Text>
+        {/* 무엇을 어떻게 해결한 글인지 한 줄 — 목록에서 고를 근거가 된다. */}
+        <ImprovementLine
+          decision={article.decision}
+          title={article.title}
+          tags={article.tags}
+        />
         <MetaLine article={article} />
       </View>
     </Pressable>
@@ -173,6 +180,12 @@ export function ArticleRow({
         <Text style={[styles.rowTitle, { color: c.textPrimary }]} numberOfLines={2}>
           {article.title}
         </Text>
+        {/* 무엇을 어떻게 해결한 글인지 한 줄 — 목록에서 고를 근거가 된다. */}
+        <ImprovementLine
+          decision={article.decision}
+          title={article.title}
+          tags={article.tags}
+        />
         <MetaLine article={article} />
       </View>
       <ArticleThumb article={article} style={styles.thumbRow}>
@@ -212,6 +225,12 @@ export function FeaturedCard({
         <Text style={[styles.featuredTitle, { color: c.textPrimary }]} numberOfLines={2}>
           {article.title}
         </Text>
+        {/* 무엇을 어떻게 해결한 글인지 한 줄 — 목록에서 고를 근거가 된다. */}
+        <ImprovementLine
+          decision={article.decision}
+          title={article.title}
+          tags={article.tags}
+        />
         <MetaLine article={article} />
       </View>
     </Pressable>
@@ -248,6 +267,12 @@ export function ArticleGridCard({
         <Text style={[styles.gridTitle, { color: c.textPrimary }]} numberOfLines={2}>
           {article.title}
         </Text>
+        {/* 무엇을 어떻게 해결한 글인지 한 줄 — 목록에서 고를 근거가 된다. */}
+        <ImprovementLine
+          decision={article.decision}
+          title={article.title}
+          tags={article.tags}
+        />
         <MetaLine article={article} />
       </View>
     </Pressable>
@@ -280,11 +305,11 @@ const styles = StyleSheet.create({
   cardH: { borderRadius: 16, borderWidth: 1, overflow: "hidden" },
   thumbH: { width: "100%", aspectRatio: 16 / 9 },
   thumbImg: { width: "100%", height: "100%" },
-  cardHBody: { padding: 12, gap: 6 },
+  cardHBody: { padding: 12, gap: 8 },
   cardTitle: { ...dtype.cardTitle },
 
   row: { flexDirection: "row", gap: 12, paddingVertical: 14, alignItems: "flex-start" },
-  rowText: { flex: 1, gap: 6 },
+  rowText: { flex: 1, gap: 8 },
   rowTitle: { ...dtype.cardTitle },
   thumbRow: { width: 84, height: 84, borderRadius: 12, overflow: "hidden" },
 
@@ -295,6 +320,6 @@ const styles = StyleSheet.create({
 
   gridCard: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
   gridThumb: { width: "100%", aspectRatio: 16 / 9, alignItems: "center", justifyContent: "center" },
-  gridBody: { padding: 10, gap: 6 },
+  gridBody: { padding: 10, gap: 8 },
   gridTitle: { ...dtype.cardTitle, fontSize: 14 },
 });

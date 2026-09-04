@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
   field: { gap: 8 },
   label: { ...dtype.label, fontSize: 13 },
   hint: { ...dtype.bodyS, fontSize: 13.5, lineHeight: 20, marginTop: -2 },
-  qBlock: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 8 },
+  qBlock: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 8, marginBottom: 4 },
   qLabel: { ...dtype.label, fontSize: 12 },
   qText: { ...dtype.cardTitle, fontSize: 15.5, lineHeight: 23 },
   input: {

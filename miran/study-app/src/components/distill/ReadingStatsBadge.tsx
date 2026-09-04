@@ -71,7 +71,15 @@ const styles = StyleSheet.create({
   fire: { fontSize: 12 },
   pillText: { ...dtype.label, fontSize: 12 },
 
-  row: { flexDirection: "row", borderWidth: 1, borderRadius: 14, paddingVertical: 12 },
+  // 위아래 요소와 붙지 않게 자체 여백을 갖는다(마이 화면은 gap 이 없는 스택이라).
+  row: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 12,
+    marginTop: 12,
+    marginBottom: 4,
+  },
   cell: { flex: 1, alignItems: "center", gap: 2 },
   value: { ...dtype.title, fontSize: 19 },
   label: { ...dtype.meta },
