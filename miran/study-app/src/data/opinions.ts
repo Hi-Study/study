@@ -6,7 +6,7 @@ import { qk } from "@/lib/queryKeys";
 import { useUid } from "@/auth/AuthProvider";
 import { isMissingColumnError } from "@/lib/pgError";
 import type { Insight } from "@/lib/insight";
-import type { Topic } from "@/types/database";
+import type { ArticleLevel, Topic } from "@/types/database";
 
 export interface OpinionAuthor {
   name: string;
@@ -86,6 +86,8 @@ export interface OpinionArticleLite {
   title: string;
   og_image: string | null;
   topic: Topic | null;
+  /** 개발 지식 난도 — 인사이트 탭에서도 난이도로 걸러 볼 수 있어야 한다. */
+  level: ArticleLevel | null;
   url: string;
   summary: string | null;
   blog: { id: string; key: string; name: string; brand_color: string | null; homepage: string | null } | null;
@@ -96,7 +98,7 @@ export interface OpinionFeedItem extends OpinionWithAuthor {
 }
 
 const OPINION_SELECT =
-  "*, author:users(name, role_title), article:articles(id, title, og_image, topic, url, summary, blog:blogs(id, key, name, brand_color, homepage))";
+  "*, author:users(name, role_title), article:articles(id, title, og_image, topic, level, url, summary, blog:blogs(id, key, name, brand_color, homepage))";
 
 /** 전체 의견 피드 — 작성자 + 출처 글 요약 포함. 인기순(like_count) 또는 최신순.
  *  like_count 는 스키마 §11 컬럼이라 SQL 미적용 DB 에선 없다 → 그 경우 최신순으로 폴백해

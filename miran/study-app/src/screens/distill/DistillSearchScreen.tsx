@@ -46,8 +46,9 @@ export function DistillSearchScreen() {
       search: q,
       ...(filter.topics.size > 0 ? { topics: [...filter.topics] } : {}),
       ...(filter.blogIds.size > 0 ? { blogIds: [...filter.blogIds] } : {}),
+      ...(filter.levels.size > 0 ? { levels: [...filter.levels] } : {}),
     }),
-    [q, filter.topics, filter.blogIds],
+    [q, filter.topics, filter.blogIds, filter.levels],
   );
   const feed = useArticlesFeed(active ? { ...baseFilter, sort: filter.sort } : {});
   const countQ = useArticlesFeedCount(active ? baseFilter : {});

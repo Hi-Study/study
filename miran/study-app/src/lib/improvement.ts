@@ -35,7 +35,7 @@ const KEYWORDS: Record<ImprovementType, string[]> = {
   perf: [
     "성능", "속도", "지연", "레이턴시", "latency", "응답 시간", "응답시간",
     "최적화", "캐시", "처리량", "throughput", "tps", "qps", "렌더링", "로딩",
-    "병목", "cpu", "메모리", "느리", "빨라", "단축",
+    "병목", "cpu", "메모리", "단축",  // "느리"·"빨라" 는 뺐다 — "PR을 더 느리게 만들기"(= 개발 프로세스 글)까지 성능으로 끌어갔다.
   ],
   cost: ["비용", "요금", "절감", "예산", "단가", "리소스 절약", "과금", "저렴"],
   reliability: [
@@ -50,10 +50,10 @@ const KEYWORDS: Record<ImprovementType, string[]> = {
   // ⚠️ "데이터"·"쿼리"·"로그" 같은 **도메인 명사**는 뺐다. 어느 글에나 나와서
   //    "쿼리 응답 속도가 느림"(= 성능 개선)까지 데이터로 끌어갔다(실측).
   //    이 축은 "무엇이 나아졌나"를 봐야 하므로 지표·실험 쪽 신호만 남긴다.
-  data: [
-    "지표", "분석", "실험", "a/b", "ab 테스트", "대시보드", "추천",
-    "모델", "머신러닝", "ml", "llm", "ai", "집계",
-  ],
+  // ⚠️ "ai"·"llm"·"모델"·"추천"·"분석"을 뺐다. 2026년 테크블로그 글의 절반에 나오는 말이라
+  //    브랜딩 글·행사 스케치까지 전부 "데이터 활용을 개선한 사례"가 됐다(실측).
+  //    이 축이 말해야 하는 건 "무엇이 나아졌나"이므로 **지표·실험 신호만** 남긴다.
+  data: ["지표", "실험", "a/b", "ab 테스트", "대시보드", "집계", "가설", "데이터 기반", "정량"],
   org: [
     "조직", "팀", "협업", "프로세스", "문화", "커뮤니케이션", "스쿼드",
     "채용", "회고", "일하는 방식", "직군", "합치", "리더",
@@ -108,6 +108,13 @@ const TIE_ORDER: ImprovementType[] = [
 
 const norm = (v: unknown): string => (typeof v === "string" ? v.toLowerCase() : "");
 
+/**
+ * **개선 사례가 아닌 글**. 행사 스케치·출간 공지·채용·설치 가이드는 "무엇을 개선했나"가
+ * 없다. 여기에 태그를 붙이면("행사로 데이터 활용을 개선한 사례") 태그 전체를 아무도 안 믿는다.
+ */
+const NOT_A_CASE =
+  /스케치|개최|후기|출간|모집|채용|컨퍼런스|웨비나|밋업|summit|참관|참가기|공지|초대|안내|사용하기|시작하기|설치|소개합니다|가이드|둘러보기|인터뷰|합류|입사/i;
+
 /** 키워드가 몇 번 등장하는지(부분 일치). */
 function score(haystack: string, words: string[]): number {
   let n = 0;
@@ -134,8 +141,13 @@ export function classifyImprovement(input: ImprovementInput): ImprovementType | 
   //   방법을 결과만큼 무겁게 보면 "파티셔닝"(방법) 때문에 성능 개선이 데이터로 분류된다.
   const outcome = norm([d.problem, d.metric].join(" "));
   const method = norm([d.chosen, d.constraint].join(" "));
-  const weak = norm([input.title ?? "", (input.tags ?? []).join(" ")].join(" "));
+  // ⚠️ **글의 태그(tags)는 신호로 쓰지 않는다.** 자동 추출값이라 그 자체가 틀린다 —
+  //    브랜딩 글에 "성능,테스트"가 붙어 있어서 "속도를 끌어올린 사례"가 됐다(실측).
+  //    틀린 재료를 섞으면 결과도 같이 틀린다. 제목과 결정 카드만 본다.
+  const weak = norm(input.title ?? "");
   if (!outcome && !method && !weak) return null;
+  // 개선 사례가 아닌 글(행사·공지·가이드)은 아예 태그를 안 붙인다.
+  if (!outcome && !method && NOT_A_CASE.test(input.title ?? "")) return null;
 
   let best: ImprovementType | null = null;
   let bestScore = 0;
@@ -149,7 +161,10 @@ export function classifyImprovement(input: ImprovementInput): ImprovementType | 
       best = t;
     }
   }
-  return bestScore > 0 ? best : null;
+  // ⚠️ 결정 카드가 없어 **제목 한 줄만 보고 판단하는 경우엔 근거를 2개 이상** 요구한다.
+  //    단어 하나만 스쳐도 태그를 붙이니 "PR을 더 느리게 만들기"가 성능 개선이 됐다(실측).
+  const floor = outcome || method ? 1 : 2;
+  return bestScore >= floor ? best : null;
 }
 
 /**

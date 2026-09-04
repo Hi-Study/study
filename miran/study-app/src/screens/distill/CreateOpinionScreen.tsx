@@ -8,6 +8,7 @@
 // "내가 이 글에서 본 것"이라 고칠 마음이 생긴다.
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -19,13 +20,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { ChevronLeft } from "lucide-react-native";
+import { ChevronLeft, Sparkles } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav, type RootStackParamList } from "@/navigation/types";
-import { useCreateOpinion, useArticleHighlights, useArticle } from "@/data";
+import { useCreateOpinion, useArticleHighlights, useArticle, useDraftAnswer } from "@/data";
 import { cleanInsight, EMPTY_INSIGHT, type Insight } from "@/lib/insight";
-import { draftFromHighlights } from "@/lib/insightDraft";
+import { draftFromHighlights, draftPromptSource } from "@/lib/insightDraft";
 import { questionFromDecision } from "@/lib/decision";
 import { applyQuestion, fallbackQuestion } from "@/lib/improvement";
 import { dtype , PRETENDARD} from "@/theme";
@@ -45,6 +46,9 @@ function QuestionBlock({
   value,
   onChangeText,
   placeholder,
+  draftCount = 0,
+  drafting = false,
+  onDraft,
 }: {
   step: string;
   label: string;
@@ -52,6 +56,10 @@ function QuestionBlock({
   value: string;
   onChangeText: (t: string) => void;
   placeholder?: string;
+  /** 내가 이 글에 그은 밑줄 개수 — 0 이면 초안 버튼을 안 보여준다. */
+  draftCount?: number;
+  drafting?: boolean;
+  onDraft?: () => void;
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
@@ -61,6 +69,27 @@ function QuestionBlock({
         {step}. {label}
       </Text>
       <Text style={[styles.qText, { color: c.textPrimary }]}>{question}</Text>
+
+      {/* 밑줄을 그었다면 **그 문장으로 답 초안을 대신 써 준다.** 빈 칸을 마주하는 순간이
+          이 화면에서 사람이 가장 많이 이탈하는 지점이라, 첫 문장을 대신 놓아 준다.
+          글 전체를 요약하는 게 아니라 내가 그은 밑줄만 재료로 쓴다. */}
+      {onDraft && draftCount > 0 ? (
+        <Pressable
+          onPress={onDraft}
+          disabled={drafting}
+          style={[styles.draftBtn, { borderColor: c.primary, opacity: drafting ? 0.6 : 1 }]}
+        >
+          {drafting ? (
+            <ActivityIndicator size="small" color={c.primary} />
+          ) : (
+            <Sparkles size={14} color={c.primary} strokeWidth={2} />
+          )}
+          <Text style={[styles.draftBtnText, { color: c.primary }]}>
+            {drafting ? "쓰는 중…" : `내 밑줄 ${draftCount}개로 초안 쓰기`}
+          </Text>
+        </Pressable>
+      ) : null}
+
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -128,6 +157,7 @@ export function CreateOpinionScreen({ route }: Props) {
   const create = useCreateOpinion(articleId);
   const highlightsQ = useArticleHighlights(articleId); // 본인 것만 반환하는 훅
   const articleQ = useArticle(articleId);
+  const aiDraft = useDraftAnswer();
 
   // 질문은 **여기서 직접 조립**한다. 예전엔 route.params 로 받았는데,
   //   하단 CTA("내 생각도 남겨볼까요?")와 글 등록 직후 경로가 그 값을 안 넘겨서
@@ -149,6 +179,7 @@ export function CreateOpinionScreen({ route }: Props) {
   //    읽고 끝나면 남는 게 없다. 이 앱이 팔아야 할 건 결국 두 번째 질문의 답이다.
   const question2 = applyQuestion(qInput);
 
+  const fromRegister = route.params?.fromRegister === true;
   const [insight, setInsight] = useState<Insight>({ ...EMPTY_INSIGHT });
   // 두 질문의 답. ①은 핵심 인사이트(core), ②는 접목(apply) 으로 그대로 저장된다.
   //   따로 "인상 깊은 부분"·"접목하고 싶은 방법" 빈 칸을 또 두지 않는다 — 같은 걸 두 번 묻는 꼴이라
@@ -176,9 +207,18 @@ export function CreateOpinionScreen({ route }: Props) {
     setPrefilled(true);
   }, [draft, prefilled]);
 
-  // 질문 하나에만 답해도 저장할 수 있어야 한다 — 그게 이 화면의 가장 쉬운 입구다.
+  // 저장 조건은 **어디서 들어왔느냐**로 갈린다.
+  //   · 글을 읽다 들어온 경우 → 질문 하나에만 답해도 저장된다(가장 쉬운 입구를 막지 않는다).
+  //   · URL 로 방금 등록한 경우 → **세 칸 전부** 채워야 한다. 링크만 던지고 나가면
+  //     감상문 없는 글만 쌓이고, 이 서비스가 파는 건 링크가 아니라 감상문이다.
+  const free = insight.questions[0] ?? "";
+  const filled = [
+    answer.trim().length > 0,
+    answer2.trim().length > 0,
+    free.trim().length > 0,
+  ];
   const canSave =
-    (answer.trim().length > 0 || answer2.trim().length > 0) && !create.isPending;
+    (fromRegister ? filled.every(Boolean) : filled.some(Boolean)) && !create.isPending;
 
   const save = () => {
     const a = answer.trim();
@@ -189,10 +229,9 @@ export function CreateOpinionScreen({ route }: Props) {
       core: a || a2,
       // ②의 답이 "바로 적용할 것".
       apply: a2,
-      // 질문과 답을 함께 남겨야 나중에 읽을 때 맥락이 산다.
-      interpretation: [insight.interpretation, a ? `${question}\n→ ${a}` : "", a2 ? `${question2}\n→ ${a2}` : ""]
-        .filter(Boolean)
-        .join("\n\n"),
+      // ⚠️ 여기에 질문·답을 또 넣지 않는다. 핵심(core)·접목(apply) 에 이미 들어 있어서
+      //    보기 화면에 같은 문장이 두 번 나왔다. 해석 칸은 **밑줄 메모** 자리다.
+      interpretation: insight.interpretation,
     };
     const clean = cleanInsight(merged);
     if (!clean) return;
@@ -209,12 +248,19 @@ export function CreateOpinionScreen({ route }: Props) {
         <Pressable onPress={() => nav.goBack()} hitSlop={8} style={styles.hBtn}>
           <ChevronLeft size={24} color={c.textPrimary} />
         </Pressable>
-        <Text style={[styles.hTitle, { color: c.textPrimary }]}>인사이트 쓰기</Text>
+        <Text style={[styles.hTitle, { color: c.textPrimary }]}>
+          {fromRegister ? "감상문 쓰기" : "인사이트 쓰기"}
+        </Text>
         <Pressable onPress={save} disabled={!canSave} hitSlop={8} style={styles.hBtn}>
           <Text style={[styles.save, { color: canSave ? c.primary : c.textMuted }]}>저장</Text>
         </Pressable>
       </View>
 
+      {/* ⚠️ 키보드가 올라오면 마지막 입력칸이 가려져 **끝까지 스크롤이 안 됐다.**
+          · iOS 는 KeyboardAvoidingView(padding) 로 화면을 밀어올린다.
+          · 안드로이드는 windowSoftInputMode=resize 라 화면이 줄어드는데, 그때 마지막
+            칸을 지나쳐 스크롤할 여유가 없어서 아래 여백(paddingBottom)을 넉넉히 준다.
+          · automaticallyAdjustKeyboardInsets 로 스크롤 영역이 키보드만큼 물러난다. */}
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -222,19 +268,18 @@ export function CreateOpinionScreen({ route }: Props) {
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets
           showsVerticalScrollIndicator={false}
         >
-          {/* ① 하이라이트 초안 — 밑줄 친 문장을 그대로 보여주고(수정 불가, 저장은 됨)
-                 메모가 있으면 아래 칸이 이미 채워져 있다. 사람은 고치기만 하면 된다. */}
-          {draft.usedCount > 0 && insight.quote ? (
-            <View style={[styles.draftCard, { backgroundColor: c.primaryTint, borderColor: c.accentTintBorder }]}>
-              <Text style={[styles.draftLabel, { color: c.primary }]}>내가 밑줄 그은 문장</Text>
-              <Text style={[styles.draftQuote, { color: c.textPrimary }]}>“{insight.quote}”</Text>
-              <Text style={[styles.draftHint, { color: c.textMuted }]}>
-                밑줄 {draft.usedCount}개 중 가장 길게 그은 문장이에요. 이 글에 함께 저장돼요.
-              </Text>
-            </View>
+          {fromRegister ? (
+            <Text style={[styles.registerNote, { color: c.textSecondary }]}>
+              아래 세 칸을 채우면 글 등록이 끝나요. 링크만 있는 글은 아무도 안 읽어요.
+            </Text>
           ) : null}
+          {/* ⚠️ 예전엔 여기서 **밑줄 문장을 그냥 보여주기만** 했다. 보여주는 건 필요 없다 —
+                 필요한 건 그 밑줄로 **질문의 답 초안을 대신 써 주는 것**이다.
+                 그래서 카드를 없애고 ①번 질문 안에 "밑줄로 초안 쓰기" 버튼을 넣었다. */}
 
           {/* ② 질문 두 개 — **하나는 이 글에서 무엇을 봤나, 하나는 그래서 우리는 무엇을 하나.**
                  예전엔 질문 하나 + 빈 칸 3개("인상 깊은 부분"·"접목하고 싶은 방법"·"질문·토론")
@@ -247,6 +292,17 @@ export function CreateOpinionScreen({ route }: Props) {
             value={answer}
             onChangeText={setAnswer}
             placeholder="한 문장이어도 괜찮아요"
+            draftCount={draft.usedCount}
+            drafting={aiDraft.isPending}
+            onDraft={
+              draft.usedCount > 0
+                ? () =>
+                    aiDraft.mutate(
+                      { question, source: draftPromptSource(highlightsQ.data ?? []) },
+                      { onSuccess: (t) => { if (t) setAnswer(t); } },
+                    )
+                : undefined
+            }
           />
           <QuestionBlock
             step="2"
@@ -291,13 +347,27 @@ const styles = StyleSheet.create({
   draftQuestion: { ...dtype.cardTitle, fontSize: 16, lineHeight: 24 },
   draftHint: { ...dtype.meta },
 
-  content: { padding: 16, gap: 18, paddingBottom: 40 },
+  // 아래 여백은 키보드 위로 마지막 칸을 끌어올릴 여유다(40 이면 가려졌다).
+  content: { padding: 16, gap: 18, paddingBottom: 220 },
+  registerNote: { ...dtype.bodyS, marginBottom: -4 },
   field: { gap: 8 },
   label: { ...dtype.label, fontSize: 13 },
   hint: { ...dtype.bodyS, fontSize: 13.5, lineHeight: 20, marginTop: -2 },
   qBlock: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 8, marginBottom: 4 },
   qLabel: { ...dtype.label },
   qText: { ...dtype.cardTitle, lineHeight: 23 },
+  draftBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 8,
+    alignSelf: "flex-start",
+    paddingHorizontal: 14,
+  },
+  draftBtnText: { ...dtype.label },
   input: {
     borderWidth: 1,
     borderRadius: 12,

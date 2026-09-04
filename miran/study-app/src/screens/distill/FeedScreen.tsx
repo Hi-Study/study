@@ -24,8 +24,9 @@ export function FeedScreen() {
     () => ({
       ...(filter.topics.size > 0 ? { topics: [...filter.topics] } : {}),
       ...(filter.blogIds.size > 0 ? { blogIds: [...filter.blogIds] } : {}),
+      ...(filter.levels.size > 0 ? { levels: [...filter.levels] } : {}),
     }),
-    [filter.topics, filter.blogIds],
+    [filter.topics, filter.blogIds, filter.levels],
   );
   const q = useArticlesFeed({ ...baseFilter, sort: filter.sort });
   const countQ = useArticlesFeedCount(baseFilter);

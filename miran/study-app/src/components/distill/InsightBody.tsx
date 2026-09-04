@@ -1,5 +1,12 @@
 // 인사이트(감상문) 구조화 표시 — 각 항목을 [타이틀 + 내용] 블록으로 보여준다.
-// (내용만 쭈르륵 X → 핵심/인상적인 문장/해석/접목/비슷한 사례/질문을 라벨과 함께.)
+//
+// ⚠️ **순서는 쓴 순서 그대로다.** 쓰기 화면은
+//      ① 이 글에서 무엇을 보셨나요(→ core)
+//      ② 그래서 우리 일엔 어떻게 쓸까요(→ apply)
+//      ③ 질문·토론(→ questions)
+//    이고 밑줄(quote·메모)은 자동으로 붙는다. 그런데 보기 화면이 핵심 → 문장 → 해석 →
+//    접목 순이라, 쓴 사람이 자기 글을 보고 "내가 이 순서로 안 썼는데" 가 됐다.
+//    읽는 순서 = 쓴 순서.
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -16,10 +23,10 @@ export interface InsightData {
 }
 
 const FIELDS: { key: keyof InsightData; label: string }[] = [
-  { key: "core", label: "핵심 인사이트" },
-  { key: "quote", label: "인상적인 문장" },
-  { key: "interpretation", label: "내 해석" },
-  { key: "apply", label: "접목하고 싶은 방법" },
+  { key: "core", label: "핵심 인사이트" }, // ① 질문에 답한 것
+  { key: "apply", label: "우리 일엔 이렇게" }, // ② 질문에 답한 것
+  { key: "quote", label: "인상적인 문장" }, // 밑줄에서 자동
+  { key: "interpretation", label: "밑줄에 남긴 메모" }, // 밑줄에서 자동
   { key: "similar", label: "비슷한 사례" },
 ];
 

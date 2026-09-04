@@ -37,10 +37,12 @@ export function DiscussScreen() {
   const filtered = useMemo(() => {
     return list.filter((o) => {
       if (filter.topics.size > 0 && !(o.article?.topic && filter.topics.has(o.article.topic))) return false;
+      if (filter.levels.size > 0 && !(o.article?.level && filter.levels.has(o.article.level)))
+        return false;
       if (filter.blogIds.size > 0 && !filter.blogIds.has(o.article?.blog?.id ?? "")) return false;
       return true;
     });
-  }, [list, filter.topics, filter.blogIds]);
+  }, [list, filter.topics, filter.blogIds, filter.levels]);
 
   const countLabel = `${filtered.length.toLocaleString()}개`;
 

@@ -31,7 +31,19 @@ export function CreateArticleScreen() {
 
   const submit = () => {
     if (!valid || register.isPending) return;
-    register.mutate(url.trim(), { onSuccess: (r) => setResult(r) });
+    register.mutate(url.trim(), {
+      onSuccess: (r) => {
+        // ⚠️ **새 글은 감상문까지 써야 등록이 끝난다.** 예전엔 여기서 멈추고
+        //    "독후감 쓰기 / 글 보기" 두 버튼을 줬는데, 다들 URL 만 넣고 나가서
+        //    감상문 없는 글만 쌓였다. 이 서비스가 파는 건 링크가 아니라 감상문이다.
+        //    이미 등록된 글이면 남이 올린 것이므로 그대로 결과 카드를 보여준다.
+        if (!r.existed) {
+          nav.replace("CreateOpinion", { articleId: r.articleId, fromRegister: true });
+          return;
+        }
+        setResult(r);
+      },
+    });
   };
 
   const onChange = (t: string) => {
@@ -72,7 +84,8 @@ export function CreateArticleScreen() {
             />
           </View>
           <Text style={[styles.hint, { color: c.textMuted }]}>
-            테크·기획 블로그 글 주소를 붙여넣으면 제목·본문을 자동으로 가져와요.
+            테크·기획 블로그 글 주소를 붙여넣으면 제목·본문을 자동으로 가져와요.{"\n"}
+            이어서 감상문을 남기면 등록이 끝나요.
           </Text>
 
           <Pressable

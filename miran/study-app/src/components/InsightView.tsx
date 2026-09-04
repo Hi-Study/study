@@ -43,14 +43,19 @@ export function InsightView({
         <Text style={[styles.coreText, { color: c.textPrimary }]}>{ins.core}</Text>
       </View>
 
+      {/* ⚠️ 순서는 **쓴 순서** 를 그대로 따른다.
+          쓰기 화면은 ① 이 글에서 무엇을 보셨나요(핵심) → ② 그래서 우리 일엔 어떻게(접목)
+          → ③ 질문·토론 이고, 밑줄은 자동으로 붙는다. 그런데 보기 화면은 핵심 → 문장 →
+          해석 → 접목 순이라 쓴 사람이 자기 글을 못 알아봤다. 읽는 순서 = 쓴 순서. */}
+      {ins.apply ? <Field label="우리 일엔 이렇게" body={ins.apply} /> : null}
+
       {ins.quote ? (
         <View style={[styles.quote, { borderLeftColor: c.primary }]}>
           <Text style={[styles.quoteText, { color: c.textSecondary }]}>“{ins.quote}”</Text>
         </View>
       ) : null}
 
-      {ins.interpretation ? <Field label="인사이트 해석" body={ins.interpretation} /> : null}
-      {ins.apply ? <Field label="바로 적용할 수 있는 것" body={ins.apply} /> : null}
+      {ins.interpretation ? <Field label="밑줄에 남긴 메모" body={ins.interpretation} /> : null}
       {ins.similar ? <Field label="비슷한 사례" body={ins.similar} /> : null}
 
       {ins.questions.length > 0 ? (

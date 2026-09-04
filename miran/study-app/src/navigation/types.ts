@@ -39,7 +39,8 @@ export type RootStackParamList = {
   ArticleDetail: { articleId: string; focusOpinionId?: string };
   BlogArticles: { blogId: string; blogName: string };
   //   질문은 CreateOpinionScreen 이 글의 decision 을 읽어 스스로 조립한다(param 으로 안 넘긴다).
-  CreateOpinion: { articleId: string };
+  /** fromRegister: URL 로 방금 등록한 글 — 감상문을 써야 등록이 끝난다(3칸 전부 필수). */
+  CreateOpinion: { articleId: string; fromRegister?: boolean };
   OpinionDetail: { opinionId: string };
   CreateArticle: undefined;
   CreateCommunityPost: undefined;

@@ -5,6 +5,7 @@
 //   · { word_id }                        → 단어 1단 뜻풀이 → user_words.definition
 //   · { word_id, mode:"easy" }           → 단어 2단("더 쉽게") → user_words.easy_definition
 //   · { article_id, target:"enrich" }    → 결정 카드 · 질문 · 난이도 · 용어 → articles.*
+//   · { target:"draft", question, source } → 내가 밑줄 친 문장으로 **질문의 답 초안** (저장 없음)
 //
 // mode: plain(원문 요약) | planner(기획자 관점) | explain(쉽게 풀기)
 // 배포: supabase functions deploy summarize --use-api
@@ -20,7 +21,11 @@ interface Payload {
   article_id?: string;
   discussion_id?: string;
   word_id?: string;
-  target?: "content" | "result" | "enrich";
+  target?: "content" | "result" | "enrich" | "draft";
+  /** draft 전용 — 답을 써야 할 질문. */
+  question?: string;
+  /** draft 전용 — 내가 밑줄 친 문장(+메모) 목록. 본문은 보내지 않는다. */
+  source?: string;
   /** 읽는 사람 직무 — insight 모드의 세 번째 항목을 이 관점으로 쓴다. */
   job_role?: string | null;
   /** easy 는 본문 요약 모드가 아니라 **단어 뜻풀이 2단 전용**이라 Mode 에 넣지 않는다. */
@@ -543,12 +548,48 @@ async function summarizeDiscussionResult(discussionId: string): Promise<string> 
   return summary;
 }
 
+/**
+ * 밑줄 친 문장으로 **질문의 답 초안**을 쓴다.
+ *
+ * ⚠️ 글 전체를 요약시키지 않는다. 재료는 **이 사람이 직접 밑줄 친 문장**뿐이다.
+ *    그래야 나오는 초안이 "글의 요약"이 아니라 "이 사람이 이 글에서 본 것"이 되고,
+ *    남의 요약과 달리 고칠 마음이 생긴다. 재료가 짧아 토큰도 거의 안 든다.
+ * ⚠️ 저장하지 않는다. 초안은 사람이 고쳐서 저장하는 것이지 AI 가 남기는 글이 아니다.
+ */
+const DRAFT_SYS =
+  "당신은 글을 읽고 메모한 사람의 말투로 초안을 대신 써 주는 도우미입니다.\n" +
+  "규칙:\n" +
+  "1) 주어진 밑줄 문장에 **실제로 있는 내용만** 쓴다. 없는 사실을 지어내지 않는다.\n" +
+  "2) 질문에 대한 답으로 2~3문장, 한국어로 담백하게(~다/~였다).\n" +
+  "3) 3인칭 요약투(이 글은, 저자는) 금지. 내가 메모하듯 쓴다.\n" +
+  "4) 밑줄만으로 답할 수 없으면 빈 문자열을 반환한다.";
+
+async function draftAnswer(question: string, source: string): Promise<string> {
+  const q = question.trim();
+  const src = source.trim().slice(0, 2000);
+  if (!q || !src) return "";
+  // 모델 폴백까지 쓰는 공용 래퍼 — 한 모델이 429 면 다음 모델로 넘어간다.
+  const prompt = "질문: " + q + "\n\n내가 밑줄 친 문장:\n" + src;
+  const out = await llmSummarize(prompt, DRAFT_SYS, 500);
+  return (out ?? "").trim();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { share_id, article_id, discussion_id, word_id, target, mode, job_role, debug } =
-      (await req.json()) as Payload;
+    const {
+      share_id,
+      article_id,
+      discussion_id,
+      word_id,
+      target,
+      mode,
+      job_role,
+      debug,
+      question,
+      source,
+    } = (await req.json()) as Payload;
     const m: Mode =
       mode === "planner" || mode === "explain" || mode === "insight" ? mode : "plain";
 
@@ -562,6 +603,10 @@ Deno.serve(async (req) => {
       return json({ ok: true, hasKey: Boolean(Deno.env.get("LLM_API_KEY")), results });
     }
 
+    if (target === "draft") {
+      const draft = await draftAnswer(question ?? "", source ?? "");
+      return json({ ok: true, target: "draft", draft });
+    }
     if (word_id) {
       // mode:"easy" = 2단("더 쉽게") — 1단으로 부족했던 사람에게 직무 언어 + 비유로 다시 쓴다.
       if (mode === "easy") {

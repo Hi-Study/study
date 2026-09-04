@@ -17,24 +17,31 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Check, ChevronDown, RotateCcw, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
-import { TOPIC_META, TOPIC_ORDER, dtype , PRETENDARD} from "@/theme";
+import { LEVEL_META, LEVEL_ORDER, TOPIC_META, TOPIC_ORDER, dtype , PRETENDARD} from "@/theme";
 import type { BlogRow } from "@/types/tables";
-import type { Topic } from "@/types/database";
+import type { ArticleLevel, Topic } from "@/types/database";
 import { useArticlesFeedCount, useProfile } from "@/data";
 import { ServiceLogo } from "@/components/distill/ArticleCards";
 
 export type FeedSort = "latest" | "popular";
-type Tab = "blog" | "topic" | "sort";
+type Tab = "blog" | "topic" | "level" | "sort";
 
 const W = Dimensions.get("window").width;
 const SHEET_LIST_H = Math.round(Dimensions.get("window").height * 0.46);
 const SORT_LABEL: Record<FeedSort, string> = { latest: "최신순", popular: "인기순" };
-const TAB_LABEL: Record<Tab, string> = { blog: "기업", topic: "카테고리", sort: "정렬" };
+const TAB_LABEL: Record<Tab, string> = {
+  blog: "기업",
+  topic: "카테고리",
+  level: "개발 지식",
+  sort: "정렬",
+};
 const ALL_BLOGS = "전체 기업";
 
 export interface FilterValue {
   blogIds: Set<string>; // 비어 있으면 전체 기업(다중 선택)
   topics: Set<Topic>;
+  /** 개발 지식 난도 — "개발 몰라도 읽히는 글만" 을 골라 볼 수 있어야 한다. */
+  levels: Set<ArticleLevel>;
   sort: FeedSort;
 }
 
@@ -42,6 +49,7 @@ export interface FilterValue {
 export const emptyFilter = (): FilterValue => ({
   blogIds: new Set<string>(),
   topics: new Set<Topic>(),
+  levels: new Set<ArticleLevel>(),
   sort: "latest",
 });
 
@@ -74,8 +82,8 @@ export function FilterSheet({
   const TABS: Tab[] = sortOnly
     ? ["sort"]
     : variant === "chips"
-      ? ["blog", "topic", "sort"]
-      : ["topic", "sort"];
+      ? ["blog", "topic", "level", "sort"]
+      : ["topic", "level", "sort"];
   const [brandOpen, setBrandOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>(sortOnly ? "sort" : chipsOnly ? "blog" : "topic");
@@ -89,6 +97,13 @@ export function FilterSheet({
   const brandName =
     picked.length === 0 ? ALL_BLOGS : picked.length === 1 ? picked[0].name : `${picked[0].name} 외 ${picked.length - 1}곳`;
   const topicLabel = value.topics.size === 0 ? "카테고리" : `카테고리 ${value.topics.size}`;
+  // 하나만 고르면 라벨을 그대로 보여준다 — "개발 지식 1" 보다 "누구나 이해 가능" 이 훨씬 명확하다.
+  const levelLabel =
+    value.levels.size === 0
+      ? "개발 지식"
+      : value.levels.size === 1
+        ? LEVEL_META[[...value.levels][0]].label
+        : `개발 지식 ${value.levels.size}`;
   const blogLabel = value.blogIds.size === 0 ? "기업" : `기업 ${value.blogIds.size}`;
 
   // 인사 배너용 — 이름 + 지금 보는 기업의 전체 글 수(카테고리 필터와 무관).
@@ -104,7 +119,12 @@ export function FilterSheet({
     setBrandOpen(true);
   };
   const applyBrand = () => {
-    onChange({ ...value, blogIds: new Set(brandDraft), topics: new Set(value.topics) });
+    onChange({
+      ...value,
+      blogIds: new Set(brandDraft),
+      topics: new Set(value.topics),
+      levels: new Set(value.levels),
+    });
     setBrandOpen(false);
   };
   const toggleBrand = (blogId: string) =>
@@ -116,7 +136,12 @@ export function FilterSheet({
     });
 
   const openAt = (t: Tab) => {
-    setDraft({ blogIds: new Set(value.blogIds), topics: new Set(value.topics), sort: value.sort });
+    setDraft({
+      blogIds: new Set(value.blogIds),
+      topics: new Set(value.topics),
+      levels: new Set(value.levels),
+      sort: value.sort,
+    });
     setTab(t);
     setOpen(true);
   };
@@ -125,6 +150,7 @@ export function FilterSheet({
     onChange({
       blogIds: new Set(chipsOnly ? draft.blogIds : value.blogIds),
       topics: new Set(draft.topics),
+      levels: new Set(draft.levels),
       sort: draft.sort,
     });
     setOpen(false);
@@ -133,9 +159,17 @@ export function FilterSheet({
     setDraft((p) => ({
       blogIds: chipsOnly ? new Set<string>() : p.blogIds,
       topics: new Set<Topic>(),
+      levels: new Set<ArticleLevel>(),
       sort: "latest",
     }));
 
+  const toggleLevel = (lv: ArticleLevel) =>
+    setDraft((p) => {
+      const n = new Set(p.levels);
+      if (n.has(lv)) n.delete(lv);
+      else n.add(lv);
+      return { ...p, levels: n };
+    });
   const toggleTopic = (t: Topic) =>
     setDraft((p) => {
       const n = new Set(p.topics);
@@ -280,6 +314,9 @@ export function FilterSheet({
         {sortOnly ? null : (
           <FilterChip label={topicLabel} active={value.topics.size > 0} onPress={() => openAt("topic")} />
         )}
+        {sortOnly ? null : (
+          <FilterChip label={levelLabel} active={value.levels.size > 0} onPress={() => openAt("level")} />
+        )}
         <FilterChip
           label={sortLabels[value.sort]}
           active={value.sort !== "latest"}
@@ -309,7 +346,14 @@ export function FilterSheet({
             <View style={[styles.tabs, { borderBottomColor: c.hairline }]}>
               {TABS.map((t) => {
                 const on = tab === t;
-                const cnt = t === "topic" ? draft.topics.size : t === "blog" ? draft.blogIds.size : 0;
+                const cnt =
+                  t === "topic"
+                    ? draft.topics.size
+                    : t === "blog"
+                      ? draft.blogIds.size
+                      : t === "level"
+                        ? draft.levels.size
+                        : 0;
                 return (
                   <Pressable key={t} style={styles.tab} onPress={() => setTab(t)}>
                     <Text style={[styles.tabText, { color: on ? c.textPrimary : c.textMuted }]}>
@@ -393,6 +437,16 @@ export function FilterSheet({
                     onPress={() => toggleTopic(t)}
                   />
                 ))}
+              {tab === "level" &&
+                LEVEL_ORDER.map((lv) => (
+                  <PickRow
+                    key={lv}
+                    label={LEVEL_META[lv].label}
+                    sub={LEVEL_META[lv].hint}
+                    checked={draft.levels.has(lv)}
+                    onPress={() => toggleLevel(lv)}
+                  />
+                ))}
               {tab === "sort" &&
                 (["latest", "popular"] as const).map((s) => (
                   <PickRow
@@ -446,12 +500,15 @@ function FilterChip({ label, active, onPress }: { label: string; active: boolean
 /** 시트 옵션 행 — 체크(원형)가 맨 왼쪽, 그다음 로고/라벨. */
 function PickRow({
   label,
+  sub,
   checked,
   onPress,
   left,
   radio,
 }: {
   label: string;
+  /** 라벨 아래 한 줄 설명 — 난이도처럼 이름만으론 뜻이 안 서는 항목에 쓴다. */
+  sub?: string | null;
   checked: boolean;
   onPress: () => void;
   left?: React.ReactNode;
@@ -480,15 +537,22 @@ function PickRow({
         ) : null}
       </View>
       {left}
-      <Text
-        style={[
-          styles.rowLabel,
-          { color: checked ? c.textPrimary : c.textSecondary, fontWeight: checked ? "700" : "500" },
-        ]}
-        numberOfLines={1}
-      >
-        {label}
-      </Text>
+      <View style={styles.rowTextWrap}>
+        <Text
+          style={[
+            styles.rowLabel,
+            { color: checked ? c.textPrimary : c.textSecondary, fontWeight: checked ? "700" : "500" },
+          ]}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+        {sub ? (
+          <Text style={[styles.rowSub, { color: c.textMuted }]} numberOfLines={1}>
+            {sub}
+          </Text>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
@@ -568,7 +632,9 @@ const styles = StyleSheet.create({
   pickedText: { fontSize: 12.5, lineHeight: 18, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 
   row: { flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 12, paddingHorizontal: 20 },
-  rowLabel: { flex: 1, fontSize: 15, lineHeight: 21 },
+  rowTextWrap: { flex: 1, gap: 1 },
+  rowLabel: { fontSize: 15, lineHeight: 21 },
+  rowSub: { ...dtype.meta },
   mark: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
   radioDot: { width: 11, height: 11, borderRadius: 6 },
 

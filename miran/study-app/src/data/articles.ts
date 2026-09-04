@@ -14,7 +14,7 @@ import { isMissingColumnError } from "@/lib/pgError";
 import { useUid } from "@/auth/AuthProvider";
 import type { SummaryMode } from "@/lib/summary";
 import type { ArticleRow } from "@/types/tables";
-import type { Topic } from "@/types/database";
+import type { ArticleLevel, Topic } from "@/types/database";
 
 const PAGE_SIZE = 20;
 
@@ -110,6 +110,8 @@ export interface ArticleFeedFilter {
   blogIds?: string[]; // 홈 서비스 다중선택 필터(여러 기업 동시)
   ids?: string[]; // 특정 글 id로 제한(북마크한 글만 보기 등)
   search?: string;
+  /** 개발 지식 난도 — "개발 몰라도 읽히는 글만" 을 고를 수 있어야 한다. */
+  levels?: ArticleLevel[];
   sort?: "latest" | "popular"; // 기본 latest
 }
 
@@ -138,6 +140,8 @@ export async function listArticlesFeed(
     if (filter.topics && filter.topics.length > 0) q = q.in("topic", filter.topics);
     if (filter.blogId) q = q.eq("blog_id", filter.blogId);
     if (filter.blogIds && filter.blogIds.length > 0) q = q.in("blog_id", filter.blogIds);
+  if (filter.levels && filter.levels.length > 0) q = q.in("level", filter.levels);
+    if (filter.levels && filter.levels.length > 0) q = q.in("level", filter.levels);
     if (filter.ids && filter.ids.length > 0) q = q.in("id", filter.ids);
     const search = filter.search?.replace(/[,(){}%*]/g, " ").trim();
     if (search) {
@@ -186,6 +190,7 @@ export async function countArticlesFeed(filter: ArticleFeedFilter = {}): Promise
   if (filter.topics && filter.topics.length > 0) q = q.in("topic", filter.topics);
   if (filter.blogId) q = q.eq("blog_id", filter.blogId);
   if (filter.blogIds && filter.blogIds.length > 0) q = q.in("blog_id", filter.blogIds);
+  if (filter.levels && filter.levels.length > 0) q = q.in("level", filter.levels);
   if (filter.ids && filter.ids.length > 0) q = q.in("id", filter.ids);
   const search = filter.search?.replace(/[,(){}%*]/g, " ").trim();
   if (search) {
@@ -487,5 +492,29 @@ export function useRequestArticleSummary(articleId: string, jobRole?: string | n
   return useMutation({
     mutationFn: (mode: SummaryMode) => requestArticleSummary(articleId, mode, jobRole),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.article(articleId) }),
+  });
+}
+
+/**
+ * 밑줄 친 문장으로 **질문의 답 초안**을 받아온다(저장하지 않는다).
+ *
+ * 글 전체를 요약시키지 않는다 — 재료는 내가 직접 밑줄 친 문장뿐이다.
+ * 그래야 나오는 초안이 "글의 요약"이 아니라 "내가 이 글에서 본 것"이 되고, 고칠 마음이 생긴다.
+ */
+export async function draftAnswerFromHighlights(
+  question: string,
+  source: string,
+): Promise<string> {
+  const { data, error } = await supabase.functions.invoke("summarize", {
+    body: { target: "draft", question, source },
+  });
+  if (error) throw error;
+  return ((data as { draft?: string })?.draft ?? "").trim();
+}
+
+export function useDraftAnswer() {
+  return useMutation({
+    mutationFn: (v: { question: string; source: string }) =>
+      draftAnswerFromHighlights(v.question, v.source),
   });
 }
