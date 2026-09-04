@@ -89,15 +89,17 @@ describe("isUsableQuestion (저장된 질문 검증 게이트)", () => {
 });
 
 describe("decisionRows (화면 표시용)", () => {
-  it("값이 있는 항목만 순서대로", () => {
+  // ⚠️ "선택한 방법"은 일부러 빠져 있다 — 제목 아래 한 줄이 이미 그 말을 해서
+  //    카드가 같은 내용을 두 번 말하고 있었다.
+  it("값이 있는 항목만 순서대로 — 선택한 방법은 넣지 않는다", () => {
     expect(decisionRows({ problem: "문제", chosen: "선택" })).toEqual([
       { label: "무슨 문제", value: "문제" },
-      { label: "선택한 방법", value: "선택" },
     ]);
   });
 
-  it("전부 있으면 5줄", () => {
-    expect(decisionRows(FULL)).toHaveLength(5);
+  it("전부 있으면 4줄(문제·제약·버린 대안·결과)", () => {
+    expect(decisionRows(FULL)).toHaveLength(4);
+    expect(decisionRows(FULL).map((r) => r.label)).not.toContain("선택한 방법");
   });
 });
 

@@ -130,7 +130,16 @@ describe("classifyReadingBlock", () => {
   });
   it("짧고 종결부호로 끝나지 않으면 heading", () => {
     expect(classifyReadingBlock("들어가며")).toBe("heading");
-    expect(classifyReadingBlock("배경:")).toBe("heading");
+    expect(classifyReadingBlock("배경:")).toBe("heading"); // 한글 소제목은 콜론이 붙어도 소제목
+  });
+
+  // ⚠️ <pre> 없이 평문으로 들어온 코드가 줄마다 굵은 소제목이 되던 실측 버그(당근 실험플랫폼 글).
+  it("코드 냄새가 나면 heading 으로 승격하지 않는다", () => {
+    expect(classifyReadingBlock("# metrics.yaml — 지표의 정의")).toBe("code");
+    expect(classifyReadingBlock('metric_type: "count"')).toBe("code");
+    expect(classifyReadingBlock("numerator: click_item")).toBe("code");
+    expect(classifyReadingBlock("SELECT")).toBe("code");
+    expect(classifyReadingBlock("CAST(user_id AS string) AS user_id,")).toBe("code");
   });
   it("종결부호로 끝나거나 길면 para", () => {
     expect(classifyReadingBlock("이것은 하나의 문장입니다.")).toBe("para");

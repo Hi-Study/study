@@ -94,12 +94,18 @@ export function isUsableQuestion(question: string | null | undefined, raw: unkno
 }
 
 /** 결정 카드에서 화면에 뿌릴 항목들(값이 있는 것만, 표시 순서대로). */
+/**
+ * 결정 카드에 그릴 행.
+ *
+ * ⚠️ **"선택한 방법"은 넣지 않는다.** 제목 바로 아래 한 줄이 이미 그 말을 하고 있어서
+ *    ("PRD 자동화로 사용자 경험을 개선한 사례") 카드가 같은 내용을 두 번 말하는 꼴이었다.
+ *    카드가 할 일은 한 줄이 못 담는 것 — **무슨 문제였고, 뭘 버렸고, 얼마나 나아졌나** 다.
+ */
 export function decisionRows(raw: unknown): { label: string; value: string }[] {
   const d = toDecision(raw);
   return [
     { label: "무슨 문제", value: d.problem },
     { label: "어떤 제약", value: d.constraint },
-    { label: "선택한 방법", value: d.chosen },
     { label: "버린 대안", value: d.rejected },
     { label: "결과", value: d.metric },
   ].filter((r) => r.value.length > 0);

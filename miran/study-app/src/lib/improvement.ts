@@ -153,6 +153,14 @@ export function classifyImprovement(input: ImprovementInput): ImprovementType | 
 }
 
 /**
+ * 방법이 **부정 서술**이면 문장 앞머리로 못 쓴다.
+ *   "리브랜딩 언급 안 함으로 브랜드 경험을 바꾼 사례"  ← 실측(강남언니 글)
+ *   "공통 컴포넌트로 만들지 않음으로 사용자 경험을 개선한 사례"
+ * 예전 정규식은 `안 하` 만 잡아서 `안 함`·`안함`·`하지 않` 이 그대로 빠져나갔다.
+ */
+const NEGATED = /않|안\s*하|안\s*함|안함|없이|미사용|미적용|제외|포기/;
+
+/**
  * 카드에 붙일 한 줄.
  *
  * **두 단계로 만든다.** 예전엔 결정 카드의 `chosen`(방법)이 있어야만 문장을 만들어서,
@@ -178,7 +186,7 @@ export function improvementSummary(
   //   "공통 컴포넌트로 만들지 않음으로 …"
   //   "Claude Agent SDK와 AgentCore Gateway, Runtime, Web Search를 활용한 전환으로 …"
   const usableMethod =
-    Boolean(d.chosen) && d.chosen.length <= 20 && !/않|안 하|없이|미사용|제외/.test(d.chosen);
+    Boolean(d.chosen) && d.chosen.length <= 20 && !NEGATED.test(d.chosen);
 
   const head = usableMethod ? `${d.chosen}${instrumentalParticle(d.chosen)} ${tail}` : tail;
   return d.metric ? `${head} (${d.metric})` : head;
@@ -194,7 +202,7 @@ export function improvementSummary(
 export function fallbackQuestion(input: ImprovementInput): string {
   const d = toDecision(input.decision);
   // ② 무엇을 골랐는지는 아는데 비교 대상이 없을 때.
-  if (d.chosen && d.chosen.length <= 20 && !/않|안 하|없이|미사용|제외/.test(d.chosen)) {
+  if (d.chosen && d.chosen.length <= 20 && !NEGATED.test(d.chosen)) {
     return `${d.chosen}${objectParticle(d.chosen)} 택한 이유가 우리 상황에도 그대로 해당될까요?`;
   }
   // ③ 개선 유형만 아는 경우 — 유형별 표현을 그대로 재사용한다.

@@ -194,8 +194,14 @@ function HighlightableText({
         const imgUrl = imageMarkerUrl(raw);
         if (imgUrl) return <BodyImage key={bi} url={imgUrl} />;
         // 코드 블록은 하이라이트 대상이 아니다(문장 단위로 밑줄 그을 것이 없다).
+        //   ① 수집기가 <pre> 를 마커로 남긴 경우
+        //   ② 원문이 <pre> 없이 평문으로 흘려보낸 경우 — 읽기 블록이 코드 냄새로 잡아낸다.
+        //      (실측: 당근 실험플랫폼 글의 yaml·SQL 이 줄마다 굵은 소제목이 됐다)
         const code = codeMarkerText(raw);
         if (code) return <CodeBlock key={bi} code={code} fontScale={fontScale} />;
+        if (b.kind === "code") {
+          return <CodeBlock key={bi} code={raw.replace(/\n+$/, "")} fontScale={fontScale} />;
+        }
         // 사용자 폰트 크기 토글(가/가)은 기준값에 곱해서 적용 — 설정과 충돌하지 않는다.
         const base =
           b.kind === "heading" ? reading.heading : b.kind === "list" ? reading.list : reading.para;

@@ -25,11 +25,14 @@ export function DiscussScreen() {
   const [mainTab, setMainTab] = useState<MainTab>("insight");
   const [writeOpen, setWriteOpen] = useState(false);
   const [filter, setFilter] = useState<FilterValue>(emptyFilter);
+  // 커뮤니티 자유글엔 기업·주제가 없다(테이블에 컬럼 자체가 없음) — 고를 건 정렬뿐이라
+  //   같은 칩 UI 를 정렬 하나로만 쓴다. "popular" 는 자유글에선 "이야기 많은 순"(active).
+  const [communityFilter, setCommunityFilter] = useState<FilterValue>(emptyFilter);
 
   const blogsQ = useBlogs();
   const q = useOpinionsFeed(filter.sort);
   const list = q.data ?? [];
-  const communityQ = useCommunityPosts();
+  const communityQ = useCommunityPosts(communityFilter.sort === "popular" ? "active" : "latest");
 
   const filtered = useMemo(() => {
     return list.filter((o) => {
@@ -68,12 +71,15 @@ export function DiscussScreen() {
 
       {mainTab === "insight" ? (
         <>
-          {/* 큰 기업 드롭다운 + 카테고리/정렬 필터(피드와 동일) */}
+          {/* ⚠️ 여기서는 히어로(큰 기업 이름 + 인사 배너)를 쓰지 않는다.
+              인사이트 탭은 위에 이미 [인사이트/커뮤니티] 서브탭이 있어서, 그 밑에 또 큰
+              제목이 오면 화면에 제일 큰 글씨가 두 개가 된다(DESIGN_SYSTEM §0.1).
+              **기업·카테고리·정렬을 같은 모양의 드롭다운 칩 3개**로 나란히 둔다. */}
           <FilterSheet
             blogs={blogsQ.data ?? []}
             value={filter}
             onChange={setFilter}
-            eyebrow="지금 보는 곳"
+            variant="chips"
           />
 
           {/* 개수 */}
@@ -116,6 +122,20 @@ export function DiscussScreen() {
         </>
       ) : (
         <>
+          <FilterSheet
+            blogs={[]}
+            value={communityFilter}
+            onChange={setCommunityFilter}
+            variant="sort"
+            sortLabels={{ latest: "최신순", popular: "이야기 많은 순" }}
+          />
+
+          <View style={styles.filterRow}>
+            <Text style={[styles.countText, { color: c.textSecondary }]}>
+              {(communityQ.data ?? []).length.toLocaleString()}개
+            </Text>
+          </View>
+
           {communityQ.isLoading ? (
             <Loading label="불러오는 중…" />
           ) : communityQ.isError ? (

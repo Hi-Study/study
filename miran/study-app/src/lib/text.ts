@@ -47,16 +47,44 @@ export function splitSentences(text: string): string[] {
  * ⚠️ 하이라이트는 splitSentences 의 전역 순번(index)에 앵커된다. 블록으로 묶어 렌더해도
  *    각 문장의 index 는 splitSentences 배열 그대로 보존해야 다른 클라와 밑줄 위치가 일치한다.
  */
-export type BlockKind = "para" | "heading" | "list";
+export type BlockKind = "para" | "heading" | "list" | "code";
 export interface ReadingBlock {
   kind: BlockKind;
   items: { index: number; seg: string }[]; // seg = splitSentences 조각(원문 그대로), index = 전역 순번
+}
+
+/**
+ * 코드 냄새가 나는 줄.
+ *
+ * ⚠️ 왜 필요한가: 소제목 판정이 "28자 이하 + 마침표로 안 끝남"뿐이라, `<pre>` 로 안 감싼
+ *    코드가 본문에 평문으로 들어오면 **줄마다 굵은 소제목**이 됐다(실측: 당근 실험플랫폼 글).
+ *      # metrics.yaml — 지표의 정의   ← 소제목
+ *      metric_type: "count"           ← 소제목
+ *      SELECT                         ← 소제목
+ *    거기에 줄 사이 간격(20)까지 붙어서 코드가 아니라 목차처럼 보였다.
+ */
+const CODEY: RegExp[] = [
+  /^\s*(#|\/\/|--|\/\*|\*\/|[{}<>])/, // 주석·태그·괄호로 시작
+  /[_;`]/, // snake_case · 세미콜론 · 백틱
+  /\w\(/, // 함수 호출
+  /=>|::|\{\{|\}\}/,
+  /\b(SELECT|FROM|WHERE|JOIN|CAST|INSERT|UPDATE|DELETE|CREATE|GROUP BY|ORDER BY)\b/, // 대문자 SQL
+  /^(const|let|var|function|import|export|class|def|return|if|for)\s/,
+  /^[A-Za-z_][\w.-]*\s*:\s*(["\x27[{]|$)/, // yaml 키(한글 소제목 "배경:" 은 제외)
+];
+
+export function looksLikeCode(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  return CODEY.some((re) => re.test(t));
 }
 
 /** 소제목/목록/문단 분류 — 평문 한 줄 텍스트 기준(보수적: 오검출해도 살짝 굵을 뿐). */
 export function classifyReadingBlock(text: string): BlockKind {
   const t = text.trim();
   if (/^\s*([-–—•·*]|\d+[.)])\s+/.test(t)) return "list";
+  // 코드 냄새가 나면 소제목으로 승격하지 않는다. 여러 줄이 이어지면 아래에서 코드로 묶인다.
+  if (looksLikeCode(t)) return "code";
   if (t.length >= 2 && t.length <= 28 && !/[.!?…,]$/.test(t)) return "heading";
   return "para";
 }
@@ -84,7 +112,33 @@ export function groupSentencesIntoBlocks(sentences: string[]): ReadingBlock[] {
     if (seg.includes("\n")) flush(); // 조각 끝에 개행 → 줄 끝
   }
   flush();
-  return blocks;
+  return mergeCodeRuns(blocks);
+}
+
+/**
+ * 코드 냄새 나는 줄이 **연달아 2줄 이상**이면 한 덩어리로 묶어 코드 블록으로 그린다.
+ * 한 줄만 튀는 건 코드가 아니라 그냥 문장이다("user_id 를 저장했어요") → 문단으로 되돌린다.
+ */
+function mergeCodeRuns(blocks: ReadingBlock[]): ReadingBlock[] {
+  const out: ReadingBlock[] = [];
+  let i = 0;
+  while (i < blocks.length) {
+    if (blocks[i].kind !== "code") {
+      out.push(blocks[i]);
+      i++;
+      continue;
+    }
+    let j = i;
+    while (j < blocks.length && blocks[j].kind === "code") j++;
+    if (j - i === 1) {
+      out.push({ kind: "para", items: blocks[i].items });
+    } else {
+      const items = blocks.slice(i, j).flatMap((b) => b.items);
+      out.push({ kind: "code", items });
+    }
+    i = j;
+  }
+  return out;
 }
 
 /**

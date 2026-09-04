@@ -185,7 +185,9 @@ export function BlogArticlesScreen({ route }: Props) {
             {/* 인기글 큐레이션 */}
             {popular.length > 0 ? (
               <View style={styles.curation}>
-                <Text style={[styles.sectionLabel, { color: c.textPrimary }]}>{curationTitle}</Text>
+                <Text style={[styles.sectionLabel, styles.curationLabel, { color: c.textPrimary }]}>
+                  {curationTitle}
+                </Text>
                 <FlatList
                   data={popular}
                   keyExtractor={(a) => a.id}
@@ -284,7 +286,11 @@ const styles = StyleSheet.create({
   },
   favText: { ...dtype.label, fontSize: 12.5 },
 
+  // ⚠️ 캐러셀만 화면 끝까지 흘리려고 음수 마진을 주는데, **제목까지 같이 끌려나가서**
+  //    "이 기업 인기글"이 화면 왼쪽에 붙어 잘렸다(아래 "최신글"은 16 여백이라 어긋나 보였다).
+  //    제목은 여백을 도로 돌려준다.
   curation: { marginTop: 12, marginHorizontal: -16 },
+  curationLabel: { paddingHorizontal: 16 },
   curationRow: { paddingHorizontal: 16, gap: 12, paddingTop: 8 },
   sectionLabel: { ...dtype.title, marginBottom: 2 },
 

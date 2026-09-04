@@ -7,8 +7,10 @@
 //   ③ 그 아래 작은 드롭다운 필터 칩 `[카테고리 ▾] [정렬 ▾]`
 //      → 탭하면 하단 바텀시트(탭 전환) + 체크 선택 + "N개 글 보기"로 적용.
 //
-//   variant="chips" (검색 화면) — 히어로 카드 없이 `[기업 ▾] [카테고리 ▾] [정렬 ▾]` 칩만.
+//   variant="chips" (검색·인사이트) — 히어로 카드 없이 `[기업 ▾] [카테고리 ▾] [정렬 ▾]` 칩만.
 //      기업도 카테고리와 **같은 칩 디자인 · 같은 바텀시트 탭**으로 고른다.
+//   variant="sort" (커뮤니티) — `[정렬 ▾]` 하나만. 자유글엔 기업·주제가 없어서
+//      고를 게 정렬뿐인데, 필터 줄 자체가 없으면 "여긴 왜 아무것도 없지"가 된다.
 import React, { useMemo, useState } from "react";
 import { Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -50,6 +52,7 @@ export function FilterSheet({
   eyebrow = "지금 보는 곳",
   right,
   variant = "hero",
+  sortLabels = SORT_LABEL,
 }: {
   blogs: BlogRow[];
   value: FilterValue;
@@ -58,17 +61,24 @@ export function FilterSheet({
   eyebrow?: string;
   /** 큰 헤더 우측에 놓을 액션(검색 아이콘 등). hero 에서만 쓰인다. */
   right?: React.ReactNode;
-  /** hero: 큰 기업 드롭다운 + [카테고리][정렬] / chips: [기업][카테고리][정렬] 칩만(검색 화면). */
-  variant?: "hero" | "chips";
+  /** hero: 큰 기업 드롭다운 + [카테고리][정렬] / chips: [기업][카테고리][정렬] / sort: [정렬]만. */
+  variant?: "hero" | "chips" | "sort";
+  /** 정렬 라벨 갈아끼우기 — 커뮤니티는 "인기순" 대신 "이야기 많은 순". */
+  sortLabels?: Record<FeedSort, string>;
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
   const insets = useSafeAreaInsets();
-  const chipsOnly = variant === "chips";
-  const TABS: Tab[] = chipsOnly ? ["blog", "topic", "sort"] : ["topic", "sort"];
+  const sortOnly = variant === "sort";
+  const chipsOnly = variant === "chips" || sortOnly; // 히어로 카드를 안 그린다는 뜻
+  const TABS: Tab[] = sortOnly
+    ? ["sort"]
+    : variant === "chips"
+      ? ["blog", "topic", "sort"]
+      : ["topic", "sort"];
   const [brandOpen, setBrandOpen] = useState(false);
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<Tab>(chipsOnly ? "blog" : "topic");
+  const [tab, setTab] = useState<Tab>(sortOnly ? "sort" : chipsOnly ? "blog" : "topic");
   // 시트 안 임시 선택(적용 눌러야 반영).
   const [draft, setDraft] = useState<FilterValue>(value);
   // 기업 시트도 다중 선택이라 임시 선택 후 "적용"으로 반영한다.
@@ -264,12 +274,14 @@ export function FilterSheet({
         style={styles.chipScroll}
         contentContainerStyle={styles.chipBar}
       >
-        {chipsOnly ? (
+        {variant === "chips" ? (
           <FilterChip label={blogLabel} active={value.blogIds.size > 0} onPress={() => openAt("blog")} />
         ) : null}
-        <FilterChip label={topicLabel} active={value.topics.size > 0} onPress={() => openAt("topic")} />
+        {sortOnly ? null : (
+          <FilterChip label={topicLabel} active={value.topics.size > 0} onPress={() => openAt("topic")} />
+        )}
         <FilterChip
-          label={SORT_LABEL[value.sort]}
+          label={sortLabels[value.sort]}
           active={value.sort !== "latest"}
           onPress={() => openAt("sort")}
         />
@@ -385,7 +397,7 @@ export function FilterSheet({
                 (["latest", "popular"] as const).map((s) => (
                   <PickRow
                     key={s}
-                    label={SORT_LABEL[s]}
+                    label={sortLabels[s]}
                     checked={draft.sort === s}
                     radio
                     onPress={() => setDraft((p) => ({ ...p, sort: s }))}
