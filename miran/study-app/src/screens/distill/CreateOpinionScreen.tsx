@@ -6,7 +6,7 @@
 //   ③ 둘 다 부담          → 글 상세의 원탭 스탬프(이 화면에 안 들어옴)
 // 핵심: 초안 재료는 **내가 직접 밑줄 그은 문장**이다. 글 전체 요약이 아니라
 // "내가 이 글에서 본 것"이라 고칠 마음이 생긴다.
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -186,7 +186,6 @@ export function CreateOpinionScreen({ route }: Props) {
   //   빈 폼만 늘어나고 아무도 안 채웠다.
   const [answer, setAnswer] = useState("");
   const [answer2, setAnswer2] = useState("");
-  const [prefilled, setPrefilled] = useState(false);
   const set = (patch: Partial<Insight>) => setInsight((p) => ({ ...p, ...patch }));
 
   const draft = useMemo(
@@ -194,18 +193,11 @@ export function CreateOpinionScreen({ route }: Props) {
     [highlightsQ.data],
   );
 
-  // 하이라이트가 오면 **한 번만** 초안을 채운다(사용자가 고친 뒤 덮어쓰지 않게).
-  useEffect(() => {
-    if (prefilled || draft.usedCount === 0) return;
-    setInsight((p) => ({
-      ...p,
-      quote: p.quote || draft.insight.quote,
-      interpretation: p.interpretation || draft.insight.interpretation,
-    }));
-    // 밑줄 메모는 ①번 질문의 답 칸으로 넣는다 — 그게 지금 화면에서 "핵심"을 받는 칸이다.
-    setAnswer((a) => a || draft.insight.core);
-    setPrefilled(true);
-  }, [draft, prefilled]);
+  // ⚠️ **하이라이트는 감상문에 자동으로 들어가지 않는다.**
+  //    예전엔 밑줄 문장(quote)과 메모(interpretation)를 몰래 채워서 같이 저장했다.
+  //    밑줄은 내가 읽으면서 표시해 둔 것이지 남에게 보여주려고 쓴 글이 아니다.
+  //    밑줄이 쓰이는 곳은 **오직 "밑줄로 초안 쓰기" 버튼을 눌렀을 때** 하나뿐이고,
+  //    그때도 답 칸에 들어갈 뿐 사람이 지우면 그대로 안 들어간다.
 
   // 저장 조건은 **어디서 들어왔느냐**로 갈린다.
   //   · 글을 읽다 들어온 경우 → 질문 하나에만 답해도 저장된다(가장 쉬운 입구를 막지 않는다).
@@ -225,13 +217,17 @@ export function CreateOpinionScreen({ route }: Props) {
     const a2 = answer2.trim();
     const merged: Insight = {
       ...insight,
-      // ①의 답이 핵심 인사이트. 비었으면 ②의 답을 올린다(빈 저장 방지).
+      // ①의 답이 핵심 인사이트. ①이 비었으면 ②의 답을 핵심으로 올린다(빈 저장 방지).
+      //   ⚠️ 그때는 접목(apply) 을 비운다. 안 그러면 핵심과 접목에 **같은 문장이 두 번** 뜬다.
       core: a || a2,
-      // ②의 답이 "바로 적용할 것".
-      apply: a2,
-      // ⚠️ 여기에 질문·답을 또 넣지 않는다. 핵심(core)·접목(apply) 에 이미 들어 있어서
-      //    보기 화면에 같은 문장이 두 번 나왔다. 해석 칸은 **밑줄 메모** 자리다.
-      interpretation: insight.interpretation,
+      apply: a ? a2 : "",
+      // 답과 **짝이 되는 질문 전문**을 같이 남긴다. 답만 있으면 나중에 읽는 사람이
+      //   무슨 질문에 대한 답인지 모른다. 이어붙이면 카드에서 잘리므로 자기 자리에 둔다.
+      coreQ: a ? question : question2,
+      applyQ: a && a2 ? question2 : undefined,
+      // ⚠️ 밑줄 문장·메모는 저장하지 않는다(위 주석 참고).
+      quote: "",
+      interpretation: "",
     };
     const clean = cleanInsight(merged);
     if (!clean) return;

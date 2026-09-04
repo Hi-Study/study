@@ -40,14 +40,23 @@ export function InsightView({
       {/* 핵심 인사이트 */}
       <View style={[styles.core, { backgroundColor: c.tintLavender }]}>
         <Text style={[styles.coreLabel, { color: c.primary }]}>핵심 인사이트</Text>
-        <Text style={[styles.coreText, { color: c.textPrimary }]}>{ins.core}</Text>
+        {/* 답과 짝이 되는 질문 전문 — 질문 없이 답만 있으면 무슨 말인지 모른다. */}
+        {ins.coreQ ? (
+          <Text style={[styles.question, { color: c.textSecondary }]}>Q. {ins.coreQ}</Text>
+        ) : null}
+        <Text style={[styles.coreText, { color: c.textPrimary }]}>
+          {ins.coreQ ? "→ " : ""}
+          {ins.core}
+        </Text>
       </View>
 
       {/* ⚠️ 순서는 **쓴 순서** 를 그대로 따른다.
           쓰기 화면은 ① 이 글에서 무엇을 보셨나요(핵심) → ② 그래서 우리 일엔 어떻게(접목)
           → ③ 질문·토론 이고, 밑줄은 자동으로 붙는다. 그런데 보기 화면은 핵심 → 문장 →
           해석 → 접목 순이라 쓴 사람이 자기 글을 못 알아봤다. 읽는 순서 = 쓴 순서. */}
-      {ins.apply ? <Field label="우리 일엔 이렇게" body={ins.apply} /> : null}
+      {ins.apply ? (
+        <Field label="우리 일엔 이렇게" question={ins.applyQ} body={ins.apply} />
+      ) : null}
 
       {ins.quote ? (
         <View style={[styles.quote, { borderLeftColor: c.primary }]}>
@@ -73,13 +82,28 @@ export function InsightView({
   );
 }
 
-function Field({ label, body }: { label: string; body: string }) {
+function Field({
+  label,
+  question,
+  body,
+}: {
+  label: string;
+  /** 이 답이 대답한 질문 전문. 있으면 답 위에 그대로(자르지 않고) 보여준다. */
+  question?: string;
+  body: string;
+}) {
   const { theme } = useTheme();
   const c = theme.colors;
   return (
     <View style={styles.field}>
       <Text style={[styles.fieldLabel, { color: c.primary }]}>{label}</Text>
-      <Text style={[styles.fieldBody, { color: c.textPrimary }]}>{body}</Text>
+      {question ? (
+        <Text style={[styles.question, { color: c.textSecondary }]}>Q. {question}</Text>
+      ) : null}
+      <Text style={[styles.fieldBody, { color: c.textPrimary }]}>
+        {question ? "→ " : ""}
+        {body}
+      </Text>
     </View>
   );
 }
@@ -92,6 +116,8 @@ const styles = StyleSheet.create({
   coreText: { fontSize: 15.5, lineHeight: 24, fontWeight: "600", fontFamily: PRETENDARD["600"] },
   quote: { borderLeftWidth: 3, paddingLeft: 10, paddingVertical: 2 },
   quoteText: { fontSize: 14, lineHeight: 21, fontStyle: "italic" },
+  // 질문은 답보다 한 톤 작고 흐리게 — 주인공은 답이다. 다만 **자르지는 않는다.**
+  question: { fontSize: 13.5, lineHeight: 20 },
   field: { gap: 3 },
   fieldLabel: { fontSize: 12.5, fontWeight: "700", fontFamily: PRETENDARD["700"] },
   fieldBody: { fontSize: 14.5, lineHeight: 22 },

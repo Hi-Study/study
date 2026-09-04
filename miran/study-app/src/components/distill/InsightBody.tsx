@@ -20,13 +20,16 @@ export interface InsightData {
   apply?: string;
   similar?: string;
   questions?: string[];
+  /** core·apply 를 쓸 때 화면에 떴던 질문 전문(옛 데이터엔 없다). */
+  coreQ?: string;
+  applyQ?: string;
 }
 
-const FIELDS: { key: keyof InsightData; label: string }[] = [
-  { key: "core", label: "핵심 인사이트" }, // ① 질문에 답한 것
-  { key: "apply", label: "우리 일엔 이렇게" }, // ② 질문에 답한 것
-  { key: "quote", label: "인상적인 문장" }, // 밑줄에서 자동
-  { key: "interpretation", label: "밑줄에 남긴 메모" }, // 밑줄에서 자동
+const FIELDS: { key: keyof InsightData; label: string; qKey?: keyof InsightData }[] = [
+  { key: "core", label: "핵심 인사이트", qKey: "coreQ" }, // ① 질문에 답한 것
+  { key: "apply", label: "우리 일엔 이렇게", qKey: "applyQ" }, // ② 질문에 답한 것
+  { key: "quote", label: "인상적인 문장" },
+  { key: "interpretation", label: "밑줄에 남긴 메모" },
   { key: "similar", label: "비슷한 사례" },
 ];
 
@@ -58,17 +61,27 @@ export function InsightBody({
 
   return (
     <View style={styles.wrap}>
-      {fields.map((f) => (
-        <View key={f.key} style={styles.field}>
-          <Text style={[styles.label, { color: c.primary }]}>{f.label}</Text>
-          <Text
-            style={[styles.value, { color: c.textPrimary }]}
-            numberOfLines={compact ? PREVIEW_LINES : undefined}
-          >
-            {insight[f.key] as string}
-          </Text>
-        </View>
-      ))}
+      {fields.map((f) => {
+        // 답과 **짝이 되는 질문 전문**. 질문 없이 답만 있으면 무슨 말인지 모른다.
+        //   ⚠️ 질문은 줄임표로 자르지 않는다(numberOfLines 없음). 예전엔 답과 한 덩어리로
+        //      이어붙여 저장해서 카드에서 질문이 반토막 났다.
+        const q = f.qKey ? (insight[f.qKey] as string | undefined) : undefined;
+        return (
+          <View key={f.key} style={styles.field}>
+            <Text style={[styles.label, { color: c.primary }]}>{f.label}</Text>
+            {q ? (
+              <Text style={[styles.question, { color: c.textSecondary }]}>Q. {q}</Text>
+            ) : null}
+            <Text
+              style={[styles.value, { color: c.textPrimary }]}
+              numberOfLines={compact ? PREVIEW_LINES : undefined}
+            >
+              {q ? "→ " : ""}
+              {insight[f.key] as string}
+            </Text>
+          </View>
+        );
+      })}
       {questions.length > 0 ? (
         <View style={styles.field}>
           <Text style={[styles.label, { color: c.primary }]}>떠오른 질문</Text>
@@ -94,6 +107,8 @@ const styles = StyleSheet.create({
   wrap: { gap: 14 },
   field: { gap: 5 },
   label: { ...dtype.label, fontSize: 12, letterSpacing: 0.2, lineHeight: 17 },
+  // 질문은 답보다 한 톤 작고 흐리게 — 주인공은 답이다. 다만 **자르지는 않는다.**
+  question: { ...dtype.bodyS, lineHeight: 20 },
   value: { ...dtype.body, lineHeight: 23 },
   more: { ...dtype.meta, marginTop: 2 },
 });

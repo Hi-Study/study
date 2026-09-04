@@ -6,6 +6,16 @@ export interface Insight {
   apply: string; // 2. 내가 바로 적용할 수 있는 것
   similar: string; // 3. 비슷한 사례
   questions: string[]; // 4. 질문 리스트(팀원과 나눌 질문)
+  /**
+   * core·apply 를 쓸 때 **화면에 떴던 질문 전문.**
+   *
+   * 답만 저장하면 나중에 읽는 사람이 "이게 무슨 질문에 대한 답이지?" 가 된다.
+   * 예전엔 해석 칸에 "질문\n→ 답" 을 이어붙여 넣었는데, 그러면 카드 미리보기에서
+   * 줄이 잘려 질문이 반토막 났다. 질문은 **자기 자리**에 따로 둔다.
+   * 옛 데이터엔 없으므로 optional 이다.
+   */
+  coreQ?: string;
+  applyQ?: string;
 }
 
 export const EMPTY_INSIGHT: Insight = {
@@ -28,6 +38,8 @@ export function toInsight(raw: unknown): Insight {
     apply: typeof r.apply === "string" ? r.apply : "",
     similar: typeof r.similar === "string" ? r.similar : "",
     questions: Array.isArray(r.questions) ? r.questions.filter((q): q is string => typeof q === "string") : [],
+    coreQ: typeof r.coreQ === "string" ? r.coreQ : undefined,
+    applyQ: typeof r.applyQ === "string" ? r.applyQ : undefined,
   };
 }
 
@@ -42,6 +54,9 @@ export function cleanInsight(i: Insight): Insight | null {
     apply: i.apply.trim(),
     similar: i.similar.trim(),
     questions: i.questions.map((q) => q.trim()).filter(Boolean),
+    // 답이 없으면 질문도 저장하지 않는다 — 질문만 남은 껍데기를 만들지 않는다.
+    coreQ: core ? i.coreQ?.trim() || undefined : undefined,
+    applyQ: i.apply.trim() ? i.applyQ?.trim() || undefined : undefined,
   };
 }
 
