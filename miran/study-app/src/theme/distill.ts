@@ -124,7 +124,7 @@ export const LEVEL_META: Record<ArticleLevel, { label: string; hint: string }> =
     hint: "배경지식 없이 읽을 수 있어요",
   },
   terms: {
-    label: "기초 개발 용어 필요",
+    label: "기초 개발지식 필요",
     hint: "도메인 용어가 몇 개 나와요. 눌러서 뜻을 볼 수 있어요",
   },
   code: {
