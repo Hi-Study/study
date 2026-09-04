@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { qk } from "@/lib/queryKeys";
 import { useUid } from "@/auth/AuthProvider";
+import { isMissingFunctionError } from "@/lib/pgError";
 import type { JobRole } from "@/types/database";
 
 export interface ReadingStats {
@@ -108,5 +109,35 @@ export function useMyWeakDomains() {
     queryFn: () => getMyWeakDomains(uid),
     enabled: Boolean(uid),
     staleTime: 60_000,
+  });
+}
+
+/**
+ * 글마다 **1등 직군 하나**를 한 번에 받아온다 — 목록 카드용.
+ *
+ * 왜 일괄인가: 카드마다 RPC 를 부르면 화면 하나에 수십 번 왕복한다.
+ * 읽힌 글만 나오므로 결과가 작다(실측 21건). 앱을 켜는 동안 한 번만 받고 캐시한다.
+ *
+ * ⚠️ SQL(§31)을 아직 안 올렸으면 함수가 없다 → **빈 맵**으로 조용히 넘어간다.
+ *    배지가 안 뜰 뿐 목록은 정상 동작해야 한다.
+ */
+export async function getAllTopReaderRoles(): Promise<Record<string, ReaderRoleCount>> {
+  const { data, error } = await supabase.rpc("all_top_reader_roles");
+  if (error) {
+    if (isMissingFunctionError(error)) return {};
+    throw error;
+  }
+  const out: Record<string, ReaderRoleCount> = {};
+  for (const r of (data ?? []) as { article_id: string; job_role: JobRole; cnt: number }[]) {
+    out[r.article_id] = { jobRole: r.job_role, count: Number(r.cnt) };
+  }
+  return out;
+}
+
+export function useAllTopReaderRoles() {
+  return useQuery({
+    queryKey: qk.allReaderRoles(),
+    queryFn: getAllTopReaderRoles,
+    staleTime: 5 * 60_000,
   });
 }

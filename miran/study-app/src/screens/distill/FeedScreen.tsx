@@ -32,9 +32,9 @@ export function FeedScreen() {
   const rows = q.data?.pages.flatMap((p) => p.rows) ?? [];
   const countLabel = countQ.data != null ? `${countQ.data.toLocaleString()}개` : "";
 
-  return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: c.surfacePage }]} edges={["top", "left", "right"]}>
-      {/* 큰 기업 드롭다운(제일 큰 요소) + 그 아래 카테고리/정렬 필터 칩 */}
+  // 목록과 같이 스크롤되는 헤더 — 기업 드롭다운 + 필터 칩 + 글 개수.
+  const header = (
+    <View style={styles.headerWrap}>
       <FilterSheet
         blogs={blogsQ.data ?? []}
         value={filter}
@@ -46,34 +46,43 @@ export function FeedScreen() {
           </Pressable>
         }
       />
-
-      {/* 글 개수 */}
       <View style={styles.filterRow}>
         <Text style={[styles.countText, { color: c.textSecondary }]}>{countLabel}</Text>
       </View>
+    </View>
+  );
 
-      {q.isLoading ? (
-        <Loading label="불러오는 중…" />
-      ) : q.isError ? (
-        <ErrorState onRetry={() => q.refetch()} />
-      ) : rows.length === 0 ? (
-        <EmptyState title="글이 없어요" hint="필터를 바꿔보세요" />
-      ) : (
-        <FlatList
-          data={rows}
-          keyExtractor={(a) => a.id}
-          renderItem={({ item }) => (
-            <ArticleRow article={item} onPress={() => nav.navigate("ArticleDetail", { articleId: item.id })} />
-          )}
-          ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: c.hairline }]} />}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          onEndReachedThreshold={0.5}
-          onEndReached={() => {
-            if (q.hasNextPage && !q.isFetchingNextPage) q.fetchNextPage();
-          }}
-        />
-      )}
+  return (
+    <SafeAreaView style={[styles.screen, { backgroundColor: c.surfacePage }]} edges={["top", "left", "right"]}>
+      {/* ⚠️ 필터를 목록 **위에 고정하지 않는다.** 히어로 카드까지 화면에 붙박이로 남으면
+          작은 폰에서 글이 두세 줄밖에 안 보인다. 목록과 함께 스크롤되도록
+          FlatList 의 헤더로 넣는다(아래 ListHeaderComponent). */}
+      {/* ⚠️ 로딩·빈 상태에서도 **헤더는 남는다.** 예전처럼 분기로 갈아끼우면 결과가 0건일 때
+          필터까지 사라져서, 정작 필터를 바꿔야 하는 순간에 바꿀 수가 없다. */}
+      <FlatList
+        data={rows}
+        keyExtractor={(a) => a.id}
+        renderItem={({ item }) => (
+          <ArticleRow article={item} onPress={() => nav.navigate("ArticleDetail", { articleId: item.id })} />
+        )}
+        ListHeaderComponent={header}
+        ListEmptyComponent={
+          q.isLoading ? (
+            <Loading label="불러오는 중…" />
+          ) : q.isError ? (
+            <ErrorState onRetry={() => q.refetch()} />
+          ) : (
+            <EmptyState title="글이 없어요" hint="필터를 바꿔보세요" />
+          )
+        }
+        ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: c.hairline }]} />}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        onEndReachedThreshold={0.5}
+        onEndReached={() => {
+          if (q.hasNextPage && !q.isFetchingNextPage) q.fetchNextPage();
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -82,8 +91,10 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   searchUtil: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
 
-  // 칩 바 ↔ 개수 ↔ 목록 사이 리듬. 간격 스케일(4·8·12·16)만 쓴다.
-  filterRow: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
+  // 헤더는 목록 좌우 패딩(16) 바깥이라 자체 여백을 갖는다.
+  headerWrap: { marginHorizontal: -16 },
+  // 칩 바 ↔ 개수 ↔ 목록 사이 리듬. 간격 스케일(4·8·12·16·24)만 쓴다.
+  filterRow: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 16 },
   countText: { ...dtype.label },
 
   // ⚠️ paddingTop 이 없어서 첫 글이 개수 줄에 붙어 있었다.

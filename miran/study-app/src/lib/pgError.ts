@@ -8,3 +8,14 @@ export function isMissingColumnError(error: unknown): boolean {
   if (!e) return false;
   return e.code === "42703" || /column .* does not exist/i.test(e.message ?? "");
 }
+
+/**
+ * "함수가 없다"(PostgREST PGRST202 / Postgres 42883).
+ * 스키마 SQL 을 아직 안 올린 환경에서 신규 RPC 를 부를 때 나온다.
+ * 이런 건 **화면을 깨뜨리지 말고 조용히 비워야** 한다 — 없는 건 배지 하나뿐이다.
+ */
+export function isMissingFunctionError(error: unknown): boolean {
+  const code = (error as { code?: string } | null)?.code ?? "";
+  const msg = (error as { message?: string } | null)?.message ?? "";
+  return code === "PGRST202" || code === "42883" || /function .* does not exist/i.test(msg);
+}

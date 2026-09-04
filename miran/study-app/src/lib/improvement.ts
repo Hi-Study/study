@@ -205,11 +205,30 @@ export function fallbackQuestion(input: ImprovementInput): string {
   if (d.chosen && d.chosen.length <= 20 && !NEGATED.test(d.chosen)) {
     return `${d.chosen}${objectParticle(d.chosen)} 택한 이유가 우리 상황에도 그대로 해당될까요?`;
   }
-  // ③ 개선 유형만 아는 경우 — 유형별 표현을 그대로 재사용한다.
+  // ③ 개선 유형만 아는 경우 — "무엇을 보고 그렇게 판단했나"를 묻는다.
   const type = classifyImprovement(input);
   if (type) {
-    return `이 글에서 ${IMPROVEMENT_PHRASE[type].replace(/ 사례$/, "")} 방법 중, 우리 팀이 당장 따라 할 수 있는 건 뭘까요?`;
+    return `${IMPROVEMENT_PHRASE[type].replace(/ 사례$/, "")} 과정에서 이들이 내린 판단 중, 가장 눈에 띈 건 뭐였나요?`;
   }
   // ④ 아무 신호도 없을 때. 넓지만 진짜 답이 나오는 질문.
-  return "이 글에서 우리 팀에 가장 쓸모 있었던 한 가지는 무엇인가요?";
+  return "이 글에서 가장 인상 깊었던 한 가지는 무엇인가요?";
+}
+
+/**
+ * **접목 질문** — "이 글의 방법을 우리 일에 어떻게 붙일까".
+ *
+ * 인사이트 질문(위)과 짝을 이룬다. 하나는 *이 글에서 무엇을 봤나*,
+ * 하나는 *그래서 우리는 무엇을 하나*. 기획자·디자이너·마케터가 이 앱에서 얻어야 할 건
+ * 결국 두 번째다 — 읽고 끝나면 남는 게 없다.
+ */
+export function applyQuestion(input: ImprovementInput): string {
+  const d = toDecision(input.decision);
+  const type = classifyImprovement(input);
+  if (d.chosen && d.chosen.length <= 20 && !NEGATED.test(d.chosen)) {
+    return `${d.chosen}${objectParticle(d.chosen)} 우리 일에 그대로 옮긴다면, 어디부터 손대시겠어요?`;
+  }
+  if (type) {
+    return `${IMPROVEMENT_PHRASE[type].replace(/ 사례$/, "")} 방식을 우리 일에 붙인다면, 어디부터 손대시겠어요?`;
+  }
+  return "이 글에서 우리 일에 바로 옮겨올 수 있는 건 무엇인가요?";
 }

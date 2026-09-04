@@ -157,7 +157,7 @@ export function ArticleDetailScreen({ route }: Props) {
           {/* 주제칩 · 읽기시간 · 공유·북마크 */}
           <View style={styles.metaTop}>
             {a.topic ? <TopicChip topic={a.topic} /> : null}
-            <LevelBadge level={a.level} readMinutes={a.read_minutes} />
+            <LevelBadge level={a.level} />
             <View style={{ flex: 1 }} />
             <Pressable
               onPress={() => Share.share({ message: `${a.title}\n${a.url}` }).catch(() => undefined)}

@@ -710,6 +710,11 @@ export interface Database {
         Args: { p_article_id: string };
         Returns: { job_role: JobRole; cnt: number }[];
       };
+      // 목록 카드용 — 글마다 1등 직군 하나만, 한 번에(§31).
+      all_top_reader_roles: {
+        Args: Record<string, never>;
+        Returns: { article_id: string; job_role: JobRole; cnt: number }[];
+      };
       // 내가 자주 막히는 영역 — 단어 클릭 수를 도메인별로 합친 것.
       my_weak_domains: {
         Args: { p_user_id: string };

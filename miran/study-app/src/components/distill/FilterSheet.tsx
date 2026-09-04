@@ -514,8 +514,9 @@ const styles = StyleSheet.create({
   chipScroll: { flexGrow: 0 },
   chipBar: {
     paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 12,
+    // 히어로 카드 바로 밑에 칩이 붙어 있어 답답했다 → 위 24, 아래 16 으로 벌린다.
+    paddingTop: 24,
+    paddingBottom: 16,
     paddingRight: 24,
     gap: 8,
     alignItems: "center",

@@ -2,14 +2,14 @@
 // DESIGN_GUIDE §6.5(아티클 카드)·§6.6(서비스 로고칩)·§6.7(주제칩) 기준.
 import React, { useMemo, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import { Bookmark, Eye, MessageSquare } from "lucide-react-native";
+import { Bookmark, Eye, MessageSquare, Users } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
-import { TOPIC_META, dtype , PRETENDARD} from "@/theme";
+import { JOB_ROLE_META, TOPIC_META, dtype , PRETENDARD} from "@/theme";
 import { ArticleThumb } from "./ArticleThumb";
 import { ServiceLogo } from "./ServiceLogo";
 import { safeImageUri } from "@/lib/image";
-import { useIsBookmarked, useToggleBookmark } from "@/data";
+import { useAllTopReaderRoles, useIsBookmarked, useToggleBookmark } from "@/data";
 import { LevelBadge } from "./LevelBadge";
 import { ImprovementLine } from "./ImprovementLine";
 import type { ArticleWithBlog } from "@/data/articles";
@@ -26,7 +26,9 @@ function CardStats({ article }: { article: ArticleWithBlog }) {
   const { theme } = useTheme();
   const c = theme.colors;
   return (
-    <View style={styles.statsRow}>
+    // ⚠️ 조회·인사이트 수는 **줄의 맨 오른쪽**에 붙는다. 가운데 끼면 출처·날짜와
+    //    뒤엉켜 어느 게 무슨 숫자인지 안 읽힌다.
+    <View style={[styles.statsRow, { marginLeft: "auto" }]}>
       <Eye size={13} color={c.textMuted} />
       <Text style={[styles.statText, { color: c.textMuted }]}>{fmtCount(article.view_count)}</Text>
       <MessageSquare size={13} color={c.textMuted} style={{ marginLeft: 8 }} />
@@ -93,7 +95,33 @@ function CardChips({ article }: { article: ArticleWithBlog }) {
   return (
     <View style={styles.chipRow}>
       {article.topic != null ? <TopicChip topic={article.topic} /> : null}
-      <LevelBadge level={article.level} readMinutes={article.read_minutes} />
+      <LevelBadge level={article.level} />
+    </View>
+  );
+}
+
+/**
+ * "기획자 3명이 읽고 있어요" — **목록 카드에도** 붙인다.
+ *
+ * 상세에만 있으면 정작 들어갈 글을 고르는 목록에서 이 신호를 못 쓴다. 비개발자가
+ * 남을지 말지는 목록에서 갈린다 — 개발자 글만 보이면 그 자리에서 나간다.
+ *
+ * ⚠️ 카드마다 조회하지 않는다. 글 전체의 1등 직군을 **한 번에** 받아 캐시한 걸 꺼내 쓴다
+ *    (useAllTopReaderRoles). 아직 읽은 사람이 없는 글엔 아무것도 안 그린다.
+ */
+function ReaderHint({ articleId }: { articleId: string }) {
+  const { theme } = useTheme();
+  const c = theme.colors;
+  const top = useAllTopReaderRoles().data?.[articleId];
+  if (!top) return null;
+  const meta = JOB_ROLE_META[top.jobRole];
+  if (!meta) return null;
+  return (
+    <View style={styles.readerRow}>
+      <Users size={12} color={c.textMuted} strokeWidth={2} />
+      <Text style={[styles.readerText, { color: c.textMuted }]} numberOfLines={1}>
+        {meta.plural} {top.count}명이 읽고 있어요
+      </Text>
     </View>
   );
 }
@@ -156,6 +184,7 @@ export function ArticleCardH({
           title={article.title}
           tags={article.tags}
         />
+        <ReaderHint articleId={article.id} />
         <MetaLine article={article} />
       </View>
     </Pressable>
@@ -188,6 +217,7 @@ export function ArticleRow({
           title={article.title}
           tags={article.tags}
         />
+        <ReaderHint articleId={article.id} />
         <MetaLine article={article} />
       </View>
       <ArticleThumb article={article} style={styles.thumbRow}>
@@ -233,6 +263,7 @@ export function FeaturedCard({
           title={article.title}
           tags={article.tags}
         />
+        <ReaderHint articleId={article.id} />
         <MetaLine article={article} />
       </View>
     </Pressable>
@@ -275,6 +306,7 @@ export function ArticleGridCard({
           title={article.title}
           tags={article.tags}
         />
+        <ReaderHint articleId={article.id} />
         <MetaLine article={article} />
       </View>
     </Pressable>
@@ -290,6 +322,8 @@ const styles = StyleSheet.create({
   topicText: { ...dtype.label },
 
   chipRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
+  readerRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  readerText: { ...dtype.meta, flex: 1 },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
   metaText: { ...dtype.meta, flex: 1 },
   statsRow: { flexDirection: "row", alignItems: "center", gap: 3 },

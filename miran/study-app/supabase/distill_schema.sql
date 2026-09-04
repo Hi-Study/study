@@ -979,3 +979,29 @@ as $fn$
   group by u.job_role
   order by count(*) desc;
 $fn$;
+
+-- ============================================================
+-- 31) 직군 배지를 **목록에서도** 보여주기 위한 일괄 조회.
+--     상세에서만 "기획자 3명이 읽고 있어요"가 보이면, 정작 들어갈 글을 고르는
+--     목록에서는 그 신호를 못 쓴다. 비개발자가 남을지 말지는 목록에서 갈린다.
+--
+--     ⚠️ 글마다 RPC 를 부르면 화면 하나에 수십 번 왕복한다. 그래서 **한 번에**
+--        전부 받아 캐시한다. 읽힌 글만 나오므로 결과가 작다(실측 21건).
+--        글당 1등 직군 하나만 — 목록 카드에 배지를 두 개 붙일 자리는 없다.
+-- ============================================================
+create or replace function public.all_top_reader_roles()
+returns table (article_id uuid, job_role text, cnt bigint)
+language sql
+stable
+security definer
+set search_path = public
+as $fn$
+  select distinct on (r.article_id)
+         r.article_id, u.job_role, count(*) over (partition by r.article_id, u.job_role)::bigint as cnt
+  from public.article_reads r
+  join public.users u on u.id = r.user_id
+  where u.job_role is not null
+  order by r.article_id, count(*) over (partition by r.article_id, u.job_role) desc, u.job_role;
+$fn$;
+
+grant execute on function public.all_top_reader_roles() to anon, authenticated;

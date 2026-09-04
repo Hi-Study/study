@@ -68,6 +68,8 @@ export const qk = {
   stampCounts: (articleId: string) => ["stamps", "counts", articleId] as const,
   readingStats: (uid: string) => ["reading-stats", uid] as const,
   readerRoles: (articleId: string) => ["reader-roles", articleId] as const,
+  /** 목록 카드용 — 글마다 1등 직군을 한 번에. */
+  allReaderRoles: () => ["reader-roles", "all"] as const,
   weakDomains: (uid: string) => ["weak-domains", uid] as const,
   myTopics: (uid: string) => ["my-topics", uid] as const,
   weeklyTogether: () => ["articles", "weekly-together"] as const,
