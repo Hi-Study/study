@@ -1,35 +1,53 @@
-// 카드 썸네일 — **로딩에 실패해도 빈 박스를 남기지 않는다.**
+// 카드 썸네일 — **비어 보이지 않게** 한다.
 //
-// 예전에는 `og_image` 가 null 일 때만 브랜드 로고로 대체했다. 그런데 URL 이 있어도
-// 실제로 못 불러오는 경우가 있다(핫링크 차단·DNS 실패·만료된 CDN 경로).
-// 실측: 배달의민족 이미지 도메인이 응답하지 않아 카드가 회색 박스로 남았다.
-// 그래서 onError 를 잡아 **같은 폴백**으로 떨어뜨린다.
+// 이미지가 없거나 못 불러오면 예전엔 회색 바탕에 작은 로고만 떴다. 그러면 사용자는
+// "이미지를 못 가져왔다"고 느낀다. 그래서 폴백을 **브랜드 색으로 채운 기본 이미지**로
+// 만든다 — 출처 색 배경 + 로고 + 글 제목 첫 줄. 카드가 비어 보이지 않는다.
+//
+// 폴백이 도는 경우는 둘 다다:
+//   · og_image 가 아예 없을 때
+//   · URL 은 있는데 로딩에 실패할 때(핫링크 차단·만료된 CDN 경로 등) — onError 로 잡는다
 import React, { useState } from "react";
-import { Image, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
+import { Image, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { safeImageUri } from "@/lib/image";
+import { dtype } from "@/theme";
 import { ServiceLogo } from "./ServiceLogo";
 import type { ArticleWithBlog } from "@/data/articles";
 
 interface Props {
   article: ArticleWithBlog;
-  /** 폴백 로고 크기 */
   logoSize?: number;
+  /** 제목까지 넣을 공간이 있는 큰 썸네일인지(가로 카드·히어로). */
+  large?: boolean;
   style?: StyleProp<ViewStyle>;
-  children?: React.ReactNode; // 북마크 오버레이 등
+  children?: React.ReactNode;
 }
 
-export function ArticleThumb({ article, logoSize = 34, style, children }: Props) {
+/** 브랜드 색을 옅게 깐다 — 원색 그대로면 글자가 안 읽힌다. */
+function tintOf(hex: string | null | undefined): string {
+  const base = hex && /^#[0-9a-f]{6}$/i.test(hex) ? hex : "#4F46E5";
+  return base + "1A"; // 약 10% 불투명도
+}
+
+export function ArticleThumb({ article, logoSize = 34, large = false, style, children }: Props) {
   const { theme } = useTheme();
   const c = theme.colors;
   const [failed, setFailed] = useState(false);
 
   const uri = article.og_image ? safeImageUri(article.og_image) : undefined;
   const showImage = Boolean(uri) && !failed;
+  const brand = article.blog?.brand_color;
 
   return (
-    <View style={[styles.wrap, { backgroundColor: c.surfaceSunken }, style]}>
+    <View
+      style={[
+        styles.wrap,
+        { backgroundColor: showImage ? c.surfaceSunken : tintOf(brand) },
+        style,
+      ]}
+    >
       {showImage ? (
         <Image
           source={{ uri }}
@@ -38,13 +56,20 @@ export function ArticleThumb({ article, logoSize = 34, style, children }: Props)
           onError={() => setFailed(true)}
         />
       ) : (
-        <ServiceLogo
-          name={article.blog?.name ?? "?"}
-          brandColor={article.blog?.brand_color}
-          homepage={article.blog?.homepage}
-          blogKey={article.blog?.key}
-          size={logoSize}
-        />
+        <View style={styles.fallback}>
+          <ServiceLogo
+            name={article.blog?.name ?? "?"}
+            brandColor={brand}
+            homepage={article.blog?.homepage}
+            blogKey={article.blog?.key}
+            size={large ? 40 : logoSize}
+          />
+          {large ? (
+            <Text style={[styles.fbTitle, { color: c.textSecondary }]} numberOfLines={2}>
+              {article.title}
+            </Text>
+          ) : null}
+        </View>
       )}
       {children}
     </View>
@@ -54,4 +79,6 @@ export function ArticleThumb({ article, logoSize = 34, style, children }: Props)
 const styles = StyleSheet.create({
   wrap: { alignItems: "center", justifyContent: "center", overflow: "hidden" },
   img: { width: "100%", height: "100%" },
+  fallback: { alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 16 },
+  fbTitle: { ...dtype.bodyS, fontSize: 13, lineHeight: 18, textAlign: "center" },
 });

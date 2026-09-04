@@ -49,6 +49,7 @@ import {
 import { ServiceLogo, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
 import { ArticleHighlightSection } from "@/components/distill/ArticleHighlightSection";
 import { ImprovementTag } from "@/components/distill/ImprovementTag";
+import { LevelBadge } from "@/components/distill/LevelBadge";
 import { DecisionCard } from "@/components/distill/DecisionCard";
 import { StampBar } from "@/components/distill/StampBar";
 import { ReaderRoles } from "@/components/distill/ReaderRoles";
@@ -156,12 +157,7 @@ export function ArticleDetailScreen({ route }: Props) {
           {/* 주제칩 · 읽기시간 · 공유·북마크 */}
           <View style={styles.metaTop}>
             {a.topic ? <TopicChip topic={a.topic} /> : null}
-            <ImprovementTag
-              decision={a.decision}
-              title={a.title}
-              tags={a.tags}
-              readMinutes={a.read_minutes}
-            />
+            <LevelBadge level={a.level} readMinutes={a.read_minutes} />
             <View style={{ flex: 1 }} />
             <Pressable
               onPress={() => Share.share({ message: `${a.title}\n${a.url}` }).catch(() => undefined)}

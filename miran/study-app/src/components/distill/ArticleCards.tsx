@@ -10,7 +10,7 @@ import { ArticleThumb } from "./ArticleThumb";
 import { ServiceLogo } from "./ServiceLogo";
 import { safeImageUri } from "@/lib/image";
 import { useIsBookmarked, useToggleBookmark } from "@/data";
-import { ImprovementTag } from "./ImprovementTag";
+import { LevelBadge } from "./LevelBadge";
 import type { ArticleWithBlog } from "@/data/articles";
 import type { Topic } from "@/types/database";
 
@@ -82,18 +82,15 @@ export function TopicChip({ topic }: { topic: Topic }) {
   );
 }
 
-// 주제칩(누가 쓴 글이냐) + 개선 유형 태그(무엇을 개선했냐) 한 줄.
-//   두 축을 나란히 둔다. 카드 단계에서 "이 글이 내가 찾던 사례인지"를 고르게 하는 게 목적.
+// 카드 한 줄 — 주제 · 난이도 · 읽는 시간.
+//   "이 글이 내가 읽을 만한지"를 목록에서 바로 판단하게 한다.
+//   개선 유형 태그(무엇을 개선했나)와 한 줄 요약은 **글 상세**에 둔다 —
+//   카드에까지 넣으면 한 줄에 태그가 세 개씩 붙어 읽기 어려워진다.
 function CardChips({ article }: { article: ArticleWithBlog }) {
   return (
     <View style={styles.chipRow}>
       {article.topic != null ? <TopicChip topic={article.topic} /> : null}
-      <ImprovementTag
-        decision={article.decision}
-        title={article.title}
-        tags={article.tags}
-        readMinutes={article.read_minutes}
-      />
+      <LevelBadge level={article.level} readMinutes={article.read_minutes} />
     </View>
   );
 }
@@ -140,7 +137,7 @@ export function ArticleCardH({
         { width, backgroundColor: c.surfaceCard, borderColor: c.hairline, opacity: pressed ? 0.9 : 1 },
       ]}
     >
-      <ArticleThumb article={article} style={styles.thumbH}>
+      <ArticleThumb article={article} large style={styles.thumbH}>
         <View style={[styles.bmOverlay, { backgroundColor: c.surfaceCard }]}>
           <CardBookmark articleId={article.id} />
         </View>
@@ -205,7 +202,7 @@ export function FeaturedCard({
         { backgroundColor: c.surfaceCard, borderColor: c.hairline, opacity: pressed ? 0.95 : 1 },
       ]}
     >
-      <ArticleThumb article={article} style={styles.featuredThumb}>
+      <ArticleThumb article={article} large style={styles.featuredThumb}>
         <View style={[styles.bmOverlay, { backgroundColor: c.surfaceCard }]}>
           <CardBookmark articleId={article.id} />
         </View>

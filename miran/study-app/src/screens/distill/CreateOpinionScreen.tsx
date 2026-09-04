@@ -92,6 +92,8 @@ export function CreateOpinionScreen({ route }: Props) {
   );
 
   const [insight, setInsight] = useState<Insight>({ ...EMPTY_INSIGHT });
+  // 질문에 대한 답 — 3항목과 별도로 받고, 저장할 때 해석(interpretation)에 합친다.
+  const [answer, setAnswer] = useState("");
   const [prefilled, setPrefilled] = useState(false);
   const set = (patch: Partial<Insight>) => setInsight((p) => ({ ...p, ...patch }));
 
@@ -112,10 +114,23 @@ export function CreateOpinionScreen({ route }: Props) {
     setPrefilled(true);
   }, [draft, prefilled]);
 
-  const canSave = insight.core.trim().length > 0 && !create.isPending;
+  // 질문에만 답해도 저장할 수 있어야 한다 — 그게 이 화면의 가장 쉬운 입구다.
+  const canSave =
+    (insight.core.trim().length > 0 || answer.trim().length > 0) && !create.isPending;
 
   const save = () => {
-    const clean = cleanInsight(insight);
+    const a = answer.trim();
+    const merged: Insight = {
+      ...insight,
+      // 핵심이 비었으면 질문의 답을 핵심으로 올린다(빈 저장 방지).
+      core: insight.core.trim() || a,
+      // 질문과 답을 함께 남겨야 나중에 읽을 때 맥락이 산다.
+      interpretation:
+        a && question
+          ? [insight.interpretation, `${question}\n→ ${a}`].filter(Boolean).join("\n\n")
+          : insight.interpretation,
+    };
+    const clean = cleanInsight(merged);
     if (!clean) return;
     create.mutate(clean, { onSuccess: () => nav.goBack() });
   };
@@ -159,16 +174,36 @@ export function CreateOpinionScreen({ route }: Props) {
             </View>
           ) : null}
 
-          {/* 독후감 3항목 — 질문은 **첫 칸 안에** 넣는다.
-               예전엔 질문 카드가 따로 떠 있고 그 아래 입력 3칸이 또 있어서
-               "질문에 답하는 곳"과 "쓰는 곳"이 분리돼 보였다. */}
+          {/* ② 생각해볼 질문 + **그 질문에 답하는 칸**.
+                 질문이 있는 글(결정 카드가 온전한 글)에만 나온다.
+                 아래 3항목과 별개다 — 질문은 "쓸 거리"를 주는 입구고,
+                 3항목은 원래 쓰던 독후감 틀이다. 둘 다 남긴다. */}
+          {question ? (
+            <View style={[styles.qBlock, { borderColor: c.accentTintBorder, backgroundColor: c.primaryTint }]}>
+              <Text style={[styles.qLabel, { color: c.primary }]}>생각해볼 질문</Text>
+              <Text style={[styles.qText, { color: c.textPrimary }]}>{question}</Text>
+              <TextInput
+                value={answer}
+                onChangeText={setAnswer}
+                placeholder="한 문장이어도 괜찮아요"
+                placeholderTextColor={c.textMuted}
+                multiline
+                style={[
+                  styles.input,
+                  styles.inputMulti,
+                  { color: c.textPrimary, borderColor: c.hairline, backgroundColor: c.surfaceCard },
+                ]}
+              />
+            </View>
+          ) : null}
+
+          {/* ③ 독후감 3항목 (회의록 §글 등록) — 종전 그대로 */}
           <Field
             label="인상 깊은 부분"
             required
-            hint={question}
             value={insight.core}
             onChangeText={(t) => set({ core: t })}
-            placeholder={question ? "한 문장이어도 괜찮아요" : "이 글에서 가장 인상 깊었던 점"}
+            placeholder="이 글에서 가장 인상 깊었던 점"
           />
           <Field
             label="접목하고 싶은 방법"
@@ -213,6 +248,9 @@ const styles = StyleSheet.create({
   field: { gap: 8 },
   label: { ...dtype.label, fontSize: 13 },
   hint: { ...dtype.bodyS, fontSize: 13.5, lineHeight: 20, marginTop: -2 },
+  qBlock: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 8 },
+  qLabel: { ...dtype.label, fontSize: 12 },
+  qText: { ...dtype.cardTitle, fontSize: 15.5, lineHeight: 23 },
   input: {
     borderWidth: 1,
     borderRadius: 12,

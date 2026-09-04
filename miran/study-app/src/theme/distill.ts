@@ -94,20 +94,20 @@ export const LEVEL_META: Record<
   { label: string; hint: string; color: string; tint: string }
 > = {
   easy: {
-    label: "술술 읽혀요",
+    label: "입문",
     hint: "배경지식 없이 읽을 수 있어요",
     color: "#2C9184",
     tint: "#E1F2EF",
   },
   terms: {
-    label: "용어 몇 개만",
-    hint: "모르는 단어는 눌러서 뜻을 볼 수 있어요",
+    label: "보통",
+    hint: "도메인 용어가 몇 개 나와요. 눌러서 뜻을 볼 수 있어요",
     color: "#C0842F",
     tint: "#FAF0E1",
   },
   code: {
-    label: "코드까지 들어가요",
-    hint: "구현 상세가 있어요",
+    label: "심화",
+    hint: "코드·구현 상세까지 들어가요",
     color: "#2F5FC9",
     tint: "#E9F0FB",
   },
