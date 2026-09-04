@@ -25,9 +25,13 @@ interface Props {
   children?: React.ReactNode;
 }
 
-/** 브랜드 색을 옅게 깐다 — 원색 그대로면 글자가 안 읽힌다. */
-function tintOf(hex: string | null | undefined): string {
-  const base = hex && /^#[0-9a-f]{6}$/i.test(hex) ? hex : "#4F46E5";
+/**
+ * 브랜드 색을 옅게 깐다 — 원색 그대로면 글자가 안 읽힌다.
+ * 폴백(강조색)은 **인자로 받는다** — 이 함수는 모듈 최상위라 테마를 못 읽고,
+ *   하드코딩한 #4F46E5 는 다크모드에서 틀린 색이 된다(DESIGN_SYSTEM §6).
+ */
+function tintOf(hex: string | null | undefined, fallback: string): string {
+  const base = hex && /^#[0-9a-f]{6}$/i.test(hex) ? hex : fallback;
   return base + "1A"; // 약 10% 불투명도
 }
 
@@ -44,7 +48,7 @@ export function ArticleThumb({ article, logoSize = 34, large = false, style, chi
     <View
       style={[
         styles.wrap,
-        { backgroundColor: showImage ? c.surfaceSunken : tintOf(brand) },
+        { backgroundColor: showImage ? c.surfaceSunken : tintOf(brand, c.primary) },
         style,
       ]}
     >

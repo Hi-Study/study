@@ -7,6 +7,9 @@
 // UX 라이팅 규칙:
 //   · 사람을 등급 매기지 않는다("개발자용" X) — 글의 깊이를 말한다.
 //   · 빨강을 쓰지 않는다. 빨강은 경고라 "깊은 글 = 나쁜 글"로 읽힌다.
+//
+// ⚠️ 색을 쓰지 않는다. 난이도 파스텔이 주제 칩 파스텔과 같은 팔레트라
+//    카드 안에서 색의 의미가 겹쳤다. 회색 칩 + 라벨만으로 충분히 읽힌다.
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -34,8 +37,8 @@ export function LevelBadge({ level, readMinutes, withHint = false }: Props) {
     <View style={styles.wrap}>
       <View style={styles.row}>
         {meta ? (
-          <View style={[styles.chip, { backgroundColor: meta.tint }]}>
-            <Text style={[styles.text, { color: meta.color }]}>{meta.label}</Text>
+          <View style={[styles.chip, { backgroundColor: c.surfaceSunken }]}>
+            <Text style={[styles.text, { color: c.textSecondary }]}>{meta.label}</Text>
           </View>
         ) : null}
         {mins ? (
@@ -50,10 +53,11 @@ export function LevelBadge({ level, readMinutes, withHint = false }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 3 },
+  wrap: { gap: 4 },
   row: { flexDirection: "row", alignItems: "center", gap: 6 },
-  chip: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, alignSelf: "flex-start" },
-  text: { ...dtype.label, fontSize: 11.5 },
+  // 옆의 주제 칩(TopicChip)과 같은 규격 — 칩이 두 종류로 보이면 안 된다.
+  chip: { alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  text: { ...dtype.label },
   mins: { ...dtype.meta },
   hint: { ...dtype.meta },
 });

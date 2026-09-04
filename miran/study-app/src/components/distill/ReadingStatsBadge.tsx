@@ -7,6 +7,7 @@
 //   잃는 게 없으니 다시 시작할 때 부담도 없다.
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { Flame } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { dtype } from "@/theme";
@@ -21,7 +22,7 @@ export function StreakPill() {
   if (streak <= 0) return null; // 0 은 절대 그리지 않는다.
   return (
     <View style={[styles.pill, { backgroundColor: c.primaryTint }]}>
-      <Text style={styles.fire}>🔥</Text>
+      <Flame size={12} color={c.primary} strokeWidth={2} />
       <Text style={[styles.pillText, { color: c.primary }]}>{streak}일</Text>
     </View>
   );
@@ -68,8 +69,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 4,
   },
-  fire: { fontSize: 12 },
-  pillText: { ...dtype.label, fontSize: 12 },
+  pillText: { ...dtype.label },
 
   // 위아래 요소와 붙지 않게 자체 여백을 갖는다(마이 화면은 gap 이 없는 스택이라).
   row: {

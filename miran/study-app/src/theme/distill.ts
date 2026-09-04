@@ -1,4 +1,24 @@
 // distill 전용 토큰 — 주제(topic) 팔레트·문장 하이라이트 색·타입 스케일(DESIGN_GUIDE §2.4/§2.6/§3).
+import {
+  BarChart3,
+  ClipboardList,
+  Code,
+  HelpCircle,
+  Lightbulb,
+  Megaphone,
+  MessageCircle,
+  Palette,
+  ShieldCheck,
+  Target,
+  TrendingUp,
+  User,
+  Users,
+  Wallet,
+  Wrench,
+  Zap,
+} from "lucide-react-native";
+import type { LucideIcon } from "lucide-react-native";
+
 import { PRETENDARD } from "./tokens";
 import type { ImprovementType } from "@/lib/improvement";
 import type {
@@ -88,28 +108,24 @@ export const reading = {
  * 난이도 배지 — **사람을 등급 매기지 않고 '글의 성격'을 말한다.**
  * "개발자용" 같은 라벨은 비개발자를 밀어내고, 빨강은 "깊은 글 = 나쁜 글"로 읽히게 만든다.
  * 그래서 빨강을 쓰지 않는다. 거르는 장치가 아니라 기대치를 맞추는 장치다.
+ *
+ * ⚠️ **색을 갖지 않는다.** 예전엔 난이도마다 파스텔을 줬는데, 그 파스텔이
+ *    TOPIC_META 와 같은 팔레트라 카드 안에서 같은 분홍이 "디자인 글"이자
+ *    "심화"가 됐다. 색의 의미가 깨진다(DESIGN_SYSTEM §1 — 주제 색은 의미 색으로만).
+ *    카드에서 색을 쓰는 건 **주제 칩 하나뿐이다.**
  */
-export const LEVEL_META: Record<
-  ArticleLevel,
-  { label: string; hint: string; color: string; tint: string }
-> = {
+export const LEVEL_META: Record<ArticleLevel, { label: string; hint: string }> = {
   easy: {
     label: "입문",
     hint: "배경지식 없이 읽을 수 있어요",
-    color: "#2C9184",
-    tint: "#E1F2EF",
   },
   terms: {
     label: "보통",
     hint: "도메인 용어가 몇 개 나와요. 눌러서 뜻을 볼 수 있어요",
-    color: "#C0842F",
-    tint: "#FAF0E1",
   },
   code: {
     label: "심화",
     hint: "코드·구현 상세까지 들어가요",
-    color: "#2F5FC9",
-    tint: "#E9F0FB",
   },
 };
 
@@ -124,14 +140,11 @@ export const LEVEL_ORDER: ArticleLevel[] = ["easy", "terms", "code"];
  *   disagree → "같이 읽는 글"에 넣기 좋은 논쟁적인 글
  *   hard     → 이 글에 용어 예고가 필요하다는 신호(단어장 연결)
  */
-export const STAMP_META: Record<
-  StampKind,
-  { emoji: string; label: string; color: string; tint: string }
-> = {
-  apply: { emoji: "💡", label: "우리도 써먹겠다", color: "#C0842F", tint: "#FAF0E1" },
-  reason: { emoji: "🎯", label: "결정 근거가 인상적", color: "#6E45C4", tint: "#F0EAFA" },
-  disagree: { emoji: "🤔", label: "반대 의견 있음", color: "#C24A82", tint: "#FAE9F1" },
-  hard: { emoji: "😵", label: "용어가 어려웠다", color: "#2C9184", tint: "#E1F2EF" },
+export const STAMP_META: Record<StampKind, { icon: LucideIcon; label: string }> = {
+  apply: { icon: Lightbulb, label: "우리도 써먹겠다" },
+  reason: { icon: Target, label: "결정 근거가 인상적" },
+  disagree: { icon: MessageCircle, label: "반대 의견 있음" },
+  hard: { icon: HelpCircle, label: "용어가 어려웠다" },
 };
 
 export const STAMP_ORDER: StampKind[] = ["apply", "reason", "disagree", "hard"];
@@ -142,14 +155,14 @@ export const STAMP_ORDER: StampKind[] = ["apply", "reason", "disagree", "hard"];
  */
 export const JOB_ROLE_META: Record<
   JobRole,
-  { label: string; emoji: string; plural: string; summaryMode: "plain" | "planner" | "explain" }
+  { label: string; icon: LucideIcon; plural: string; summaryMode: "plain" | "planner" | "explain" }
 > = {
-  planner: { label: "기획", emoji: "📋", plural: "기획자", summaryMode: "planner" },
-  designer: { label: "디자인", emoji: "🎨", plural: "디자이너", summaryMode: "planner" },
-  marketer: { label: "마케팅", emoji: "📣", plural: "마케터", summaryMode: "planner" },
-  dev: { label: "개발", emoji: "💻", plural: "개발자", summaryMode: "plain" },
-  data: { label: "데이터", emoji: "📊", plural: "데이터 직군", summaryMode: "plain" },
-  other: { label: "기타", emoji: "🙂", plural: "멤버", summaryMode: "explain" },
+  planner: { label: "기획", icon: ClipboardList, plural: "기획자", summaryMode: "planner" },
+  designer: { label: "디자인", icon: Palette, plural: "디자이너", summaryMode: "planner" },
+  marketer: { label: "마케팅", icon: Megaphone, plural: "마케터", summaryMode: "planner" },
+  dev: { label: "개발", icon: Code, plural: "개발자", summaryMode: "plain" },
+  data: { label: "데이터", icon: BarChart3, plural: "데이터 직군", summaryMode: "plain" },
+  other: { label: "기타", icon: User, plural: "멤버", summaryMode: "explain" },
 };
 
 export const JOB_ROLE_ORDER: JobRole[] = [
@@ -192,19 +205,19 @@ export const WORD_DOMAIN_LABEL: Record<string, string> = {
  *    기술블로그 글은 거의 다 용어가 나와서 85%가 한 칸에 몰렸다(실측 82/96).
  *    변별력 없는 축은 화면만 어지럽힌다.
  */
-export const IMPROVEMENT_META: Record<
-  ImprovementType,
-  { label: string; emoji: string; color: string; tint: string }
-> = {
-  ux: { label: "UI/UX 개선", emoji: "🎨", color: "#C24A82", tint: "#FAE9F1" },
-  perf: { label: "성능 개선", emoji: "⚡", color: "#C0842F", tint: "#FAF0E1" },
-  cost: { label: "비용 절감", emoji: "💰", color: "#2C9184", tint: "#E1F2EF" },
-  reliability: { label: "장애·안정성", emoji: "🛡️", color: "#2F5FC9", tint: "#E9F0FB" },
-  devex: { label: "개발 생산성", emoji: "🔧", color: "#6E45C4", tint: "#F0EAFA" },
-  data: { label: "데이터·실험", emoji: "📊", color: "#4F46E5", tint: "#EEF0FE" },
-  org: { label: "조직·프로세스", emoji: "👥", color: "#3C9E79", tint: "#E4F3EC" },
-  brand: { label: "브랜드·마케팅", emoji: "📣", color: "#C2562F", tint: "#FAECE5" },
+export const IMPROVEMENT_META: Record<ImprovementType, { label: string; icon: LucideIcon }> = {
+  ux: { label: "UI/UX 개선", icon: Palette },
+  perf: { label: "성능 개선", icon: Zap },
+  cost: { label: "비용 절감", icon: Wallet },
+  reliability: { label: "장애·안정성", icon: ShieldCheck },
+  devex: { label: "개발 생산성", icon: Wrench },
+  data: { label: "데이터·실험", icon: BarChart3 },
+  org: { label: "조직·프로세스", icon: Users },
+  brand: { label: "브랜드·마케팅", icon: Megaphone },
 };
+
+/** 개선 한 줄(카드) 앞에 붙는 공용 아이콘 — 유형별로 다르게 하면 목록이 시끄럽다. */
+export const IMPROVEMENT_LINE_ICON: LucideIcon = TrendingUp;
 
 /** 필터 칩 노출 순서 — 비개발자가 먼저 볼 것부터. */
 export const IMPROVEMENT_ORDER: ImprovementType[] = [

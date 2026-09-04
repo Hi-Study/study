@@ -26,6 +26,7 @@ import {
   ExternalLink,
   MessageSquare,
   Share2,
+  Sparkles,
 } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
@@ -455,7 +456,10 @@ function AiSummaryPanel({
             {running === "explain" ? (
               <ActivityIndicator color={c.primary} />
             ) : (
-              <Text style={[styles.aiExplainText, { color: c.primary }]}>🍬 더 쉽게 풀어서 보기</Text>
+              <View style={styles.aiExplainRow}>
+                <Sparkles size={16} color={c.primary} strokeWidth={2} />
+                <Text style={[styles.aiExplainText, { color: c.primary }]}>더 쉽게 풀어서 보기</Text>
+              </View>
             )}
           </Pressable>
         )
@@ -596,7 +600,8 @@ const styles = StyleSheet.create({
   aiCardTitle: { ...dtype.cardTitle, flex: 1 },
   aiCardBody: { ...dtype.body, lineHeight: 24 },
   aiExplain: { borderWidth: 1, borderRadius: 12, paddingVertical: 12, alignItems: "center" },
-  aiExplainText: { ...dtype.cardTitle, fontSize: 14 },
+  aiExplainRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  aiExplainText: { ...dtype.cardTitle },
 
   opinions: { marginTop: 28, gap: 12 },
   opinionsTitle: { ...dtype.title },

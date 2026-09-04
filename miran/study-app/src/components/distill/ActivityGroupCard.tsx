@@ -65,9 +65,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
-  title: { ...dtype.cardTitle, fontSize: 15, lineHeight: 21 },
+  title: { ...dtype.cardTitle },
   meta: { ...dtype.meta, marginTop: 2 },
   count: { borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
-  countText: { ...dtype.label, fontSize: 11.5 },
+  countText: { ...dtype.label },
   body: { borderTopWidth: 1, paddingHorizontal: 14, paddingVertical: 12, gap: 10 },
 });

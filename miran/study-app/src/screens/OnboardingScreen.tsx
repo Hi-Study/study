@@ -74,7 +74,11 @@ export function OnboardingScreen() {
                   },
                 ]}
               >
-                <Text style={styles.roleEmoji}>{meta.emoji}</Text>
+                <meta.icon
+                  size={22}
+                  color={on ? c.primary : c.textSecondary}
+                  strokeWidth={2}
+                />
                 <Text style={[styles.roleLabel, { color: on ? c.primary : c.textPrimary }]}>
                   {meta.label}
                 </Text>
@@ -159,7 +163,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 12,
   },
-  roleEmoji: { fontSize: 24 },
+
   roleLabel: { ...dtype.cardTitle, fontSize: 15 },
 
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 },

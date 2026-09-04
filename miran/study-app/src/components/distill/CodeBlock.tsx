@@ -16,7 +16,9 @@ const MONO = Platform.select({ ios: "Menlo", android: "monospace", default: "mon
 export function CodeBlock({ code, fontScale = 1 }: { code: string; fontScale?: number }) {
   const { theme } = useTheme();
   const dark = theme.mode === "dark";
-  // 라이트 모드에서도 코드는 살짝 가라앉은 면으로 — 산문과 확실히 구분된다.
+  // 코드는 **라이트 모드에서도 어두운 면**으로 둔다 — 산문과 확실히 구분되고,
+  // 들여쓰기·기호가 흰 바탕보다 훨씬 잘 읽힌다(GitHub·Notion 과 같은 관습).
+  // 그래서 이 4개는 토큰이 아니라 상수다. DESIGN_SYSTEM §6 이 허용하는 "극소수 예외".
   const bg = dark ? "#12161C" : "#1E232B";
   const fg = dark ? "#D7DEE9" : "#E6EDF3";
 

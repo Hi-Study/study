@@ -85,8 +85,10 @@ export function TopicChip({ topic }: { topic: Topic }) {
 
 // 카드 한 줄 — 주제 · 난이도 · 읽는 시간.
 //   "이 글이 내가 읽을 만한지"를 목록에서 바로 판단하게 한다.
-//   개선 유형 태그(무엇을 개선했나)와 한 줄 요약은 **글 상세**에 둔다 —
-//   카드에까지 넣으면 한 줄에 태그가 세 개씩 붙어 읽기 어려워진다.
+//
+//   ⚠️ **이 줄에서 색을 갖는 건 주제 칩 하나뿐이다.** 난이도까지 파스텔을 주면
+//      두 칩이 같은 팔레트로 나란히 서서 어느 색이 무슨 뜻인지 알 수 없어진다.
+//      "무엇을 개선했나"는 제목 아래 ImprovementLine 이 문장으로 말한다.
 function CardChips({ article }: { article: ArticleWithBlog }) {
   return (
     <View style={styles.chipRow}>
