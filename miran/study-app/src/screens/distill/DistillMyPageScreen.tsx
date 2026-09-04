@@ -43,6 +43,8 @@ import { OpinionCard } from "@/components/distill/OpinionCard";
 import { ArticleRow, ServiceLogo, TopicChip, relativeDate } from "@/components/distill/ArticleCards";
 import { ActivityCalendar, dayKey } from "@/components/distill/ActivityCalendar";
 import { ReadingStatsRow } from "@/components/distill/ReadingStatsBadge";
+import { ActivityGroupCard } from "@/components/distill/ActivityGroupCard";
+import { groupActivity, type ActivityGroup } from "@/lib/groupActivity";
 import { WeakDomains } from "@/components/distill/WeakDomains";
 import { Loading, EmptyState } from "@/components";
 
@@ -109,20 +111,28 @@ export function DistillMyPageScreen() {
     words: wordsQ,
   } as const;
   const activeQ = byTab[tab];
-  const data = (byTab[tab].data ?? []) as Array<
-    | OpinionFeedItem
-    | MyHighlightRow
-    | ArticleWithBlog
-    | MyCommentRow
-    | UserWordRow
-  >;
+  const data = (byTab[tab].data ?? []) as Row[];
 
-  // 날짜별 그룹 헤더 — 의견·하이라이트·댓글·단어(날짜 있는 탭).
+  // 하이라이트·단어·댓글은 **같은 글의 활동을 한 카드로** 묶는다.
+  //   예전엔 밑줄 5개면 카드 5장이 나와서 목록만 길어지고 어떤 글인지가 안 보였다.
+  const grouped = tab === "highlights" || tab === "words" || tab === "comments";
+
+  const groups: ActivityGroup<Row>[] = grouped
+    ? groupActivity(
+        data as Row[],
+        (it) => sourceKeyOf(tab, it),
+        (it) => (it as { created_at?: string }).created_at ?? null,
+      )
+    : [];
+
+  // 날짜별 그룹 헤더 — 묶은 탭은 **그룹의 최근 활동일** 기준.
   const dated =
     tab === "opinions" || tab === "highlights" || tab === "comments" || tab === "words";
   const headers = dated
     ? bucketHeaders(
-        data.map((it) => (it as { created_at?: string }).created_at ?? null),
+        grouped
+          ? groups.map((g) => g.latest)
+          : data.map((it) => (it as { created_at?: string }).created_at ?? null),
         Date.now(),
       )
     : [];
@@ -136,16 +146,115 @@ export function DistillMyPageScreen() {
     words: { title: "저장한 단어가 없어요", hint: "글에서 문장을 길게 눌러 단어를 담아보세요" },
   };
 
+  /** 같은 글의 활동을 카드 하나로 — 머리에 글 제목, 안에 항목들. */
+  const renderGroup = (g: ActivityGroup<Row>) => {
+    const head = groupHeadOf(tab, g.items[0]);
+    const n = g.items.length;
+
+    if (tab === "highlights") {
+      const rows = g.items as MyHighlightRow[];
+      const articleId = rows[0].article_id;
+      return (
+        <ActivityGroupCard
+          title={head.title}
+          countLabel={n > 1 ? `밑줄 ${n}` : null}
+          onPress={
+            articleId ? () => nav.navigate("ArticleDetail", { articleId }) : undefined
+          }
+        >
+          {rows.map((h) => (
+            <View key={h.id} style={{ gap: 4 }}>
+              {h.quote ? (
+                <Text
+                  style={[
+                    styles.hlQuote,
+                    { backgroundColor: highlightBg(h.color), color: c.textPrimary },
+                  ]}
+                  numberOfLines={3}
+                >
+                  “{h.quote}”
+                </Text>
+              ) : null}
+              {h.note ? (
+                <Text style={[styles.hlNote, { color: c.textSecondary }]}>{h.note}</Text>
+              ) : null}
+            </View>
+          ))}
+        </ActivityGroupCard>
+      );
+    }
+
+    if (tab === "words") {
+      const rows = g.items as UserWordRow[];
+      const articleId = rows[0].article_id;
+      return (
+        <ActivityGroupCard
+          title={head.title}
+          countLabel={n > 1 ? `단어 ${n}` : null}
+          onPress={
+            articleId ? () => nav.navigate("ArticleDetail", { articleId }) : undefined
+          }
+        >
+          {/* WordCard 를 그대로 쓴다 — 삭제·"AI 뜻 다시 만들기"가 이 컴포넌트에 있다. */}
+          {rows.map((w) => (
+            <WordCard key={w.id} row={w} bare />
+          ))}
+        </ActivityGroupCard>
+      );
+    }
+
+    // 댓글 — 원본(인사이트/자유글) 단위
+    const rows = g.items as MyCommentRow[];
+    const src = commentSource(rows[0]);
+    return (
+      <ActivityGroupCard
+        title={head.title}
+        meta={head.meta}
+        countLabel={n > 1 ? `댓글 ${n}` : null}
+        onPress={
+          src
+            ? () =>
+                src.kind === "opinion"
+                  ? nav.navigate("OpinionDetail", { opinionId: src.id })
+                  : nav.navigate("CommunityPostDetail", { postId: src.id })
+            : undefined
+        }
+      >
+        {rows.map((m) => (
+          <Text key={m.id} style={[styles.hlNote, { color: c.textPrimary }]}>
+            {m.text}
+          </Text>
+        ))}
+      </ActivityGroupCard>
+    );
+  };
+
   return (
     <SafeAreaView
       style={[styles.screen, { backgroundColor: c.surfacePage }]}
       edges={["top", "left", "right"]}
     >
       <FlatList
-        data={data}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item, index }) => {
+        data={(grouped ? groups : data) as readonly unknown[]}
+        keyExtractor={(item) =>
+          grouped ? (item as ActivityGroup<Row>).key : (item as { id: string }).id
+        }
+        renderItem={({ item: raw, index }) => {
           const header = dated ? headers[index] : null;
+
+          if (grouped) {
+            const g = raw as ActivityGroup<Row>;
+            return (
+              <View>
+                {header ? (
+                  <Text style={[styles.dateHeader, { color: c.textMuted }]}>{header}</Text>
+                ) : null}
+                {renderGroup(g)}
+              </View>
+            );
+          }
+
+          const item = raw as Row;
           let body: React.ReactElement;
           if (tab === "opinions") {
             const o = item as OpinionFeedItem;
@@ -155,29 +264,15 @@ export function DistillMyPageScreen() {
                 onPress={() => nav.navigate("OpinionDetail", { opinionId: o.id })}
               />
             );
-          } else if (tab === "highlights") {
-            body = (
-              <HighlightRow
-                row={item as MyHighlightRow}
-                onPress={(articleId) => nav.navigate("ArticleDetail", { articleId })}
-              />
-            );
           } else if (tab === "bookmarks" || tab === "reads") {
             const a = item as ArticleWithBlog;
             body = <ArticleRow article={a} onPress={() => nav.navigate("ArticleDetail", { articleId: a.id })} />;
-          } else if (tab === "comments") {
-            body = (
-              <CommentRow
-                row={item as MyCommentRow}
-                onPress={(src) =>
-                  src.kind === "opinion"
-                    ? nav.navigate("OpinionDetail", { opinionId: src.id })
-                    : nav.navigate("CommunityPostDetail", { postId: src.id })
-                }
-              />
-            );
           } else {
-            body = <WordCard row={item as UserWordRow} />;
+            // 남는 건 북마크·읽은 글뿐 — 묶음 탭은 위에서 이미 그렸다.
+            const a = item as ArticleWithBlog;
+            body = (
+              <ArticleRow article={a} onPress={() => nav.navigate("ArticleDetail", { articleId: a.id })} />
+            );
           }
           return (
             <View>
@@ -323,56 +418,61 @@ export function DistillMyPageScreen() {
   );
 }
 
-// 내 하이라이트 한 줄 — 밑줄색 바 · 인용문 · 감상 · 출처 글(탭하면 글로 이동).
-function HighlightRow({
-  row,
-  onPress,
-}: {
-  row: MyHighlightRow;
-  onPress: (articleId: string) => void;
-}) {
-  const { theme } = useTheme();
-  const c = theme.colors;
-  return (
-    <Pressable
-      onPress={() => onPress(row.article_id)}
-      style={({ pressed }) => [
-        styles.hlCard,
-        { backgroundColor: c.surfaceCard, borderColor: c.hairline, opacity: pressed ? 0.95 : 1 },
-      ]}
-    >
-      <View style={[styles.hlBar, { backgroundColor: highlightBg(row.color) }]} />
-      <View style={{ flex: 1, gap: 6 }}>
-        {row.quote ? (
-          <Text style={[styles.hlQuote, { color: c.textPrimary }]} numberOfLines={3}>
-            “{row.quote}”
-          </Text>
-        ) : null}
-        {row.note ? (
-          <Text style={[styles.hlNote, { color: c.textSecondary }]} numberOfLines={2}>
-            {row.note}
-          </Text>
-        ) : null}
-        <View style={styles.hlMeta}>
-          {row.article?.topic ? <TopicChip topic={row.article.topic} /> : null}
-          <Text style={[styles.hlSource, { color: c.textMuted }]} numberOfLines={1}>
-            {row.article?.title ?? "원문"}
-          </Text>
-        </View>
-      </View>
-    </Pressable>
-  );
+
+/** 마이 목록에 실리는 모든 행. */
+type Row =
+  | OpinionFeedItem
+  | MyHighlightRow
+  | ArticleWithBlog
+  | MyCommentRow
+  | UserWordRow;
+
+/**
+ * 활동을 묶을 **원본 id**. 하이라이트·단어는 글, 댓글은 인사이트/자유글이 원본이다.
+ * null 이면 묶지 않고 혼자 둔다(원본을 잃은 오래된 행 대비).
+ */
+function sourceKeyOf(tab: MyTab, row: Row): string | null {
+  if (tab === "highlights") return (row as MyHighlightRow).article_id ?? null;
+  if (tab === "words") return (row as UserWordRow).article_id ?? null;
+  if (tab === "comments") {
+    const src = commentSource(row as MyCommentRow);
+    return src ? `${src.kind}:${src.id}` : null;
+  }
+  return null;
+}
+
+/** 그룹 머리에 쓸 제목·부가정보. */
+function groupHeadOf(tab: MyTab, row: Row): { title: string | null; meta: string | null } {
+  if (tab === "highlights") {
+    const h = row as MyHighlightRow;
+    return { title: h.article?.title ?? null, meta: null };
+  }
+  if (tab === "words") {
+    const w = row as UserWordRow;
+    return { title: w.article?.title ?? "글에서 담지 않은 단어", meta: null };
+  }
+  const src = commentSource(row as MyCommentRow);
+  return {
+    title: src?.title ?? null,
+    meta: src?.kind === "community" ? "커뮤니티 자유글" : "인사이트",
+  };
 }
 
 // 단어장 카드 — 단어 · 뜻(AI). 뜻이 아직 없으면 "다시 시도"(재요청). 삭제 가능.
-function WordCard({ row }: { row: UserWordRow }) {
+/** @param bare 그룹 카드 안에 넣을 때는 자체 테두리를 끈다(카드 속 카드 방지). */
+function WordCard({ row, bare = false }: { row: UserWordRow; bare?: boolean }) {
   const { theme } = useTheme();
   const c = theme.colors;
   const define = useDefineWord();
   const del = useDeleteWord();
 
   return (
-    <View style={[styles.wordCard, { backgroundColor: c.surfaceCard, borderColor: c.hairline }]}>
+    <View
+      style={[
+        bare ? styles.wordBare : styles.wordCard,
+        bare ? null : { backgroundColor: c.surfaceCard, borderColor: c.hairline },
+      ]}
+    >
       <View style={styles.wordHead}>
         <Text style={[styles.wordTerm, { color: c.textPrimary }]}>{row.term}</Text>
         <Pressable onPress={() => del.mutate(row.id)} hitSlop={8} disabled={del.isPending}>
@@ -404,44 +504,6 @@ function WordCard({ row }: { row: UserWordRow }) {
   );
 }
 
-// 내 댓글 한 줄 — 댓글 내용 + 어떤 글/의견에 달았는지(탭하면 의견 상세).
-// 내 댓글 — 인사이트에 단 것과 커뮤니티 자유글에 단 것이 섞여 있어 원본 종류에 맞게 이동한다.
-function CommentRow({
-  row,
-  onPress,
-}: {
-  row: MyCommentRow;
-  onPress: (src: NonNullable<ReturnType<typeof commentSource>>) => void;
-}) {
-  const { theme } = useTheme();
-  const c = theme.colors;
-  const src = commentSource(row);
-  return (
-    <Pressable
-      onPress={() => src && onPress(src)}
-      disabled={!src}
-      style={({ pressed }) => [
-        styles.commentCard,
-        { backgroundColor: c.surfaceCard, borderColor: c.hairline, opacity: pressed ? 0.95 : 1 },
-      ]}
-    >
-      <View style={styles.commentHead}>
-        <MessageSquare size={14} color={c.textMuted} />
-        <Text style={[styles.commentDate, { color: c.textMuted }]}>
-          {relativeDate(row.created_at)}
-        </Text>
-      </View>
-      <Text style={[styles.commentText, { color: c.textPrimary }]} numberOfLines={4}>
-        {row.text}
-      </Text>
-      {src?.title ? (
-        <Text style={[styles.commentSource, { color: c.textMuted }]} numberOfLines={1}>
-          {src.title}
-        </Text>
-      ) : null}
-    </Pressable>
-  );
-}
 
 
 const styles = StyleSheet.create({
@@ -500,6 +562,7 @@ const styles = StyleSheet.create({
   hlMeta: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 },
   hlSource: { ...dtype.meta, flex: 1 },
 
+  wordBare: { gap: 4 },
   wordCard: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 8 },
   wordHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   wordTerm: { ...dtype.title, fontSize: 17 },
