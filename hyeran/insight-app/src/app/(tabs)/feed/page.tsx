@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 // 홈 통계에서 넘어오는 분류 필터. 시트에서 이어서 조정할 수 있게 초기 선택으로만 넘긴다.
 type Sp = {
-  tab?: string; company?: string;
+  company?: string;
   kind?: string; pt?: string; it?: string; rc?: string; flag?: string;
 };
 
@@ -39,7 +39,6 @@ export default async function FeedPage({ searchParams }: { searchParams: Promise
           companies={companies}
           bookmarked={[...bookmarked]}
           readIds={[...readIds]}
-          initialTab={sp.tab === "bookmark" ? "bookmark" : "all"}
           initialSource={sp.company ?? "all"}
           initialClass={{
             kind: one(sp.kind), pt: one(sp.pt), it: one(sp.it),

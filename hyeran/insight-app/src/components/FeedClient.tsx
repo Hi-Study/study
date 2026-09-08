@@ -43,12 +43,13 @@ const emptySel = (): Sel =>
 const cloneSel = (s: Sel): Sel =>
   Object.fromEntries(ALL_KEYS.map((k) => [k, new Set(s[k])])) as Sel;
 const countOf = (s: Sel, keys: AxisKey[]) => keys.reduce((n, k) => n + s[k].size, 0);
+const PAGE = 40;
 
 export default function FeedClient({
-  posts, companies, bookmarked, readIds, initialTab = "all", initialSource = "all", initialClass,
+  posts, companies, bookmarked, readIds, initialSource = "all", initialClass,
 }: {
   posts: Post[]; companies: Company[]; bookmarked: string[]; readIds: string[];
-  initialTab?: "all" | "bookmark"; initialSource?: string;
+  initialSource?: string;
   initialClass?: Partial<Record<AxisKey, string[]>>;
 }) {
   const initialSel = (): Sel => {
@@ -59,8 +60,9 @@ export default function FeedClient({
     return s;
   };
 
-  const [tab, setTab] = useState<"all" | "bookmark">(initialTab);
   const [sel, setSel] = useState<Sel>(initialSel);
+  // 313건을 한 번에 그리면 스크롤이 무겁다. 필요한 만큼만 그린다
+  const [shown, setShown] = useState(PAGE);
 
   // 시트 초안 — 적용을 눌러야 반영된다
   const [sheet, setSheet] = useState(false);
@@ -71,7 +73,7 @@ export default function FeedClient({
   const readSet = useMemo(() => new Set(readIds), [readIds]);
 
   const open = () => { setDraft(cloneSel(sel)); setSheet(true); };
-  const apply = () => { setSel(cloneSel(draft)); setSheet(false); };
+  const apply = () => { setSel(cloneSel(draft)); setShown(PAGE); setSheet(false); };
   // 초기화는 지금 보고 있는 탭만 지운다
   const reset = () => setDraft((prev) => {
     const n = cloneSel(prev);
@@ -87,7 +89,6 @@ export default function FeedClient({
 
   // 필터 적용
   let list = posts;
-  if (tab === "bookmark") list = list.filter((p) => bmSet.has(p.id));
   for (const k of ALL_KEYS) {
     const picked = sel[k];
     if (picked.size) list = list.filter((p) => [...picked].some((v) => matches(p, k, v)));
@@ -100,11 +101,6 @@ export default function FeedClient({
 
   return (
     <>
-      <div className="utabs">
-        <button className={`utab ${tab === "all" ? "on" : ""}`} onClick={() => setTab("all")}>전체</button>
-        <button className={`utab ${tab === "bookmark" ? "on" : ""}`} onClick={() => setTab("bookmark")}>북마크</button>
-      </div>
-
       <div className="cchips">
         <button className={`cchip sel-btn ${total ? "on" : ""}`} onClick={open}>
           {total ? `필터 · ${total}` : "필터"} <Icon name="chevron" size="sm" />
@@ -114,9 +110,18 @@ export default function FeedClient({
 
       <div style={{ height: 14 }} />
       {list.length ? (
-        <div className="feed-list">
-          {list.map((p) => <PostRow key={p.id} post={{ ...p, read: readSet.has(p.id), bookmarked: bmSet.has(p.id) }} />)}
-        </div>
+        <>
+          <div className="feed-list">
+            {list.slice(0, shown).map((p) => (
+              <PostRow key={p.id} post={{ ...p, read: readSet.has(p.id), bookmarked: bmSet.has(p.id) }} />
+            ))}
+          </div>
+          {shown < list.length && (
+            <button className="more-btn" onClick={() => setShown((n) => n + PAGE)}>
+              {list.length - shown}건 더 보기
+            </button>
+          )}
+        </>
       ) : (
         <div className="empty"><div className="art" /><div className="msg">조건에 맞는 글이 없어요</div></div>
       )}

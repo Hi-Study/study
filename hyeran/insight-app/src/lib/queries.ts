@@ -2,12 +2,39 @@ import { createClient } from "@/lib/supabase/server";
 import { certaintyRank, ARTICLE_KINDS, PROBLEM_TYPES, IMPACT_TARGETS, ARTICLE_FLAGS,
   type Company, type CommunityPost, type Post, type Review, type Word } from "@/lib/types";
 
-// 목록 화면용 컬럼 — body(글 원문, 평균 8.8KB)를 뺀다. 카드는 cover_image 만 쓴다 [015]
+// 목록 화면용 컬럼.
+// body(글 원문, 평균 8.8KB)와 ai_summary·terms(상세 전용)를 뺀다.
+//
+// ⚠️ company:companies(*) 임베드를 쓰지 않는다. 기업은 23곳뿐인데 글 313건에
+//    전부 붙어 오면서 쿼리가 68ms → 736ms 로 10배 느려졌다.
+//    기업 목록을 한 번만 받아 메모리에서 붙인다.
 const LIST_COLS =
-  "id, company_id, title, url, tags, source, author_id, ai_summary, headline, " +
-  "article_kind, problem_type, impact_targets, result_certainty, flags, terms, " +
-  "cover_image, parsed, view_count, published_at";
-const LIST_SELECT = `${LIST_COLS}, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)`;
+  // 카드에 그리는 것
+  "id, company_id, title, headline, source, author_id, published_at, " +
+  // 필터·정렬에 쓰는 것
+  "article_kind, problem_type, impact_targets, result_certainty, flags, tags, view_count";
+const LIST_SELECT = LIST_COLS;
+
+// 기업·작성자를 메모리에서 붙인다 (임베드 대신)
+async function attachRefs(sb: Awaited<ReturnType<typeof createClient>>, posts: Post[]): Promise<Post[]> {
+  if (!posts.length) return posts;
+  const { data: cos } = await sb.from("companies").select("*");
+  const coMap = new Map((cos ?? []).map((c) => [c.id, c as Company]));
+
+  // 직접 등록 글만 작성자가 있다 — 대개 몇 건뿐이라 그때만 조회한다
+  const authorIds = [...new Set(posts.map((p) => p.author_id).filter(Boolean))] as string[];
+  const auMap = new Map<string, { name: string; initial: string }>();
+  if (authorIds.length) {
+    const { data: aus } = await sb.from("profiles").select("id, name, initial").in("id", authorIds);
+    (aus ?? []).forEach((a: { id: string; name: string; initial: string }) =>
+      auMap.set(a.id, { name: a.name, initial: a.initial }));
+  }
+  return posts.map((p) => ({
+    ...p,
+    company: p.company_id ? coMap.get(p.company_id) ?? null : null,
+    author: p.author_id ? auMap.get(p.author_id) ?? null : null,
+  }));
+}
 
 // 기업 목록
 export async function getCompanies(): Promise<Company[]> {
@@ -26,14 +53,14 @@ async function attachReviewCounts(sb: Awaited<ReturnType<typeof createClient>>, 
   return posts.map((p) => ({ ...p, review_count: counts.get(p.id) ?? 0 }));
 }
 
-// 피드: 전체 최신순 (인사이트 수 포함, 조회수는 posts.view_count 컬럼)
+// 피드: 전체 최신순
 export async function getFeedPosts(): Promise<Post[]> {
   const sb = await createClient();
   const { data } = await sb
     .from("posts")
     .select(LIST_SELECT)
     .order("published_at", { ascending: false });
-  return attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
+  return attachRefs(sb, (data as unknown as Post[]) ?? []);
 }
 
 // id 목록 → 글(작성자·인사이트 수 포함) — 마이·북마크·하이라이트 공통
@@ -41,7 +68,7 @@ export async function getPostsByIds(ids: string[]): Promise<Post[]> {
   if (!ids.length) return [];
   const sb = await createClient();
   const { data } = await sb.from("posts").select(LIST_SELECT).in("id", ids);
-  return attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
+  return attachRefs(sb, (data as unknown as Post[]) ?? []);
 }
 
 // 오늘의 글: 최근 7일 글 중 (조회수 + 인사이트 수) 1위 1개. 최근 글이 없으면 전체에서 선정
@@ -337,7 +364,7 @@ export async function getRelatedByProblem(postId: string, problemType: string | 
   const { data } = await sb.from("posts").select(LIST_SELECT)
     .eq("problem_type", problemType).neq("id", postId)
     .order("published_at", { ascending: false }).limit(limit);
-  return (data as unknown as Post[]) ?? [];
+  return attachRefs(sb, (data as unknown as Post[]) ?? []);
 }
 
 export async function getViewedPosts(userId: string): Promise<Post[]> {
