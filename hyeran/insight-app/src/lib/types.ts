@@ -120,12 +120,18 @@ export interface CommunityPost {
 
 export const ARTICLE_KINDS: ArticleKind[] = ["개선기", "소개", "조직·문화", "개념 설명", "소식"];
 
-export const PROBLEM_TYPES: ProblemType[] = [
+// 서비스를 쓰는 사람이 겪는 문제
+export const USER_PROBLEMS: ProblemType[] = [
   "이탈·전환", "탐색·발견", "온보딩·첫 경험", "일관성·디자인 시스템",
   "성능·속도", "장애·안정성", "보안·어뷰징", "미지원 기능",
+];
+// 서비스를 만드는 쪽이 겪는 문제
+export const MAKER_PROBLEMS: ProblemType[] = [
   "운영·어드민", "데이터 품질·계측", "확장·트래픽", "비용·효율",
   "레거시 전환", "개발 생산성", "사내 지식 접근", "판단 기준 부재", "AI 출력 통제",
 ];
+// 저장은 17개 평면 하나다. 위 구분은 화면에서 읽기 좋으라고 나눈 것일 뿐이다.
+export const PROBLEM_TYPES: ProblemType[] = [...USER_PROBLEMS, ...MAKER_PROBLEMS];
 
 export const IMPACT_TARGETS: ImpactTarget[] = ["사용자 경험", "내부 생산성", "자원·비용", "비즈니스 성과"];
 export const ARTICLE_FLAGS: ArticleFlag[] = ["기대와 다른 결과", "직접 만들기", "개발 과정에 AI"];

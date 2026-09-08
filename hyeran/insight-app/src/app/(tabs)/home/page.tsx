@@ -56,7 +56,20 @@ export default async function HomePage() {
         </div>
 
         <StatGroup title="글의 성격" note="article_kind" rows={s.kinds} total={s.total} />
-        <StatGroup title="다룬 문제" note="problem_type · 17종" rows={s.problems} total={s.total} />
+        {/* 사용자/내부 구분은 저장되는 값이 아니라 읽기 위한 묶음이다 */}
+        <StatGroup
+          title="다룬 문제 · 쓰는 사람"
+          note={`${s.userProblems.reduce((n, r) => n + r.count, 0)}건 · 서비스를 쓰는 사람이 겪는 문제`}
+          rows={s.userProblems}
+          total={s.total}
+        />
+        <StatGroup
+          title="다룬 문제 · 만드는 쪽"
+          note={`${s.makerProblems.reduce((n, r) => n + r.count, 0)}건 · 만드는 팀이 겪는 문제`}
+          rows={s.makerProblems}
+          total={s.total}
+        />
+        <StatGroup title="어디에도 안 맞음" note="problem_type 없음" rows={[s.noProblem]} total={s.total} />
         <StatGroup title="무엇이 달라졌나" note="impact_targets · 복수" rows={s.impacts} total={s.total} />
         <StatGroup title="결과를 어떻게 말하나" note="result_certainty" rows={s.certainties} total={s.total} />
         <StatGroup title="부수 플래그" note="flags · 복수" rows={s.flags} total={s.total} />

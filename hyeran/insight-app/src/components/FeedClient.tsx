@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import PostRow from "@/components/PostRow";
 import Icon from "@/components/Icon";
 import {
-  ARTICLE_KINDS, PROBLEM_TYPES, IMPACT_TARGETS, ARTICLE_FLAGS,
+  ARTICLE_KINDS, USER_PROBLEMS, MAKER_PROBLEMS, IMPACT_TARGETS, ARTICLE_FLAGS,
   type Company, type Post,
 } from "@/lib/types";
 
@@ -19,7 +19,8 @@ type Axis = { key: AxisKey; label: string; values: string[] };
 
 const CLASS_AXES: Axis[] = [
   { key: "kind", label: "글의 성격", values: [...ARTICLE_KINDS] },
-  { key: "pt", label: "다룬 문제", values: [...PROBLEM_TYPES, NONE] },
+  { key: "pt", label: "다룬 문제 · 쓰는 사람", values: [...USER_PROBLEMS] },
+  { key: "pt", label: "다룬 문제 · 만드는 쪽", values: [...MAKER_PROBLEMS, NONE] },
   { key: "it", label: "무엇이 달라졌나", values: [...IMPACT_TARGETS] },
   { key: "rc", label: "결과", values: CERTAINTIES },
   { key: "flag", label: "플래그", values: [...ARTICLE_FLAGS] },

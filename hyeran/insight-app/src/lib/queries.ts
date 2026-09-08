@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { certaintyRank, ARTICLE_KINDS, PROBLEM_TYPES, IMPACT_TARGETS, ARTICLE_FLAGS,
+import { certaintyRank, ARTICLE_KINDS, USER_PROBLEMS, MAKER_PROBLEMS, IMPACT_TARGETS, ARTICLE_FLAGS,
   type Company, type CommunityPost, type Post, type Review, type Word } from "@/lib/types";
 
 // 목록 화면용 컬럼.
@@ -305,7 +305,9 @@ export type StatsData = {
   judged: number;
   companies: StatRow[];
   kinds: StatRow[];
-  problems: StatRow[];
+  userProblems: StatRow[];   // 서비스를 쓰는 사람이 겪는 문제
+  makerProblems: StatRow[];  // 만드는 쪽이 겪는 문제
+  noProblem: StatRow;        // 17개 어디에도 안 맞은 글
   impacts: StatRow[];
   certainties: StatRow[];
   flags: StatRow[];
@@ -347,10 +349,9 @@ export async function getStats(): Promise<StatsData> {
       .map(([id, count]) => ({ label: coName.get(id)?.name ?? "기타", count, href: `/companies/${coName.get(id)?.slug ?? ""}` }))
       .sort((a, b) => b.count - a.count),
     kinds: rows(kindM, ARTICLE_KINDS, "kind"),
-    problems: [
-      ...rows(probM, PROBLEM_TYPES, "pt"),
-      { label: "없음 (분류 안 됨)", count: nullProblem, href: "/feed?pt=none" },
-    ],
+    userProblems: rows(probM, USER_PROBLEMS, "pt"),
+    makerProblems: rows(probM, MAKER_PROBLEMS, "pt"),
+    noProblem: { label: "17개 어디에도 안 맞음", count: nullProblem, href: "/feed?pt=none" },
     impacts: rows(impM, IMPACT_TARGETS, "it"),
     certainties: rows(certM, ["수치", "정성", "없음"], "rc"),
     flags: rows(flagM, ARTICLE_FLAGS, "flag"),
