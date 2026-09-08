@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { certaintyRank, type Company, type CommunityPost, type Post, type Review, type Word } from "@/lib/types";
+import { certaintyRank, ARTICLE_KINDS, PROBLEM_TYPES, IMPACT_TARGETS, ARTICLE_FLAGS,
+  type Company, type CommunityPost, type Post, type Review, type Word } from "@/lib/types";
 
 // 목록 화면용 컬럼 — body(글 원문, 평균 8.8KB)를 뺀다. 카드는 cover_image 만 쓴다 [015]
 const LIST_COLS =
@@ -267,6 +268,67 @@ export async function getHomeData(): Promise<HomeData> {
   return { sections, latest };
 }
 
+
+// ── 홈 통계 [수집·판정 현황 파악용] ────────────────────────
+// 서비스를 쓰기 전에 "어떤 글이 올라오고 있나"를 먼저 봐야 한다.
+// 각 항목은 피드로 링크되어 그 묶음의 글을 실제로 읽어볼 수 있다.
+export type StatRow = { label: string; count: number; href?: string };
+export type StatsData = {
+  total: number;
+  judged: number;
+  companies: StatRow[];
+  kinds: StatRow[];
+  problems: StatRow[];
+  impacts: StatRow[];
+  certainties: StatRow[];
+  flags: StatRow[];
+};
+
+export async function getStats(): Promise<StatsData> {
+  const sb = await createClient();
+  const [{ data: posts }, { data: cos }] = await Promise.all([
+    sb.from("posts").select("company_id, article_kind, problem_type, impact_targets, result_certainty, flags, headline"),
+    sb.from("companies").select("id, name, slug"),
+  ]);
+  const list = posts ?? [];
+  const coName = new Map((cos ?? []).map((c) => [c.id, c] as const));
+
+  const tally = (key: (p: (typeof list)[number]) => (string | null)[]) => {
+    const m = new Map<string, number>();
+    for (const p of list) for (const v of key(p)) if (v) m.set(v, (m.get(v) ?? 0) + 1);
+    return m;
+  };
+  const rows = (m: Map<string, number>, order: string[], q: string): StatRow[] =>
+    order.map((k) => ({ label: k, count: m.get(k) ?? 0, href: `/feed?${q}=${encodeURIComponent(k)}` }))
+      .sort((a, b) => b.count - a.count);
+
+  const kindM = tally((p) => [p.article_kind]);
+  const probM = tally((p) => [p.problem_type]);
+  const impM = tally((p) => p.impact_targets ?? []);
+  const certM = tally((p) => [p.result_certainty]);
+  const flagM = tally((p) => p.flags ?? []);
+
+  const byCo = new Map<string, number>();
+  for (const p of list) if (p.company_id) byCo.set(p.company_id, (byCo.get(p.company_id) ?? 0) + 1);
+
+  const nullProblem = list.filter((p) => !p.problem_type).length;
+
+  return {
+    total: list.length,
+    judged: list.filter((p) => p.headline).length,
+    companies: [...byCo.entries()]
+      .map(([id, count]) => ({ label: coName.get(id)?.name ?? "기타", count, href: `/companies/${coName.get(id)?.slug ?? ""}` }))
+      .sort((a, b) => b.count - a.count),
+    kinds: rows(kindM, ARTICLE_KINDS, "kind"),
+    problems: [
+      ...rows(probM, PROBLEM_TYPES, "pt"),
+      { label: "없음 (분류 안 됨)", count: nullProblem, href: "/feed?pt=none" },
+    ],
+    impacts: rows(impM, IMPACT_TARGETS, "it"),
+    certainties: rows(certM, ["수치", "정성", "없음"], "rc"),
+    flags: rows(flagM, ARTICLE_FLAGS, "flag"),
+  };
+}
 
 // 같은 problem_type 의 다른 글 — 상세 하단 "같은 문제를 다룬 사례" [분류체계 §6-2]
 export async function getRelatedByProblem(postId: string, problemType: string | null, limit = 3): Promise<Post[]> {

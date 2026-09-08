@@ -1,25 +1,43 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { getHomeData, getReadPostIds, getBookmarkedPostIds } from "@/lib/queries";
-import FeedCard from "@/components/FeedCard";
-import PostRow from "@/components/PostRow";
-import DragScroll from "@/components/DragScroll";
+import { getStats, type StatRow } from "@/lib/queries";
 import Icon from "@/components/Icon";
-import type { Post } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-// 홈은 큐레이션 섹션만으로 이뤄진다 [분류체계 §6-1]
-// 섹션 제목은 카피이고 분류값이 아니다. 분류값 칩은 카드에 넣지 않는다.
+// 홈 = 수집·판정 현황판.
+// 서비스를 쓰기 전에 "어떤 글이 올라오고 있나"를 먼저 파악하기 위한 화면이다.
+// 각 줄은 피드로 이어져 그 묶음의 글을 실제로 읽어볼 수 있다.
+function StatGroup({ title, note, rows, total }: { title: string; note?: string; rows: StatRow[]; total: number }) {
+  const max = Math.max(1, ...rows.map((r) => r.count));
+  return (
+    <section className="stat-sec">
+      <div className="stat-head">
+        <h2>{title}</h2>
+        {note && <span>{note}</span>}
+      </div>
+      <div className="stat-rows">
+        {rows.map((r) => {
+          const pct = total ? Math.round((r.count / total) * 100) : 0;
+          const body = (
+            <>
+              <span className="sr-label">{r.label}</span>
+              <span className="sr-bar"><i style={{ width: `${(r.count / max) * 100}%` }} /></span>
+              <span className="sr-n">{r.count}</span>
+              <span className="sr-p">{pct}%</span>
+            </>
+          );
+          return r.href
+            ? <Link key={r.label} href={r.href} className="stat-row">{body}</Link>
+            : <div key={r.label} className="stat-row">{body}</div>;
+        })}
+      </div>
+    </section>
+  );
+}
+
 export default async function HomePage() {
-  const sb = await createClient();
-  const { data: { user } } = await sb.auth.getUser();
-  const [home, readIds, bmIds] = await Promise.all([
-    getHomeData(),
-    getReadPostIds(user!.id),
-    getBookmarkedPostIds(user!.id),
-  ]);
-  const mark = (p: Post) => ({ ...p, read: readIds.has(p.id), bookmarked: bmIds.has(p.id) });
+  const s = await getStats();
+  const unjudged = s.total - s.judged;
 
   return (
     <>
@@ -30,47 +48,23 @@ export default async function HomePage() {
         <Link href="/notifications" className="iconbtn" aria-label="알림"><Icon name="bell" /></Link>
       </div>
       <div className="pad">
-        {/* 큐레이션 섹션 — 후보 6편 미만이면 getHomeData 가 통째로 뺀다.
-            두 번째 섹션 뒤에 탐색 진입 블록을 끼운다 [§6-1] */}
-        {home.sections.map((sec, i) => (
-          <div key={sec.title}>
-            <section className="hsec">
-              <div className="hsec-head">
-                <div>
-                  <div className="hsec-title">{sec.title}</div>
-                  <div className="hsec-sub">{sec.sub}</div>
-                </div>
-              </div>
-              <DragScroll className="swipe">
-                {sec.posts.map((p) => <FeedCard key={p.id} post={mark(p)} />)}
-              </DragScroll>
-            </section>
-            {i === 1 && (
-              <section className="hsec">
-                <Link href="/search" className="probe">
-                  <div className="probe-txt">
-                    <b>지금 겪는 문제로 찾아보기</b>
-                    <span>이탈, 검색, 운영 수작업, 계속…</span>
-                  </div>
-                  <span className="probe-go"><Icon name="chevron" /></span>
-                </Link>
-              </section>
-            )}
-          </div>
-        ))}
+        <div className="stat-top">
+          <div><b>{s.total}</b><span>수집한 글</span></div>
+          <div><b>{s.companies.length}</b><span>출처</span></div>
+          <div><b>{s.judged}</b><span>판정 완료</span></div>
+          {unjudged > 0 && <div className="warn"><b>{unjudged}</b><span>미판정</span></div>}
+        </div>
 
-        {/* 새로 들어온 글 */}
-        {home.latest.length > 0 && (
-          <section className="hsec">
-            <div className="hsec-head">
-              <div><div className="hsec-title">새로 들어온 글</div></div>
-              <Link href="/feed" className="see-all">더보기</Link>
-            </div>
-            <div className="feed-list">
-              {home.latest.map((p) => <PostRow key={p.id} post={mark(p)} />)}
-            </div>
-          </section>
-        )}
+        <StatGroup title="글의 성격" note="article_kind" rows={s.kinds} total={s.total} />
+        <StatGroup title="다룬 문제" note="problem_type · 17종" rows={s.problems} total={s.total} />
+        <StatGroup title="무엇이 달라졌나" note="impact_targets · 복수" rows={s.impacts} total={s.total} />
+        <StatGroup title="결과를 어떻게 말하나" note="result_certainty" rows={s.certainties} total={s.total} />
+        <StatGroup title="부수 플래그" note="flags · 복수" rows={s.flags} total={s.total} />
+        <StatGroup title="출처" note={`${s.companies.length}곳`} rows={s.companies} total={s.total} />
+
+        <p className="stat-note" style={{ marginTop: 22 }}>
+          각 줄을 누르면 그 묶음의 글만 볼 수 있어요.
+        </p>
       </div>
     </>
   );
