@@ -38,3 +38,6 @@ Thumbs.db
 
 # 판정 배치 리포트(생성물)
 hyeran/insight-app/*-report*.json
+
+# 작업용 임시 스크립트
+hyeran/insight-app/_*.mjs
