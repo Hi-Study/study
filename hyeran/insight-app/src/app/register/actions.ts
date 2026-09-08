@@ -110,11 +110,16 @@ async function summarize(title: string, text: string) {
   });
   const prompt = `다음 기술 블로그 글을 분석해서 JSON으로만 답해.
 규칙:
-- problem/solution/learning: 각각 한 문장, 한국어, 마침표 없이
-- category: 다음 11개 중 정확히 하나 — "프로덕트" | "UIUX" | "디자인" | "AI" | "비즈니스" | "데이터 분석" | "프론트엔드" | "백엔드" | "데이터베이스" | "보안" | "모바일"
-  (UIUX=화면·플로우·사용성·인터랙션 / 디자인=비주얼·브랜드·디자인시스템 / 프로덕트=기획·그로스·의사결정 / 비즈니스=사업·전략·조직)
+- problem/solution/impact: 각각 2~3문장, 한국어 구어체(~어요)
+  problem = 이 팀이 무엇을 문제로 보았나
+  solution = 어떻게 해결했나. 검토했다가 버린 대안이나 미룬 것이 원문에 있으면 반드시 함께 쓴다
+  impact = 그래서 무엇이 달라졌나. 근거가 없으면 null (빈칸을 채우려고 만들어내지 마라)
+    인정: "완주율이 올랐어요" / "같은 장애가 재발하지 않았어요" (수치가 아니어도 된다)
+    null: "성능이 개선되었어요" — 무엇이 어떻게 달라졌는지가 없으면 결과가 아니다
+- category: 다음 4개 중 정확히 하나 — "프로덕트" | "디자인" | "개발" | "데이터/AI"
+  (프로덕트=제품 기획·사업·조직 / 디자인=화면·경험·비주얼·디자인시스템 / 개발=프론트엔드·백엔드·인프라·DB·보안·모바일 / 데이터/AI=데이터 분석·머신러닝·AI)
 - tags: 핵심 키워드 2~4개 (한국어 문자열 배열)
-출력: {"problem":"...","solution":"...","learning":"...","category":"...","tags":["...","..."]}
+출력: {"problem":"...","solution":"...","impact":"..." | null,"category":"...","tags":["...","..."]}
 제목: ${title}
 본문:
 ${text.slice(0, 8000)}`;
@@ -149,13 +154,13 @@ export async function registerPost(url: string, q1: string, q2: string, q3: stri
   if (ex.title.trim().length < 4 && content.length < 40) {
     return { error: "원문을 불러올 수 없어 요약을 만들지 못했어요. 링크를 확인하거나 다른 글로 시도해주세요" };
   }
-  let s: { problem: string; solution: string; learning: string; category: string; tags: string[] };
+  let s: { problem: string; solution: string; impact: string | null; category: string; tags: string[] };
   try {
     s = await summarize(ex.title || u, content || ex.title);
   } catch {
     return { error: "AI 요약 생성에 실패했어요. 잠시 후 다시 시도해주세요" };
   }
-  const category: Category = CATEGORIES.includes(s.category as Category) ? (s.category as Category) : "프론트엔드";
+  const category: Category = CATEGORIES.includes(s.category as Category) ? (s.category as Category) : "개발";
   const tags = Array.isArray(s.tags) ? s.tags.slice(0, 4).map(String) : [];
 
   // 기업 매칭 (도메인)
@@ -170,7 +175,7 @@ export async function registerPost(url: string, q1: string, q2: string, q3: stri
   const { data: post, error } = await sb.from("posts").insert({
     company_id: companyId, title, url: u, category, tags,
     source: "direct", author_id: user.id,
-    ai_summary: { problem: s.problem || "", solution: s.solution || "", learning: s.learning || "" },
+    ai_summary: { problem: s.problem || "", solution: s.solution || "", impact: s.impact || null },
     body: ex.body, parsed: ex.parsed, published_at: new Date().toISOString(),
   }).select("id").single();
   if (error || !post) return { error: error?.message || "글 저장에 실패했어요" };

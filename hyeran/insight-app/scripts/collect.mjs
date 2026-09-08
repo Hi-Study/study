@@ -1,11 +1,11 @@
-// 수집 파이프라인: 6개 기업 RSS → 원문 추출 → Gemini 요약 → posts 저장 (URL 중복 제거)
+// 수집 파이프라인: RSS → 원문 추출 → posts 저장 (URL 중복 제거)
+// 분류·요약은 하지 않는다 — scripts/judge-classify.mjs 가 맡는다.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Parser from "rss-parser";
 import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -18,11 +18,31 @@ const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const sb = createClient(get("NEXT_PUBLIC_SUPABASE_URL"), get("SUPABASE_SERVICE_ROLE_KEY"));
-const genAI = new GoogleGenerativeAI(get("GEMINI_API_KEY"));
-const model = genAI.getGenerativeModel({
-  model: get("GEMINI_MODEL") || "gemini-flash-lite-latest",
-  generationConfig: { responseMimeType: "application/json" },
-});
+
+// 소스별 예외.
+//   rssBody  — 원문 페이지가 JS로 그려져 Readability 가 푸터만 긁는다. RSS 본문을 쓴다.
+//   scrapeDate — 피드에 pubDate 가 없다. 글 페이지의 메타 태그에서 발행일을 뽑는다.
+//               (없으면 전부 오늘 날짜로 저장돼 "새로 들어온 글"이 뒤죽박죽이 된다)
+const SOURCE_QUIRKS = {
+  yozm: { rssBody: true, scrapeDate: true },
+};
+
+// 글 페이지 HTML 에서 발행일 추출
+async function scrapePublishedAt(url) {
+  try {
+    const r = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow" });
+    const html = await r.text();
+    for (const re of [
+      /"datePublished"s*:s*"([^"]+)"/i,
+      /<meta[^>]+property="article:published_time"[^>]+content="([^"]+)"/i,
+      /<meta[^>]+name="date"[^>]+content="([^"]+)"/i,
+    ]) {
+      const m = html.match(re);
+      if (m) { const d = new Date(m[1]); if (!isNaN(+d)) return d.toISOString(); }
+    }
+  } catch {}
+  return null;
+}
 const parser = new Parser();
 
 // 원문 텍스트 → 문장 배열 (리더 뷰용)
@@ -83,24 +103,6 @@ function looksBlocked(t) {
     /cloudflare|ray id|just a moment|attention required|본문[^가-힣]*접근[^가-힣]*차단|잠시만 기다|enable javascript and cookies|verify you are/i.test(t);
 }
 
-async function summarize(title, text) {
-  const prompt = `다음 기술 블로그 글을 분석해서 JSON으로만 답해.
-규칙:
-- problem/solution/learning: 각각 한 문장, 한국어, 마침표 없이 (problem=무슨 문제를 다뤘나, solution=어떻게 해결했나, learning=기획 관점에서 무엇을 배울 수 있나)
-- category: 다음 11개 중 정확히 하나 — "프로덕트" | "UIUX" | "디자인" | "AI" | "비즈니스" | "데이터 분석" | "프론트엔드" | "백엔드" | "데이터베이스" | "보안" | "모바일"
-  (UIUX=화면·플로우·사용성·인터랙션 / 디자인=비주얼·브랜드·디자인시스템 / 프로덕트=기획·그로스·의사결정 / 비즈니스=사업·전략·조직)
-- tags: 핵심 키워드 2~4개 (한국어 문자열 배열)
-출력: {"problem":"...","solution":"...","learning":"...","category":"...","tags":["...","..."]}
-
-제목: ${title}
-본문:
-${text.slice(0, 8000)}`;
-  const result = await model.generateContent(prompt);
-  return JSON.parse(result.response.text());
-}
-
-const CATS = ["프로덕트", "UIUX", "디자인", "AI", "비즈니스", "데이터 분석", "프론트엔드", "백엔드", "데이터베이스", "보안", "모바일"];
-
 (async () => {
   // 기존 URL (중복 제거용)
   const { data: existing } = await sb.from("posts").select("url");
@@ -125,9 +127,11 @@ const CATS = ["프로덕트", "UIUX", "디자인", "AI", "비즈니스", "데이
       const url = it.link;
       if (!url || seen.has(url)) { skipped++; continue; }
       try {
+        const quirks = SOURCE_QUIRKS[c.slug] ?? {};
         // 원문 추출 (차단 페이지면 RSS 본문으로 폴백)
         let text = "", parsed = false, body = [];
         try {
+          if (quirks.rssBody) throw new Error("skip-readability");
           const r = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow" });
           const dom = new JSDOM(await r.text(), { url });
           const art = new Readability(dom.window.document).parse();
@@ -144,22 +148,20 @@ const CATS = ["프로덕트", "UIUX", "디자인", "AI", "비즈니스", "데이
           } else { text = (it.contentSnippet || it.title || "").trim(); parsed = false; body = []; }
         }
 
-        // AI 요약
-        const s = await summarize(it.title, text);
-        const category = CATS.includes(s.category) ? s.category : "프론트엔드";
-        const tags = Array.isArray(s.tags) ? s.tags.slice(0, 4).map(String) : [];
-        const publishedAt = it.isoDate || it.pubDate || new Date().toISOString();
+        let publishedAt = it.isoDate || it.pubDate || null;
+        if (!publishedAt && quirks.scrapeDate) publishedAt = await scrapePublishedAt(url);
+        if (!publishedAt) publishedAt = new Date().toISOString();
 
+        // 분류·요약은 하지 않는다. 저장만 하고 판정은 judge-classify.mjs 가 한다.
+        const cover = body.find((b) => b.startsWith("::img::"))?.slice("::img::".length) ?? null;
         const { error } = await sb.from("posts").insert({
-          company_id: c.id, title: it.title, url, category, tags,
+          company_id: c.id, title: it.title, url,
           source: "crawl", author_id: null,
-          ai_summary: { problem: s.problem || "", solution: s.solution || "", learning: s.learning || "" },
-          body, parsed, published_at: new Date(publishedAt).toISOString(),
+          body, cover_image: cover, parsed,
+          published_at: new Date(publishedAt).toISOString(),
         });
         if (error) { console.log(`  ✗ 저장 실패: ${it.title} — ${error.message}`); failed++; }
-        else { console.log(`  ✓ ${c.name} · [${category}] ${it.title}${parsed ? "" : " (원문 없음)"}`); inserted++; seen.add(url); }
-
-        await sleep(4500); // Gemini 무료 한도(분당 15회) 대비 간격
+        else { console.log(`  ✓ ${c.name} · ${it.title}${parsed ? "" : " (원문 없음)"}`); inserted++; seen.add(url); }
       } catch (e) { console.log(`  ✗ 처리 실패: ${it.title} — ${e.message}`); failed++; }
     }
   }

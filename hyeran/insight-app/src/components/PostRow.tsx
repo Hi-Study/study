@@ -1,26 +1,24 @@
 import Link from "next/link";
-import { CompanyLogo } from "@/components/PostCard";
 import CardBookmark from "@/components/CardBookmark";
-import CardMeta from "@/components/CardMeta";
-import { coverImage, type Post } from "@/lib/types";
+import { fmtDate } from "@/components/CardMeta";
+import type { Post } from "@/lib/types";
 
-// 리스트 로우 (lrow) — 검색·마이. 썸네일 + 제목 + 통일 메타 + 북마크 (지난 노트 스타일)
+// 세로 목록 로우 — 썸네일·기업 컬러·조회수 없이 글자만 [분류체계 §6-1]
 export default function PostRow({ post }: { post: Post }) {
-  const cover = coverImage(post);
-  const cc = post.company?.color ?? "#161616";
+  const who = post.source === "direct" ? post.author?.name ?? "직접 등록" : post.company?.name ?? "";
   return (
-    <Link className="lrow" href={`/posts/${post.id}`}>
-      <span
-        className={`lrow-thumb${cover ? "" : " ph"}`}
-        style={{ ["--cc" as string]: cc, ...(cover ? { backgroundImage: `url("${cover}")` } : {}) }}
-      >
-        {!cover && <span className="lrow-ph-logo"><CompanyLogo company={post.company} /></span>}
+    <Link className="trow" href={`/posts/${post.id}`}>
+      <span className="trow-body">
+        <h3>{post.headline || post.title}</h3>
+        {post.headline && <span className="trow-src">원문 · {post.title}</span>}
+        <span className="trow-meta">
+          {who}
+          {who && " · "}
+          {fmtDate(post.published_at)}
+          {post.read && <span className="trow-read">읽음</span>}
+        </span>
       </span>
-      <span className="lrow-body">
-        <h3>{post.title}</h3>
-        <CardMeta post={post} />
-      </span>
-      <span className="lrow-bm"><CardBookmark postId={post.id} initial={post.bookmarked} variant="plain" /></span>
+      <span className="trow-bm"><CardBookmark postId={post.id} initial={post.bookmarked} variant="plain" /></span>
     </Link>
   );
 }

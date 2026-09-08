@@ -35,3 +35,6 @@ Thumbs.db
 
 # OMC tooling state
 .omc/
+
+# 판정 배치 리포트(생성물)
+hyeran/insight-app/*-report*.json

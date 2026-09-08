@@ -3,15 +3,15 @@
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import PostRow from "@/components/PostRow";
-import { CompanyLogo } from "@/components/PostCard";
+import { CompanyLogo } from "@/components/CompanyLogo";
 import Icon from "@/components/Icon";
-import { CATEGORIES, type Category, type Company, type Post } from "@/lib/types";
+import { type Company, type Post } from "@/lib/types";
 
 export default function FeedClient({
-  posts, companies, bookmarked, readIds, favorites, initialTab = "all", initialSource = "all", initialCategory = "",
+  posts, companies, bookmarked, readIds, favorites, initialTab = "all", initialSource = "all",
 }: {
   posts: Post[]; companies: Company[]; bookmarked: string[]; readIds: string[]; favorites: string[];
-  initialTab?: "all" | "bookmark"; initialSource?: string; initialCategory?: string;
+  initialTab?: "all" | "bookmark"; initialSource?: string;
 }) {
   const initialCoId = initialSource !== "all" && initialSource !== "direct"
     ? companies.find((c) => c.slug === initialSource)?.id : undefined;
@@ -20,24 +20,22 @@ export default function FeedClient({
   // 적용된 필터
   const [coSpecial, setCoSpecial] = useState<"all" | "favorites" | "direct">(initialSource === "direct" ? "direct" : "all");
   const [coIds, setCoIds] = useState<Set<string>>(new Set(initialCoId ? [initialCoId] : []));
-  const [cats, setCats] = useState<Set<Category>>(new Set(initialCategory ? [initialCategory as Category] : []));
   const [favSet, setFavSet] = useState<Set<string>>(new Set(favorites));
 
   // 시트 (기업/카테고리 탭, 초안 상태)
   const [sheet, setSheet] = useState(false);
-  const [sheetTab, setSheetTab] = useState<"company" | "category">("company");
+  const [sheetTab, setSheetTab] = useState<"company">("company");
   const [dSpecial, setDSpecial] = useState<"all" | "favorites" | "direct">("all");
   const [dCoIds, setDCoIds] = useState<Set<string>>(new Set());
-  const [dCats, setDCats] = useState<Set<Category>>(new Set());
 
   const bmSet = useMemo(() => new Set(bookmarked), [bookmarked]);
   const readSet = useMemo(() => new Set(readIds), [readIds]);
 
-  const openSheet = (t: "company" | "category") => {
-    setSheetTab(t); setDSpecial(coSpecial); setDCoIds(new Set(coIds)); setDCats(new Set(cats)); setSheet(true);
+  const openSheet = (t: "company") => {
+    setSheetTab(t); setDSpecial(coSpecial); setDCoIds(new Set(coIds)); setSheet(true);
   };
-  const apply = () => { setCoSpecial(dSpecial); setCoIds(new Set(dCoIds)); setCats(new Set(dCats)); setSheet(false); };
-  const reset = () => { setDSpecial("all"); setDCoIds(new Set()); setDCats(new Set()); };
+  const apply = () => { setCoSpecial(dSpecial); setCoIds(new Set(dCoIds)); setSheet(false); };
+  const reset = () => { setDSpecial("all"); setDCoIds(new Set()); };
 
   const pickSpecial = (s: "all" | "favorites" | "direct") => { setDSpecial(s); setDCoIds(new Set()); };
   const toggleCo = (id: string) => setDCoIds((prev) => {
@@ -45,7 +43,6 @@ export default function FeedClient({
     if (n.size) setDSpecial("all"); // 기업 고르면 특수옵션 해제
     return n;
   });
-  const toggleDCat = (c: Category) => setDCats((prev) => { const n = new Set(prev); n.has(c) ? n.delete(c) : n.add(c); return n; });
 
   const toggleFav = async (companyId: string) => {
     const next = new Set(favSet);
@@ -66,12 +63,10 @@ export default function FeedClient({
   if (coIds.size) list = list.filter((p) => p.company_id && coIds.has(p.company_id));
   else if (coSpecial === "direct") list = list.filter((p) => p.source === "direct");
   else if (coSpecial === "favorites") list = list.filter((p) => p.company_id && favSet.has(p.company_id));
-  if (cats.size) list = list.filter((p) => cats.has(p.category));
 
   const coCount = coIds.size || (coSpecial !== "all" ? 1 : 0);
   const dCoCount = dCoIds.size || (dSpecial !== "all" ? 1 : 0);
   const coLabel = coIds.size ? `기업 · ${coIds.size}` : coSpecial === "favorites" ? "기업 · 즐겨찾기" : coSpecial === "direct" ? "기업 · 직접등록" : "기업";
-  const catLabel = cats.size ? `카테고리 · ${cats.size}` : "카테고리";
 
   // 즐겨찾기 기업 먼저
   const orderedCompanies = [...companies.filter((c) => favSet.has(c.id)), ...companies.filter((c) => !favSet.has(c.id))];
@@ -85,7 +80,6 @@ export default function FeedClient({
 
       <div className="cchips">
         <button className={`cchip sel-btn ${coCount ? "on" : ""}`} onClick={() => openSheet("company")}>{coLabel} <Icon name="chevron" size="sm" /></button>
-        <button className={`cchip sel-btn ${cats.size ? "on" : ""}`} onClick={() => openSheet("category")}>{catLabel} <Icon name="chevron" size="sm" /></button>
       </div>
 
       <div style={{ height: 14 }} />
@@ -104,10 +98,9 @@ export default function FeedClient({
         <div className="dhead">필터<button className="iconbtn" style={{ marginLeft: "auto" }} onClick={() => setSheet(false)}><Icon name="x" /></button></div>
         <div className="utabs" style={{ margin: "0 15px 4px" }}>
           <button className={`utab ${sheetTab === "company" ? "on" : ""}`} onClick={() => setSheetTab("company")}>기업{dCoCount ? ` ${dCoCount}` : ""}</button>
-          <button className={`utab ${sheetTab === "category" ? "on" : ""}`} onClick={() => setSheetTab("category")}>카테고리{dCats.size ? ` ${dCats.size}` : ""}</button>
         </div>
         <div className="dbody" style={{ height: "58vh", overflowY: "auto" }}>
-          {sheetTab === "company" ? (
+          {(
             <>
               {/* 라디오 (단일 선택) */}
               <div className="opt-row" onClick={() => pickSpecial("all")}>
@@ -140,12 +133,6 @@ export default function FeedClient({
                 );
               })}
             </>
-          ) : (
-            <div className="cat-grid">
-              {CATEGORIES.map((c) => (
-                <button key={c} className={`cchip ${dCats.has(c) ? "on" : ""}`} onClick={() => toggleDCat(c)}>{c}</button>
-              ))}
-            </div>
           )}
         </div>
         <div className="dfoot">

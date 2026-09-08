@@ -34,7 +34,6 @@ export default async function FeedPage({ searchParams }: { searchParams: Promise
           favorites={[...favorites]}
           initialTab={sp.tab === "bookmark" ? "bookmark" : "all"}
           initialSource={sp.source === "direct" ? "direct" : (sp.company ?? "all")}
-          initialCategory={sp.category ?? ""}
         />
       </div>
     </>

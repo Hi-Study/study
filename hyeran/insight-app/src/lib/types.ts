@@ -1,6 +1,26 @@
-export type Category =
-  | "프로덕트" | "UIUX" | "디자인" | "AI" | "비즈니스" | "데이터 분석"
-  | "프론트엔드" | "백엔드" | "데이터베이스" | "보안" | "모바일";
+// ── 분류 체계 v4 ──────────────────────────────────────────────
+// 분류값은 내부 플래그다. 화면에는 섹션 제목과 카드 헤드라인만 나가고,
+// 분류값 자체는 상세의 좌표 칩에만 노출한다.
+
+export type ArticleKind = "개선기" | "소개" | "조직·문화" | "개념 설명" | "소식";
+
+export type ProblemType =
+  // 사용자가 겪는 문제
+  | "이탈·전환" | "탐색·발견" | "온보딩·첫 경험" | "일관성·디자인 시스템"
+  | "성능·속도" | "장애·안정성" | "보안·어뷰징" | "미지원 기능"
+  // 만드는 쪽이 겪는 문제
+  | "운영·어드민" | "데이터 품질·계측" | "확장·트래픽" | "비용·효율"
+  | "레거시 전환" | "개발 생산성" | "사내 지식 접근" | "판단 기준 부재" | "AI 출력 통제";
+
+export type ImpactTarget = "사용자 경험" | "내부 생산성" | "자원·비용" | "비즈니스 성과";
+export type ResultCertainty = "수치" | "정성" | "없음";
+export type ArticleFlag = "기대와 다른 결과" | "직접 만들기" | "개발 과정에 AI";
+
+export type Term = { term: string; description: string };
+
+// 폐기된 축 — 컬럼이 남아 있어 타입만 유지한다
+export type Category = "프로덕트" | "디자인" | "개발" | "데이터/AI";
+export type Role = "기획" | "디자인" | "개발" | "데이터";
 
 export interface Company {
   id: string;
@@ -10,10 +30,16 @@ export interface Company {
   domain: string | null;
 }
 
+// 상세 "읽기 전에" 4문항.
+// decision 을 별도 필드로 뽑는 것이 이번 변경의 핵심이다 — 해결방법에 묻으면 기술 요약이 된다.
+// null 인 문항은 블록째 렌더링하지 않는다.
 export interface AiSummary {
-  problem: string;
-  solution: string;
-  learning: string;
+  problem: string | null;
+  decision: string | null;
+  implementation: string | null;
+  impact: string | null;
+  /** @deprecated v3.2 잔재 — 재판정 전 글에 남아 있다 */
+  solution?: string | null;
 }
 
 export interface Post {
@@ -21,21 +47,38 @@ export interface Post {
   company_id: string | null;
   title: string;
   url: string | null;
-  category: Category;
   tags: string[];
   source: "crawl" | "direct";
   author_id: string | null;
+
   ai_summary: AiSummary;
-  body: string[];
+  headline: string | null;                  // 카드에서 원제목보다 크게 나가는 우리 제목
+  article_kind: ArticleKind | null;         // 글의 성격 (5값)
+  problem_type: ProblemType | null;         // 다룬 문제 (17값). 개선기가 아니면 null
+  impact_targets: ImpactTarget[];           // 경험 변화 (복수)
+  result_certainty: ResultCertainty | null; // 섹션 안 정렬에 쓴다
+  flags: ArticleFlag[];                     // 부수 플래그 (복수)
+  terms: Term[];                            // 읽기 전 알아두면 좋을 말 (최대 3)
+
+  body: string[];              // 목록 쿼리에는 담기지 않는다 (용량이 커서 상세에서만 읽는다)
+  cover_image: string | null;  // body 첫 ::img:: 를 미리 뽑아둔 값
   parsed: boolean;
   published_at: string;
+
+  /** @deprecated 폐기 — 컬럼은 남기되 쓰지 않는다 */
+  category?: Category;
+  /** @deprecated 폐기 */
+  subtitle_phrase?: string | null;
+  /** @deprecated 폐기 */
+  tech_level?: 1 | 2 | 3 | null;
+
   company?: Company | null;
   author?: { name: string; initial: string } | null; // 직접 등록 글 작성자
   review_count?: number;
-  view_count?: number; // 글별 총 조회수 (posts.view_count) — 카드 대표 지표 [v3.0]
-  read_count?: number; // 글별 읽음(완독) 수 — 내부 지표(⑤ 상태·통계)
-  read?: boolean; // 내가 다 읽은 글 (카드 배지용)
-  bookmarked?: boolean; // 내가 북마크한 글 (카드 토글 초기값)
+  view_count?: number;
+  read_count?: number;
+  read?: boolean;
+  bookmarked?: boolean;
 }
 
 export interface Review {
@@ -54,7 +97,6 @@ export interface Review {
   post?: { title: string; company?: Company | null; body?: string[] } | null;
 }
 
-// 단어장 [v3.0]
 export interface Word {
   id: string;
   term: string;
@@ -63,7 +105,6 @@ export interface Word {
   created_at: string;
 }
 
-// 커뮤니티 자유글 [v3.0]
 export interface CommunityPost {
   id: string;
   author_id: string;
@@ -77,32 +118,33 @@ export interface CommunityPost {
   comment_count?: number;
 }
 
-export const CATEGORIES: Category[] = [
-  "프로덕트", "UIUX", "디자인", "AI", "비즈니스", "데이터 분석",
-  "프론트엔드", "백엔드", "데이터베이스", "보안", "모바일",
+export const ARTICLE_KINDS: ArticleKind[] = ["개선기", "소개", "조직·문화", "개념 설명", "소식"];
+
+export const PROBLEM_TYPES: ProblemType[] = [
+  "이탈·전환", "탐색·발견", "온보딩·첫 경험", "일관성·디자인 시스템",
+  "성능·속도", "장애·안정성", "보안·어뷰징", "미지원 기능",
+  "운영·어드민", "데이터 품질·계측", "확장·트래픽", "비용·효율",
+  "레거시 전환", "개발 생산성", "사내 지식 접근", "판단 기준 부재", "AI 출력 통제",
 ];
 
-// 11개 카테고리 → 4계열 그룹 (색은 4계열만)
-type CatGroup = "product" | "design" | "dev" | "data";
-const CAT_GROUP: Record<Category, CatGroup> = {
-  프로덕트: "product", 비즈니스: "product",
-  UIUX: "design", 디자인: "design",
-  프론트엔드: "dev", 백엔드: "dev", 데이터베이스: "dev", 보안: "dev", 모바일: "dev",
-  AI: "data", "데이터 분석": "data",
+export const IMPACT_TARGETS: ImpactTarget[] = ["사용자 경험", "내부 생산성", "자원·비용", "비즈니스 성과"];
+export const ARTICLE_FLAGS: ArticleFlag[] = ["기대와 다른 결과", "직접 만들기", "개발 과정에 AI"];
+
+// 같은 섹션 안에서 수치 > 정성 > 없음 순으로 올린다
+export const certaintyRank = (c?: ResultCertainty | null): number =>
+  c === "수치" ? 0 : c === "정성" ? 1 : 2;
+
+// 폐기된 카테고리 색 — 검색 화면이 아직 참조한다
+export const CATEGORIES: Category[] = ["프로덕트", "디자인", "개발", "데이터/AI"];
+export const CAT_COLOR: Record<Category, string> = {
+  프로덕트: "var(--blue)", 디자인: "var(--orange)", 개발: "var(--lime)", "데이터/AI": "var(--sky)",
 };
-// 카드 좌측 3px 바 색 (4계열)
-const GROUP_BAR: Record<CatGroup, string> = { product: "var(--blue)", design: "var(--orange)", dev: "var(--lime)", data: "var(--sky)" };
-// 카테고리 pill 글자색 (4계열, 대비 확보)
-const GROUP_FG: Record<CatGroup, string> = { product: "#2563EB", design: "#C2410C", dev: "#3F7A00", data: "#0E7490" };
 
-export const catGroup = (c: Category): CatGroup => CAT_GROUP[c] ?? "dev";
-export const CAT_COLOR: Record<Category, string> = Object.fromEntries(
-  CATEGORIES.map((c) => [c, GROUP_BAR[catGroup(c)]]),
-) as Record<Category, string>;
-export const catFg = (c: Category): string => GROUP_FG[catGroup(c)];
-
-// 본문(body[])의 첫 이미지 마커(::img::URL)를 커버 이미지로 추출
-export function coverImage(post: Post): string | null {
+// 카드 썸네일
+// 목록 쿼리는 body 를 담지 않으므로 cover_image 컬럼을 먼저 본다.
+// body 를 들고 있는 상세 화면에서는 컬럼이 비어 있어도 원문에서 뽑아낸다.
+export function coverImage(post: Pick<Post, "body" | "cover_image">): string | null {
+  if (post.cover_image) return post.cover_image;
   const img = post.body?.find((s) => s.startsWith("::img::"));
   return img ? img.slice("::img::".length) : null;
 }
@@ -115,4 +157,40 @@ export function readableText(hex?: string): string {
   const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
   const L = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return L > 0.62 ? "#141414" : "#fff";
+}
+
+// ── 원문은 이렇게 흘러가요 [분류체계 §6-2] ────────────────────
+// body 에 저장된 ::h2::/::h3:: 헤딩으로 목차를 만들고, 구간별 글자 수로 읽는 시간을 잡는다.
+// AI를 쓰지 않는다 — 헤딩은 이미 원문 구조 그대로다.
+const CHARS_PER_MIN = 550; // 한국어 기술 문서 기준 대략치
+
+export type OutlineItem = { title: string; minutes: number };
+
+export function articleOutline(body: string[] | undefined): { items: OutlineItem[]; totalMinutes: number } {
+  const blocks = (body ?? []).filter((b) => typeof b === "string" && !b.startsWith("::img::"));
+  const items: OutlineItem[] = [];
+  let chars = 0;
+  let total = 0;
+
+  const flush = () => {
+    if (items.length) items[items.length - 1].minutes = Math.max(1, Math.round(chars / CHARS_PER_MIN));
+    chars = 0;
+  };
+  for (const b of blocks) {
+    const text = b.replace(/^::[a-z0-9]+::/, "").trim();
+    total += text.length;
+    if (b.startsWith("::h2::") || b.startsWith("::h3::")) {
+      flush();
+      if (text) items.push({ title: text, minutes: 1 });
+    } else {
+      chars += text.length;
+    }
+  }
+  flush();
+
+  // 헤딩이 2개 미만이면 목차라고 부를 만한 구조가 아니다
+  return {
+    items: items.length >= 2 ? items.slice(0, 8) : [],
+    totalMinutes: Math.max(1, Math.round(total / CHARS_PER_MIN)),
+  };
 }
