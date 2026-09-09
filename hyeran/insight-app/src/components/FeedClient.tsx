@@ -5,7 +5,7 @@ import PostRow from "@/components/PostRow";
 import Icon from "@/components/Icon";
 import {
   ARTICLE_KINDS, USER_PROBLEMS, MAKER_PROBLEMS, IMPACT_TARGETS, ARTICLE_FLAGS,
-  type Company, type Post,
+  STACK_DEEP, isStackDeep, type Company, type Post,
 } from "@/lib/types";
 
 // 필터는 축 하나로 다룬다 — 기업도 분류의 한 축일 뿐이다.
@@ -23,7 +23,8 @@ const CLASS_AXES: Axis[] = [
   { key: "pt", label: "다룬 문제 · 만드는 쪽", values: [...MAKER_PROBLEMS, NONE] },
   { key: "it", label: "무엇이 달라졌나", values: [...IMPACT_TARGETS] },
   { key: "rc", label: "결과", values: CERTAINTIES },
-  { key: "flag", label: "플래그", values: [...ARTICLE_FLAGS] },
+  // 스택 심화는 아래 스위치로 다루므로 플래그 칩에서는 뺀다
+  { key: "flag", label: "플래그", values: ARTICLE_FLAGS.filter((f) => f !== STACK_DEEP) },
 ];
 const ALL_KEYS: AxisKey[] = ["co", "kind", "pt", "it", "rc", "flag"];
 
@@ -62,6 +63,8 @@ export default function FeedClient({
   };
 
   const [sel, setSel] = useState<Sel>(initialSel);
+  // 특정 스택을 파고드는 글은 기본으로 감춘다
+  const [showDeep, setShowDeep] = useState(false);
   // 313건을 한 번에 그리면 스크롤이 무겁다. 필요한 만큼만 그린다
   const [shown, setShown] = useState(PAGE);
 
@@ -89,7 +92,8 @@ export default function FeedClient({
   });
 
   // 필터 적용
-  let list = posts;
+  let list = showDeep ? posts : posts.filter((p) => !isStackDeep(p));
+  const deepCount = posts.filter((p) => isStackDeep(p)).length;
   for (const k of ALL_KEYS) {
     const picked = sel[k];
     if (picked.size) list = list.filter((p) => [...picked].some((v) => matches(p, k, v)));
@@ -105,6 +109,9 @@ export default function FeedClient({
       <div className="cchips">
         <button className={`cchip sel-btn ${total ? "on" : ""}`} onClick={open}>
           {total ? `필터 · ${total}` : "필터"} <Icon name="chevron" size="sm" />
+        </button>
+        <button className={`cchip ${showDeep ? "on" : ""}`} onClick={() => { setShowDeep((v) => !v); setShown(PAGE); }}>
+          기술 깊은 글 {showDeep ? "보는 중" : `${deepCount} 숨김`}
         </button>
         <span className="cchip-n">{list.length}건</span>
       </div>

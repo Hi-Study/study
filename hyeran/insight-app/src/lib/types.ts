@@ -14,7 +14,7 @@ export type ProblemType =
 
 export type ImpactTarget = "사용자 경험" | "내부 생산성" | "자원·비용" | "비즈니스 성과";
 export type ResultCertainty = "수치" | "정성" | "없음";
-export type ArticleFlag = "기대와 다른 결과" | "직접 만들기" | "개발 과정에 AI";
+export type ArticleFlag = "기대와 다른 결과" | "직접 만들기" | "개발 과정에 AI" | "스택 심화";
 
 export type Term = { term: string; description: string };
 
@@ -134,7 +134,11 @@ export const MAKER_PROBLEMS: ProblemType[] = [
 export const PROBLEM_TYPES: ProblemType[] = [...USER_PROBLEMS, ...MAKER_PROBLEMS];
 
 export const IMPACT_TARGETS: ImpactTarget[] = ["사용자 경험", "내부 생산성", "자원·비용", "비즈니스 성과"];
-export const ARTICLE_FLAGS: ArticleFlag[] = ["기대와 다른 결과", "직접 만들기", "개발 과정에 AI"];
+export const ARTICLE_FLAGS: ArticleFlag[] = ["기대와 다른 결과", "직접 만들기", "개발 과정에 AI", "스택 심화"];
+
+// 특정 스택을 파고드는 글. 기본으로 감추고, 필요할 때만 켜서 본다
+export const STACK_DEEP: ArticleFlag = "스택 심화";
+export const isStackDeep = (p: { flags?: ArticleFlag[] }) => !!p.flags?.includes(STACK_DEEP);
 
 // 같은 섹션 안에서 수치 > 정성 > 없음 순으로 올린다
 export const certaintyRank = (c?: ResultCertainty | null): number =>
