@@ -157,8 +157,9 @@ export default function FeedClient({
                 </div>
               </div>
             ) : (
+              // "다룬 문제"는 한 축(pt)을 두 줄로 나눠 보여주므로 key 는 라벨로 잡는다
               CLASS_AXES.map((a) => (
-                <div className="axis" key={a.key}>
+                <div className="axis" key={a.label}>
                   <div className="axis-title">{a.label}</div>
                   <div className="chips wrap">
                     {a.values.map((v) => (

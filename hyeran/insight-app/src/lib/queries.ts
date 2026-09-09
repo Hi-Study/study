@@ -315,10 +315,15 @@ export type StatsData = {
 
 export async function getStats(): Promise<StatsData> {
   const sb = await createClient();
-  const [{ data: posts }, { data: cos }] = await Promise.all([
+  const [{ data: posts, error: pErr }, { data: cos, error: cErr }] = await Promise.all([
     sb.from("posts").select("company_id, article_kind, problem_type, impact_targets, result_certainty, flags, headline"),
     sb.from("companies").select("id, name, slug"),
   ]);
+  // 출처가 전부 "기타"로 뜨면 여기서 companies 를 못 읽은 것이다 (RLS 등)
+  if (pErr) console.warn("[getStats] posts 조회 실패:", pErr.message);
+  if (cErr) console.warn("[getStats] companies 조회 실패:", cErr.message);
+  if (!cErr && !cos?.length) console.warn("[getStats] companies 가 0건으로 돌아왔다 — 이름 매칭 불가");
+
   const list = posts ?? [];
   const coName = new Map((cos ?? []).map((c) => [c.id, c] as const));
 

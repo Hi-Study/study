@@ -23,9 +23,53 @@ const sb = createClient(get("NEXT_PUBLIC_SUPABASE_URL"), get("SUPABASE_SERVICE_R
 //   rssBody  — 원문 페이지가 JS로 그려져 Readability 가 푸터만 긁는다. RSS 본문을 쓴다.
 //   scrapeDate — 피드에 pubDate 가 없다. 글 페이지의 메타 태그에서 발행일을 뽑는다.
 //               (없으면 전부 오늘 날짜로 저장돼 "새로 들어온 글"이 뒤죽박죽이 된다)
+//   listPages — RSS 가 아예 없는 곳. 목록 페이지 HTML 에서 글 링크를 직접 긁는다.
+//               ⚠️ RSS 와 달리 사이트 화면이 바뀌면 조용히 0건이 된다. 수집 수를 보고 알아채야 한다.
 const SOURCE_QUIRKS = {
   yozm: { rssBody: true, scrapeDate: true },
+  bucketplace: {
+    listPages: {
+      // /culture/<카테고리>/ 와 /culture/<카테고리>/2/ … 를 훑는다
+      base: "https://www.bucketplace.com/culture/",
+      categories: ["Tech", "Design", "Product", "Biz", "AI frontier", "Culture", "Teamstory"],
+      maxPage: 6,
+      // 링크 주소에 발행일이 들어 있다: /post/2026-02-06-제목-슬러그/
+      linkRe: /href="(\/post\/[^"]+)"/g,
+      dateRe: /\/post\/(\d{4}-\d{2}-\d{2})-(.+)\/$/,
+    },
+  },
 };
+
+// RSS 없는 소스: 목록 페이지를 긁어 { link, title, isoDate } 목록을 만든다
+async function scrapeList(cfg) {
+  const found = new Map(); // url → item (카테고리 간 중복 제거)
+  for (const cat of cfg.categories) {
+    for (let page = 1; page <= cfg.maxPage; page++) {
+      const url = `${cfg.base}${encodeURIComponent(cat)}/` + (page > 1 ? `${page}/` : "");
+      let html;
+      try {
+        const r = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow" });
+        if (!r.ok) break;
+        html = await r.text();
+      } catch { break; }
+      const links = [...html.matchAll(cfg.linkRe)].map((m) => m[1]);
+      if (!links.length) break;
+      for (const href of links) {
+        const m = href.match(cfg.dateRe);
+        if (!m) continue;
+        const link = new URL(href, cfg.base).href;
+        if (found.has(link)) continue;
+        found.set(link, {
+          link,
+          // 제목은 슬러그에서 임시로 만들고, 본문을 긁을 때 실제 제목으로 덮어쓴다
+          title: decodeURIComponent(m[2]).replace(/-/g, " "),
+          isoDate: new Date(`${m[1]}T09:00:00+09:00`).toISOString(),
+        });
+      }
+    }
+  }
+  return [...found.values()];
+}
 
 // 글 페이지 HTML 에서 발행일 추출
 async function scrapePublishedAt(url) {
@@ -113,15 +157,21 @@ function looksBlocked(t) {
   let inserted = 0, skipped = 0, failed = 0;
 
   for (const c of companies) {
+    const cq = SOURCE_QUIRKS[c.slug] ?? {};
     let items = [];
     try {
-      const res = await fetch(c.rss_url, { headers: { "User-Agent": UA }, redirect: "follow" });
-      const feed = await parser.parseString(await res.text());
+      const raw = cq.listPages
+        ? await scrapeList(cq.listPages)                       // RSS 없는 곳
+        : (await parser.parseString(
+            await (await fetch(c.rss_url, { headers: { "User-Agent": UA }, redirect: "follow" })).text()
+          )).items ?? [];
       // FROM 이후 글만 (날짜 없으면 포함), 최대 PER_COMPANY
-      items = (feed.items || [])
+      items = raw
         .filter((it) => { const d = new Date(it.isoDate || it.pubDate); return isNaN(+d) ? true : d >= FROM; })
+        .sort((a, b) => new Date(b.isoDate || b.pubDate || 0) - new Date(a.isoDate || a.pubDate || 0))
         .slice(0, PER_COMPANY);
-    } catch (e) { console.log(`✗ ${c.name} 피드 실패: ${e.message}`); continue; }
+      if (cq.listPages && !items.length) console.log(`⚠ ${c.name} 목록 0건 — 사이트 구조가 바뀌었을 수 있다`);
+    } catch (e) { console.log(`✗ ${c.name} 목록 실패: ${e.message}`); continue; }
 
     for (const it of items) {
       const url = it.link;
@@ -130,13 +180,21 @@ function looksBlocked(t) {
         const quirks = SOURCE_QUIRKS[c.slug] ?? {};
         // 원문 추출 (차단 페이지면 RSS 본문으로 폴백)
         let text = "", parsed = false, body = [];
+        // 목록에서 긁어온 글은 제목이 주소 슬러그라 지저분하다. 원문에서 실제 제목을 가져온다
+        let title = it.title;
         try {
           if (quirks.rssBody) throw new Error("skip-readability");
           const r = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow" });
           const dom = new JSDOM(await r.text(), { url });
           const art = new Readability(dom.window.document).parse();
           const rtext = (art?.textContent || "").trim();
-          if (!looksBlocked(rtext)) { text = rtext; parsed = true; body = bodyFromArticle(art, url); }
+          if (!looksBlocked(rtext)) {
+            text = rtext; parsed = true; body = bodyFromArticle(art, url);
+            if (quirks.listPages && art?.title) {
+              // "제목 - 오늘의집 블로그" 같은 사이트명 꼬리를 떼어낸다
+              title = art.title.replace(/s*[-|–]s*[^-|–]{2,20}(블로그|Blog)?s*$/i, "").trim() || title;
+            }
+          }
         } catch {}
         if (!parsed) {
           const rawHtml = it["content:encoded"] || it.content || "";
@@ -155,13 +213,13 @@ function looksBlocked(t) {
         // 분류·요약은 하지 않는다. 저장만 하고 판정은 judge-classify.mjs 가 한다.
         const cover = body.find((b) => b.startsWith("::img::"))?.slice("::img::".length) ?? null;
         const { error } = await sb.from("posts").insert({
-          company_id: c.id, title: it.title, url,
+          company_id: c.id, title, url,
           source: "crawl", author_id: null,
           body, cover_image: cover, parsed,
           published_at: new Date(publishedAt).toISOString(),
         });
         if (error) { console.log(`  ✗ 저장 실패: ${it.title} — ${error.message}`); failed++; }
-        else { console.log(`  ✓ ${c.name} · ${it.title}${parsed ? "" : " (원문 없음)"}`); inserted++; seen.add(url); }
+        else { console.log(`  ✓ ${c.name} · ${title}${parsed ? "" : " (원문 없음)"}`); inserted++; seen.add(url); }
       } catch (e) { console.log(`  ✗ 처리 실패: ${it.title} — ${e.message}`); failed++; }
     }
   }
