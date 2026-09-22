@@ -32,6 +32,18 @@ create table if not exists public.profiles (
   name text not null,
   initial text not null,
   avatar_color text not null default '#4F46E5',
+  -- 온보딩 2단계 [014] — 건너뛰면 둘 다 null
+  role text check (role is null or role in ('기획','디자인','개발','데이터')),
+  interest_problems text[] check (
+    interest_problems is null or (
+      array_length(interest_problems, 1) between 1 and 3
+      and interest_problems <@ array[
+        '이탈·전환','탐색·발견','온보딩·첫 경험','일관성·디자인 시스템',
+        '운영·어드민','데이터 품질·계측','성능·속도','장애·안정성',
+        '확장·트래픽','비용·효율','레거시 전환','개발 생산성'
+      ]::text[]
+    )
+  ),
   created_at timestamptz not null default now()
 );
 
@@ -92,7 +104,13 @@ insert into public.companies (slug, name, color, domain, rss_url) values
   ('myrealtrip', '마이리얼트립','#00A9E0', 'medium.com/myrealtrip-product','https://medium.com/feed/myrealtrip-product'),
   ('banksalad',  '뱅크샐러드',  '#3D5AFE', 'blog.banksalad.com',          'https://blog.banksalad.com/rss.xml'),
   ('watcha',     '왓챠',        '#FF0558', 'medium.com/watcha',           'https://medium.com/feed/watcha'),
-  ('musinsa',    '무신사',      '#1D1D1F', 'medium.com/musinsa-tech',     'https://medium.com/feed/musinsa-tech')
+  ('musinsa',    '무신사',      '#1D1D1F', 'medium.com/musinsa-tech',     'https://medium.com/feed/musinsa-tech'),
+  -- 소스 확장 [012] — 판별기준 §10 후보 중 RSS 검증(200·파싱·최근 1년 내 글)을 통과한 5곳
+  ('socar',        '쏘카',         '#00A0E9', 'tech.socar.kr',         'https://tech.socar.kr/rss.xml'),
+  ('hyperconnect', '하이퍼커넥트', '#5B5FC7', 'hyperconnect.github.io','https://hyperconnect.github.io/feed.xml'),
+  ('yogiyo',       '요기요',       '#FA0050', 'techblog.yogiyo.co.kr', 'https://techblog.yogiyo.co.kr/feed'),
+  ('devsisters',   '데브시스터즈', '#F5A623', 'tech.devsisters.com',   'https://tech.devsisters.com/rss.xml'),
+  ('nhn',          'NHN',          '#1A73E8', 'meetup.toast.com',      'https://meetup.toast.com/rss')
 on conflict (slug) do nothing;
 
 -- ============================================================
@@ -103,14 +121,31 @@ create table if not exists public.posts (
   company_id uuid references public.companies(id) on delete set null,
   title text not null,
   url text,
-  category text not null default '프론트엔드' check (category in ('프로덕트','UIUX','디자인','AI','비즈니스','데이터 분석','프론트엔드','백엔드','데이터베이스','보안','모바일')),
+  category text not null default '개발' check (category in ('프로덕트','디자인','개발','데이터/AI')), -- 11종 → 4종 [014]
   tags text[] not null default '{}',
   source text not null default 'crawl' check (source in ('crawl','direct')),
   author_id uuid references public.profiles(id) on delete set null, -- 직접 등록자 (자동수집이면 null)
-  ai_summary jsonb not null default '{}'::jsonb,  -- {problem, solution, learning}
+  ai_summary jsonb not null default '{}'::jsonb,  -- {problem, solution, impact} · impact 는 null 가능 [014]
   body jsonb not null default '[]'::jsonb,         -- 원문 문장 배열 (파싱 성공 시)
   parsed boolean not null default false,           -- 원문 파싱 여부 (하이라이트 가능 여부)
   view_count integer not null default 0,           -- 총 조회수 (상세 진입 시 +1, 카드 대표 지표) [006]
+  -- 읽을거리 성격 축 [011] — NULL=미판정, '{}'=판정했으나 태그 0개(정상)
+  tech_level smallint check (tech_level is null or tech_level between 1 and 3), -- 1~3 진입 장벽 [011]
+  -- 다룬 문제의 종류 [014] — 1~2개, 첫 번째가 주 문제. 화면에 노출하지 않고 정렬에만 쓴다
+  problem_type text[] check (
+    problem_type is null or (
+      array_length(problem_type, 1) between 1 and 2
+      and problem_type <@ array[
+        '이탈·전환','탐색·발견','온보딩·첫 경험','일관성·디자인 시스템',
+        '운영·어드민','데이터 품질·계측','성능·속도','장애·안정성',
+        '확장·트래픽','비용·효율','레거시 전환','개발 생산성'
+      ]::text[]
+    )
+  ),
+  subtitle_phrase text,                            -- 카드 부제목의 명사구. 어미는 화면에서 붙인다 [014]
+  -- ⚠️ 아래 둘은 v3.2 에서 폐기됐다. 판정 데이터가 남아 있어 컬럼만 유지한다 [011]
+  reading_type text[],
+  reading_type_evidence jsonb not null default '{}'::jsonb,
   published_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
@@ -125,6 +160,10 @@ grant execute on function public.increment_view_count(uuid) to authenticated;
 create index if not exists posts_published_idx on public.posts (published_at desc);
 create index if not exists posts_company_idx on public.posts (company_id);
 create index if not exists posts_category_idx on public.posts (category);
+-- 홈 시선 슬롯 조회용 [011]
+create index if not exists posts_tech_level_idx   on public.posts (tech_level);
+create index if not exists posts_problem_type_idx on public.posts using gin (problem_type); -- 홈 관심 슬롯 [014]
+create index if not exists posts_reading_type_idx on public.posts using gin (reading_type);
 -- URL 중복 확인용 (직접 등록 시 이미 있는 글인지 판별)
 create unique index if not exists posts_url_key on public.posts (url) where url is not null;
 

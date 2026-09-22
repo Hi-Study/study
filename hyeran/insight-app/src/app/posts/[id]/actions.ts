@@ -25,19 +25,20 @@ export async function submitReview(postId: string, q1: string, q2: string, q3: s
 // 직접 등록 글 수정 (본인·direct만; RLS로 이중 보호)
 export async function updatePost(
   postId: string,
-  fields: { title: string; category: string; tags: string; problem: string; solution: string; learning: string },
+  fields: { title: string; category: string; tags: string; problem: string; solution: string; impact: string },
 ) {
   const sb = await createClient();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return { error: "로그인이 필요해요" };
   const title = fields.title.trim();
   if (!title) return { error: "제목을 입력해주세요" };
-  const category: Category = CATEGORIES.includes(fields.category as Category) ? (fields.category as Category) : "프론트엔드";
+  const category: Category = CATEGORIES.includes(fields.category as Category) ? (fields.category as Category) : "개발";
   const tags = fields.tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 6);
 
   const { error } = await sb.from("posts").update({
     title, category, tags,
-    ai_summary: { problem: fields.problem.trim(), solution: fields.solution.trim(), learning: fields.learning.trim() },
+    // impact 는 비워두면 null — "정보 없음" 같은 자리표시자를 저장하지 않는다 [v3.2 §6]
+    ai_summary: { problem: fields.problem.trim(), solution: fields.solution.trim(), impact: fields.impact.trim() || null },
   }).eq("id", postId).eq("author_id", user.id);
   if (error) return { error: error.message };
 

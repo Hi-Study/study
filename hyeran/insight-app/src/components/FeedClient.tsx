@@ -1,152 +1,188 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import PostRow from "@/components/PostRow";
-import { CompanyLogo } from "@/components/PostCard";
 import Icon from "@/components/Icon";
-import { CATEGORIES, type Category, type Company, type Post } from "@/lib/types";
+import {
+  ARTICLE_KINDS, USER_PROBLEMS, MAKER_PROBLEMS, IMPACT_TARGETS, ARTICLE_FLAGS,
+  STACK_DEEP, isStackDeep, type Company, type Post,
+} from "@/lib/types";
+
+// 필터는 축 하나로 다룬다 — 기업도 분류의 한 축일 뿐이다.
+// 한 축 안에서는 OR(여러 개 고르면 그중 아무거나), 축끼리는 AND.
+// 아무것도 안 고르면 전체가 기본값이다.
+const NONE = "__none__"; // problem_type 이 비어 있는 글
+const CERTAINTIES = ["수치", "정성", "없음"];
+
+type AxisKey = "co" | "kind" | "pt" | "it" | "rc" | "flag";
+type Axis = { key: AxisKey; label: string; values: string[] };
+
+const CLASS_AXES: Axis[] = [
+  { key: "kind", label: "글의 성격", values: [...ARTICLE_KINDS] },
+  { key: "pt", label: "다룬 문제 · 쓰는 사람", values: [...USER_PROBLEMS] },
+  { key: "pt", label: "다룬 문제 · 만드는 쪽", values: [...MAKER_PROBLEMS, NONE] },
+  { key: "it", label: "무엇이 달라졌나", values: [...IMPACT_TARGETS] },
+  { key: "rc", label: "결과", values: CERTAINTIES },
+  // 스택 심화는 아래 스위치로 다루므로 플래그 칩에서는 뺀다
+  { key: "flag", label: "플래그", values: ARTICLE_FLAGS.filter((f) => f !== STACK_DEEP) },
+];
+const ALL_KEYS: AxisKey[] = ["co", "kind", "pt", "it", "rc", "flag"];
+
+const matches = (p: Post, key: AxisKey, v: string): boolean => {
+  switch (key) {
+    case "co": return p.company_id === v;
+    case "kind": return p.article_kind === v;
+    case "pt": return v === NONE ? !p.problem_type : p.problem_type === v;
+    case "it": return !!p.impact_targets?.includes(v as never);
+    case "rc": return p.result_certainty === v;
+    case "flag": return !!p.flags?.includes(v as never);
+  }
+};
+
+type Sel = Record<AxisKey, Set<string>>;
+const emptySel = (): Sel =>
+  Object.fromEntries(ALL_KEYS.map((k) => [k, new Set<string>()])) as Sel;
+const cloneSel = (s: Sel): Sel =>
+  Object.fromEntries(ALL_KEYS.map((k) => [k, new Set(s[k])])) as Sel;
+const countOf = (s: Sel, keys: AxisKey[]) => keys.reduce((n, k) => n + s[k].size, 0);
+const PAGE = 40;
 
 export default function FeedClient({
-  posts, companies, bookmarked, readIds, favorites, initialTab = "all", initialSource = "all", initialCategory = "",
+  posts, companies, bookmarked, readIds, initialSource = "all", initialClass,
 }: {
-  posts: Post[]; companies: Company[]; bookmarked: string[]; readIds: string[]; favorites: string[];
-  initialTab?: "all" | "bookmark"; initialSource?: string; initialCategory?: string;
+  posts: Post[]; companies: Company[]; bookmarked: string[]; readIds: string[];
+  initialSource?: string;
+  initialClass?: Partial<Record<AxisKey, string[]>>;
 }) {
-  const initialCoId = initialSource !== "all" && initialSource !== "direct"
-    ? companies.find((c) => c.slug === initialSource)?.id : undefined;
+  const initialSel = (): Sel => {
+    const s = emptySel();
+    for (const k of ALL_KEYS) (initialClass?.[k] ?? []).forEach((v) => s[k].add(v));
+    const co = companies.find((c) => c.slug === initialSource);
+    if (co) s.co.add(co.id);
+    return s;
+  };
 
-  const [tab, setTab] = useState<"all" | "bookmark">(initialTab);
-  // 적용된 필터
-  const [coSpecial, setCoSpecial] = useState<"all" | "favorites" | "direct">(initialSource === "direct" ? "direct" : "all");
-  const [coIds, setCoIds] = useState<Set<string>>(new Set(initialCoId ? [initialCoId] : []));
-  const [cats, setCats] = useState<Set<Category>>(new Set(initialCategory ? [initialCategory as Category] : []));
-  const [favSet, setFavSet] = useState<Set<string>>(new Set(favorites));
+  const [sel, setSel] = useState<Sel>(initialSel);
+  // 특정 스택을 파고드는 글은 기본으로 감춘다
+  const [showDeep, setShowDeep] = useState(false);
+  // 313건을 한 번에 그리면 스크롤이 무겁다. 필요한 만큼만 그린다
+  const [shown, setShown] = useState(PAGE);
 
-  // 시트 (기업/카테고리 탭, 초안 상태)
+  // 시트 초안 — 적용을 눌러야 반영된다
   const [sheet, setSheet] = useState(false);
-  const [sheetTab, setSheetTab] = useState<"company" | "category">("company");
-  const [dSpecial, setDSpecial] = useState<"all" | "favorites" | "direct">("all");
-  const [dCoIds, setDCoIds] = useState<Set<string>>(new Set());
-  const [dCats, setDCats] = useState<Set<Category>>(new Set());
+  const [sheetTab, setSheetTab] = useState<"company" | "class">("company");
+  const [draft, setDraft] = useState<Sel>(emptySel);
 
   const bmSet = useMemo(() => new Set(bookmarked), [bookmarked]);
   const readSet = useMemo(() => new Set(readIds), [readIds]);
 
-  const openSheet = (t: "company" | "category") => {
-    setSheetTab(t); setDSpecial(coSpecial); setDCoIds(new Set(coIds)); setDCats(new Set(cats)); setSheet(true);
-  };
-  const apply = () => { setCoSpecial(dSpecial); setCoIds(new Set(dCoIds)); setCats(new Set(dCats)); setSheet(false); };
-  const reset = () => { setDSpecial("all"); setDCoIds(new Set()); setDCats(new Set()); };
-
-  const pickSpecial = (s: "all" | "favorites" | "direct") => { setDSpecial(s); setDCoIds(new Set()); };
-  const toggleCo = (id: string) => setDCoIds((prev) => {
-    const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id);
-    if (n.size) setDSpecial("all"); // 기업 고르면 특수옵션 해제
+  const open = () => { setDraft(cloneSel(sel)); setSheet(true); };
+  const apply = () => { setSel(cloneSel(draft)); setShown(PAGE); setSheet(false); };
+  // 초기화는 지금 보고 있는 탭만 지운다
+  const reset = () => setDraft((prev) => {
+    const n = cloneSel(prev);
+    if (sheetTab === "company") n.co = new Set();
+    else CLASS_AXES.forEach((a) => (n[a.key] = new Set()));
     return n;
   });
-  const toggleDCat = (c: Category) => setDCats((prev) => { const n = new Set(prev); n.has(c) ? n.delete(c) : n.add(c); return n; });
-
-  const toggleFav = async (companyId: string) => {
-    const next = new Set(favSet);
-    const on = !next.has(companyId);
-    on ? next.add(companyId) : next.delete(companyId);
-    setFavSet(next);
-    const sb = createClient();
-    const { data: { user } } = await sb.auth.getUser();
-    if (user) {
-      if (on) await sb.from("favorites").insert({ user_id: user.id, company_id: companyId });
-      else await sb.from("favorites").delete().eq("user_id", user.id).eq("company_id", companyId);
-    }
-  };
+  const toggle = (key: AxisKey, v: string) => setDraft((prev) => {
+    const n = cloneSel(prev);
+    if (n[key].has(v)) n[key].delete(v); else n[key].add(v);
+    return n;
+  });
 
   // 필터 적용
-  let list = posts;
-  if (tab === "bookmark") list = list.filter((p) => bmSet.has(p.id));
-  if (coIds.size) list = list.filter((p) => p.company_id && coIds.has(p.company_id));
-  else if (coSpecial === "direct") list = list.filter((p) => p.source === "direct");
-  else if (coSpecial === "favorites") list = list.filter((p) => p.company_id && favSet.has(p.company_id));
-  if (cats.size) list = list.filter((p) => cats.has(p.category));
+  let list = showDeep ? posts : posts.filter((p) => !isStackDeep(p));
+  const deepCount = posts.filter((p) => isStackDeep(p)).length;
+  for (const k of ALL_KEYS) {
+    const picked = sel[k];
+    if (picked.size) list = list.filter((p) => [...picked].some((v) => matches(p, k, v)));
+  }
 
-  const coCount = coIds.size || (coSpecial !== "all" ? 1 : 0);
-  const dCoCount = dCoIds.size || (dSpecial !== "all" ? 1 : 0);
-  const coLabel = coIds.size ? `기업 · ${coIds.size}` : coSpecial === "favorites" ? "기업 · 즐겨찾기" : coSpecial === "direct" ? "기업 · 직접등록" : "기업";
-  const catLabel = cats.size ? `카테고리 · ${cats.size}` : "카테고리";
-
-  // 즐겨찾기 기업 먼저
-  const orderedCompanies = [...companies.filter((c) => favSet.has(c.id)), ...companies.filter((c) => !favSet.has(c.id))];
+  const total = countOf(sel, ALL_KEYS);
+  const label = (v: string) => (v === NONE ? "분류 안 됨" : v);
+  const dCo = countOf(draft, ["co"]);
+  const dCls = countOf(draft, ["kind", "pt", "it", "rc", "flag"]);
 
   return (
     <>
-      <div className="utabs">
-        <button className={`utab ${tab === "all" ? "on" : ""}`} onClick={() => setTab("all")}>전체</button>
-        <button className={`utab ${tab === "bookmark" ? "on" : ""}`} onClick={() => setTab("bookmark")}>북마크</button>
-      </div>
-
       <div className="cchips">
-        <button className={`cchip sel-btn ${coCount ? "on" : ""}`} onClick={() => openSheet("company")}>{coLabel} <Icon name="chevron" size="sm" /></button>
-        <button className={`cchip sel-btn ${cats.size ? "on" : ""}`} onClick={() => openSheet("category")}>{catLabel} <Icon name="chevron" size="sm" /></button>
+        <button className={`cchip sel-btn ${total ? "on" : ""}`} onClick={open}>
+          {total ? `필터 · ${total}` : "필터"} <Icon name="chevron" size="sm" />
+        </button>
+        <button className={`cchip ${showDeep ? "on" : ""}`} onClick={() => { setShowDeep((v) => !v); setShown(PAGE); }}>
+          기술 깊은 글 {showDeep ? "보는 중" : `${deepCount} 숨김`}
+        </button>
+        <span className="cchip-n">{list.length}건</span>
       </div>
 
       <div style={{ height: 14 }} />
       {list.length ? (
-        <div className="feed-list">
-          {list.map((p) => <PostRow key={p.id} post={{ ...p, read: readSet.has(p.id), bookmarked: bmSet.has(p.id) }} />)}
-        </div>
+        <>
+          <div className="feed-list">
+            {list.slice(0, shown).map((p) => (
+              <PostRow key={p.id} post={{ ...p, read: readSet.has(p.id), bookmarked: bmSet.has(p.id) }} />
+            ))}
+          </div>
+          {shown < list.length && (
+            <button className="more-btn" onClick={() => setShown((n) => n + PAGE)}>
+              {list.length - shown}건 더 보기
+            </button>
+          )}
+        </>
       ) : (
         <div className="empty"><div className="art" /><div className="msg">조건에 맞는 글이 없어요</div></div>
       )}
 
-      {/* 통합 필터 시트 */}
+      {/* 필터 시트 — 기업 · 분류 두 탭을 한 자리에서 다룬다 */}
       {sheet && <div className="scrim show" onClick={() => setSheet(false)} />}
       <div className={`drawer ${sheet ? "show" : ""}`}>
         <div className="handle" />
-        <div className="dhead">필터<button className="iconbtn" style={{ marginLeft: "auto" }} onClick={() => setSheet(false)}><Icon name="x" /></button></div>
-        <div className="utabs" style={{ margin: "0 15px 4px" }}>
-          <button className={`utab ${sheetTab === "company" ? "on" : ""}`} onClick={() => setSheetTab("company")}>기업{dCoCount ? ` ${dCoCount}` : ""}</button>
-          <button className={`utab ${sheetTab === "category" ? "on" : ""}`} onClick={() => setSheetTab("category")}>카테고리{dCats.size ? ` ${dCats.size}` : ""}</button>
+        <div className="dhead">
+          필터
+          <button className="iconbtn" style={{ marginLeft: "auto" }} onClick={() => setSheet(false)}><Icon name="x" /></button>
         </div>
-        <div className="dbody" style={{ height: "58vh", overflowY: "auto" }}>
-          {sheetTab === "company" ? (
-            <>
-              {/* 라디오 (단일 선택) */}
-              <div className="opt-row" onClick={() => pickSpecial("all")}>
-                <span className={`radio ${dSpecial === "all" && !dCoIds.size ? "on" : ""}`} />
-                <span className="opt-label">전체</span>
-              </div>
-              {favSet.size > 0 && (
-                <div className="opt-row" onClick={() => pickSpecial("favorites")}>
-                  <span className={`radio ${dSpecial === "favorites" ? "on" : ""}`} />
-                  <span className="opt-label">★ 즐겨찾기</span>
+        <div className="utabs" style={{ margin: "0 15px 6px" }}>
+          <button className={`utab ${sheetTab === "company" ? "on" : ""}`} onClick={() => setSheetTab("company")}>
+            기업{dCo ? ` ${dCo}` : ""}
+          </button>
+          <button className={`utab ${sheetTab === "class" ? "on" : ""}`} onClick={() => setSheetTab("class")}>
+            분류{dCls ? ` ${dCls}` : ""}
+          </button>
+        </div>
+        <div className="dbody" style={{ height: "56vh", overflowY: "auto" }}>
+          <div className="axis-wrap">
+            {sheetTab === "company" ? (
+              <div className="axis">
+                <div className="axis-title">출처 {companies.length}곳</div>
+                <div className="chips wrap">
+                  {companies.map((c) => (
+                    <button key={c.id} className={`chip ${draft.co.has(c.id) ? "on" : ""}`} onClick={() => toggle("co", c.id)}>
+                      {c.name}
+                    </button>
+                  ))}
                 </div>
-              )}
-              <div className="opt-row" onClick={() => pickSpecial("direct")}>
-                <span className={`radio ${dSpecial === "direct" ? "on" : ""}`} />
-                <span className="opt-label">직접 등록</span>
               </div>
-
-              <div className="sheet-divider" />
-
-              {/* 체크박스 (기업 다중 선택) */}
-              {orderedCompanies.map((c) => {
-                const sel = dCoIds.has(c.id);
-                return (
-                  <div key={c.id} className="opt-row" onClick={() => toggleCo(c.id)}>
-                    <span className={`checkbox ${sel ? "on" : ""}`}>{sel && <Icon name="check" size="sm" />}</span>
-                    <CompanyLogo company={c} />
-                    <span className="opt-label">{c.name}</span>
-                    <button className={`startoggle ${favSet.has(c.id) ? "on" : ""}`} onClick={(e) => { e.stopPropagation(); toggleFav(c.id); }} aria-label="즐겨찾기"><Icon name="star" /></button>
+            ) : (
+              // "다룬 문제"는 한 축(pt)을 두 줄로 나눠 보여주므로 key 는 라벨로 잡는다
+              CLASS_AXES.map((a) => (
+                <div className="axis" key={a.label}>
+                  <div className="axis-title">{a.label}</div>
+                  <div className="chips wrap">
+                    {a.values.map((v) => (
+                      <button key={v} className={`chip ${draft[a.key].has(v) ? "on" : ""}`} onClick={() => toggle(a.key, v)}>
+                        {label(v)}
+                      </button>
+                    ))}
                   </div>
-                );
-              })}
-            </>
-          ) : (
-            <div className="cat-grid">
-              {CATEGORIES.map((c) => (
-                <button key={c} className={`cchip ${dCats.has(c) ? "on" : ""}`} onClick={() => toggleDCat(c)}>{c}</button>
-              ))}
-            </div>
-          )}
+                </div>
+              ))
+            )}
+            <p className="axis-note">
+              아무것도 안 고르면 전체예요. 같은 줄에서 여러 개를 고르면 그중 하나라도 맞는 글,
+              다른 줄끼리는 모두 맞는 글만 남아요.
+            </p>
+          </div>
         </div>
         <div className="dfoot">
           <button className="ghost" onClick={reset}>초기화</button>

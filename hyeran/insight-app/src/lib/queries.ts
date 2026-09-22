@@ -1,5 +1,40 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Company, CommunityPost, Post, Review, Word } from "@/lib/types";
+import { certaintyRank, ARTICLE_KINDS, USER_PROBLEMS, MAKER_PROBLEMS, IMPACT_TARGETS, ARTICLE_FLAGS,
+  type Company, type CommunityPost, type Post, type Review, type Word } from "@/lib/types";
+
+// 목록 화면용 컬럼.
+// body(글 원문, 평균 8.8KB)와 ai_summary·terms(상세 전용)를 뺀다.
+//
+// ⚠️ company:companies(*) 임베드를 쓰지 않는다. 기업은 23곳뿐인데 글 313건에
+//    전부 붙어 오면서 쿼리가 68ms → 736ms 로 10배 느려졌다.
+//    기업 목록을 한 번만 받아 메모리에서 붙인다.
+const LIST_COLS =
+  // 카드에 그리는 것
+  "id, company_id, title, headline, source, author_id, published_at, " +
+  // 필터·정렬에 쓰는 것
+  "article_kind, problem_type, impact_targets, result_certainty, flags, tags, view_count";
+const LIST_SELECT = LIST_COLS;
+
+// 기업·작성자를 메모리에서 붙인다 (임베드 대신)
+async function attachRefs(sb: Awaited<ReturnType<typeof createClient>>, posts: Post[]): Promise<Post[]> {
+  if (!posts.length) return posts;
+  const { data: cos } = await sb.from("companies").select("*");
+  const coMap = new Map((cos ?? []).map((c) => [c.id, c as Company]));
+
+  // 직접 등록 글만 작성자가 있다 — 대개 몇 건뿐이라 그때만 조회한다
+  const authorIds = [...new Set(posts.map((p) => p.author_id).filter(Boolean))] as string[];
+  const auMap = new Map<string, { name: string; initial: string }>();
+  if (authorIds.length) {
+    const { data: aus } = await sb.from("profiles").select("id, name, initial").in("id", authorIds);
+    (aus ?? []).forEach((a: { id: string; name: string; initial: string }) =>
+      auMap.set(a.id, { name: a.name, initial: a.initial }));
+  }
+  return posts.map((p) => ({
+    ...p,
+    company: p.company_id ? coMap.get(p.company_id) ?? null : null,
+    author: p.author_id ? auMap.get(p.author_id) ?? null : null,
+  }));
+}
 
 // 기업 목록
 export async function getCompanies(): Promise<Company[]> {
@@ -18,22 +53,22 @@ async function attachReviewCounts(sb: Awaited<ReturnType<typeof createClient>>, 
   return posts.map((p) => ({ ...p, review_count: counts.get(p.id) ?? 0 }));
 }
 
-// 피드: 전체 최신순 (인사이트 수 포함, 조회수는 posts.view_count 컬럼)
+// 피드: 전체 최신순
 export async function getFeedPosts(): Promise<Post[]> {
   const sb = await createClient();
   const { data } = await sb
     .from("posts")
-    .select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)")
+    .select(LIST_SELECT)
     .order("published_at", { ascending: false });
-  return attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
+  return attachRefs(sb, (data as unknown as Post[]) ?? []);
 }
 
 // id 목록 → 글(작성자·인사이트 수 포함) — 마이·북마크·하이라이트 공통
 export async function getPostsByIds(ids: string[]): Promise<Post[]> {
   if (!ids.length) return [];
   const sb = await createClient();
-  const { data } = await sb.from("posts").select("*, company:companies(*), author:profiles!posts_author_id_fkey(name, initial)").in("id", ids);
-  return attachReviewCounts(sb, (data as unknown as Post[]) ?? []);
+  const { data } = await sb.from("posts").select(LIST_SELECT).in("id", ids);
+  return attachRefs(sb, (data as unknown as Post[]) ?? []);
 }
 
 // 오늘의 글: 최근 7일 글 중 (조회수 + 인사이트 수) 1위 1개. 최근 글이 없으면 전체에서 선정
@@ -195,99 +230,149 @@ export async function getBookmarkedInsightFeed(userId: string): Promise<Review[]
   return attachReviewLikes(sb, withComments, userId);
 }
 
-// 홈 8섹션 데이터 (중복 노출 제거 + 폴백 포함)
+// ── 홈 큐레이션 섹션 [분류체계 §6-1] ─────────────────────────
+// 섹션 제목은 카피이고 분류값이 아니다. 분류값 자체는 화면에 노출하지 않는다.
+// 후보 6편 미만이면 섹션을 숨기고, 한 화면에서 같은 글은 한 번만 보인다.
+export type HomeSection = { title: string; sub: string; posts: Post[] };
 export type HomeData = {
-  hero: Post | null;
-  keywords: string[];
-  popular: Post[]; popularFallback: boolean;
-  popularInsights: Review[]; popularInsightsFallback: boolean;
-  unfinished: Post[];
-  recommended: Post[];
-  favGroups: { company: Company | null; posts: Post[] }[]; favEmpty: boolean;
-  direct: Post[];
+  sections: HomeSection[];
+  latest: Post[];       // "새로 들어온 글" — 항상 마지막
 };
-export async function getHomeData(userId: string): Promise<HomeData> {
-  const sb = await createClient();
-  // 독립 조회는 병렬로 (왕복 지연 축소)
-  const [posts, feed, favs] = await Promise.all([
-    getFeedPosts(),               // company·author·review_count 포함
-    getInsightFeed(userId),       // 최근 인사이트 (③④ 폴백)
-    getFavoriteCompanyIds(userId),
-  ]);
-  const now = Date.now();
-  const days = (p: Post, d: number) => now - new Date(p.published_at).getTime() <= d * 86_400_000;
-  const recentCmp = (a: Post, b: Post) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime();
-  const seen = new Set<string>();
-  const take = (list: Post[], n: number) => { const out: Post[] = []; for (const p of list) { if (seen.has(p.id)) continue; out.push(p); seen.add(p.id); if (out.length >= n) break; } return out; };
 
-  // ① 오늘의 글
-  const hero = pickTodayHero(posts);
-  if (hero) seen.add(hero.id);
+const SECTION_DEFS: { title: string; sub: string; match: (p: Post) => boolean }[] = [
+  {
+    title: "AI, 다들 실제로는 이렇게 쓰고 있어요",
+    sub: "제품에 붙인 것 말고, 만드는 과정에 쓴 이야기",
+    match: (p) => p.flags?.includes("개발 과정에 AI") || p.problem_type === "AI 출력 통제",
+  },
+  {
+    title: "사용자가 느끼는 게 달라졌어요",
+    sub: "화면 밖에서 실제로 무엇이 바뀌었는지까지 나온 글",
+    match: (p) => !!p.impact_targets?.includes("사용자 경험") && p.result_certainty !== "없음",
+  },
+  {
+    title: "생각대로 안 됐을 때, 이렇게 했대요",
+    sub: "잘하는 팀도 기대와 다른 결과를 받습니다",
+    match: (p) => !!p.flags?.includes("기대와 다른 결과"),
+  },
+  {
+    title: "사서 쓰는 대신 직접 만들기로 했어요",
+    sub: "무엇이 부족해서 그런 결정을 했는지",
+    match: (p) => !!p.flags?.includes("직접 만들기"),
+  },
+  {
+    title: "손으로 하던 일을 없앤 사례",
+    sub: "운영·어드민 수작업을 줄인 팀들",
+    match: (p) =>
+      (p.problem_type === "운영·어드민" || p.problem_type === "개발 생산성") &&
+      !!p.impact_targets?.includes("내부 생산성"),
+  },
+];
 
-  // ② 인기 키워드 (최근 2주 tags 빈도 top 8)
-  const freq = new Map<string, number>();
-  posts.filter((p) => days(p, 14)).forEach((p) => (p.tags ?? []).forEach((t) => freq.set(t, (freq.get(t) ?? 0) + 1)));
-  const keywords = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t]) => t);
+const MIN_SECTION = 6; // 후보가 이보다 적으면 섹션째 숨긴다
+const PER_SECTION = 8; // 카드 8장까지, 가로 스와이프
 
-  const recent30 = posts.filter((p) => days(p, 30));
-  const engage = (p: Post) => (p.review_count ?? 0) * 2 + (p.view_count ?? 0);
+export async function getHomeData(): Promise<HomeData> {
+  const posts = await getFeedPosts();
+  const recentCmp = (a: Post, b: Post) =>
+    new Date(b.published_at).getTime() - new Date(a.published_at).getTime();
+  // 같은 섹션 안에서는 수치 > 정성 > 없음 → 발행일 내림차순
+  const bySection = (a: Post, b: Post) =>
+    certaintyRank(a.result_certainty) - certaintyRank(b.result_certainty) || recentCmp(a, b);
 
-  // ③ 인기 글: 인사이트 2개+ 글 상위. 부족하면 → "최근 인사이트가 올라온 글"
-  const strong = recent30.filter((p) => (p.review_count ?? 0) >= 2).sort((a, b) => engage(b) - engage(a) || recentCmp(a, b));
-  const popularFallback = strong.length < 4;
-  let popular: Post[];
-  if (!popularFallback) {
-    popular = take(strong, 10);
-  } else {
-    const pset = new Set<string>();
-    const arr: Post[] = [];
-    for (const r of feed) { if (pset.has(r.post_id)) continue; pset.add(r.post_id); const p = posts.find((x) => x.id === r.post_id); if (p) arr.push(p); }
-    popular = take(arr, 10);
+  const used = new Set<string>();
+
+  const sections: HomeSection[] = [];
+  for (const def of SECTION_DEFS) {
+    const cands = posts.filter((p) => !used.has(p.id) && def.match(p));
+    if (cands.length < MIN_SECTION) continue; // 억지로 채우면 섹션 제목이 거짓이 된다
+    const picked = cands.sort(bySection).slice(0, PER_SECTION);
+    picked.forEach((p) => used.add(p.id));
+    sections.push({ title: def.title, sub: def.sub, posts: picked });
   }
 
-  // ④ 인기 인사이트: 좋아요 상위, 없으면 → "최근 올라온 인사이트 최신순"
-  const liked = [...feed].filter((r) => (r.like_count ?? 0) >= 1).sort((a, b) => (b.like_count ?? 0) - (a.like_count ?? 0) || (b.comment_count ?? 0) - (a.comment_count ?? 0));
-  const popularInsightsFallback = liked.length < 3;
-  const popularInsights = (popularInsightsFallback ? feed : liked).slice(0, 10);
-
-  // ⑤ 아직 안 끝난 글 (조회했으나 내 인사이트 없음)
-  const { data: myRv } = await sb.from("reviews").select("post_id").eq("author_id", userId).eq("is_draft", false);
-  const myReviewed = new Set((myRv ?? []).map((r: { post_id: string }) => r.post_id));
-  const viewed = await getViewedPosts(userId);
-  const unfinished = viewed.filter((p) => !myReviewed.has(p.id)).slice(0, 10);
-
-  // ⑥ 추천 글 (내 활동 태그 유사도) — 내 활동 없으면 빈 배열
-  const myTags = new Map<string, number>();
-  [...viewed, ...posts.filter((p) => myReviewed.has(p.id))].forEach((p) => (p.tags ?? []).forEach((t) => myTags.set(t, (myTags.get(t) ?? 0) + 1)));
-  let recommended: Post[] = [];
-  if (myTags.size) {
-    const scored = posts
-      .filter((p) => !myReviewed.has(p.id))
-      .map((p) => ({ p, s: (p.tags ?? []).reduce((s, t) => s + (myTags.get(t) ?? 0), 0) }))
-      .filter((x) => x.s > 0)
-      .sort((a, b) => b.s - a.s || recentCmp(a.p, b.p));
-    recommended = take(scored.map((x) => x.p), 10);
-  }
-
-  // ⑦ 즐겨찾기 기업 새 글: 기업별 최신 2개씩 (없으면 유도 배너) — favs는 상단에서 병렬 조회됨
-  const favEmpty = favs.size === 0;
-  const favGroups: { company: Company | null; posts: Post[] }[] = [];
-  if (!favEmpty) {
-    for (const cid of favs) {
-      const cp = posts.filter((p) => p.company_id === cid).sort(recentCmp).slice(0, 2);
-      if (cp.length) favGroups.push({ company: cp[0].company ?? null, posts: cp });
-    }
-    // 기업명 가나다순
-    favGroups.sort((a, b) => (a.company?.name ?? "").localeCompare(b.company?.name ?? "", "ko"));
-  }
-
-  // ⑧ 사용자 등록 글
-  const direct = take(posts.filter((p) => p.source === "direct").sort(recentCmp), 10);
-
-  return { hero, keywords, popular, popularFallback, popularInsights, popularInsightsFallback, unfinished, recommended, favGroups, favEmpty, direct };
+  const latest = posts.filter((p) => !used.has(p.id)).sort(recentCmp).slice(0, PER_SECTION);
+  return { sections, latest };
 }
 
-// 유저가 조회한 글 (post_views → 글), 최근 조회순
+
+// ── 홈 통계 [수집·판정 현황 파악용] ────────────────────────
+// 서비스를 쓰기 전에 "어떤 글이 올라오고 있나"를 먼저 봐야 한다.
+// 각 항목은 피드로 링크되어 그 묶음의 글을 실제로 읽어볼 수 있다.
+export type StatRow = { label: string; count: number; href?: string };
+export type StatsData = {
+  total: number;
+  judged: number;
+  companies: StatRow[];
+  kinds: StatRow[];
+  userProblems: StatRow[];   // 서비스를 쓰는 사람이 겪는 문제
+  makerProblems: StatRow[];  // 만드는 쪽이 겪는 문제
+  noProblem: StatRow;        // 17개 어디에도 안 맞은 글
+  impacts: StatRow[];
+  certainties: StatRow[];
+  flags: StatRow[];
+};
+
+export async function getStats(): Promise<StatsData> {
+  const sb = await createClient();
+  const [{ data: posts, error: pErr }, { data: cos, error: cErr }] = await Promise.all([
+    sb.from("posts").select("company_id, article_kind, problem_type, impact_targets, result_certainty, flags, headline"),
+    sb.from("companies").select("id, name, slug"),
+  ]);
+  // 출처가 전부 "기타"로 뜨면 여기서 companies 를 못 읽은 것이다 (RLS 등)
+  if (pErr) console.warn("[getStats] posts 조회 실패:", pErr.message);
+  if (cErr) console.warn("[getStats] companies 조회 실패:", cErr.message);
+  if (!cErr && !cos?.length) console.warn("[getStats] companies 가 0건으로 돌아왔다 — 이름 매칭 불가");
+
+  const list = posts ?? [];
+  const coName = new Map((cos ?? []).map((c) => [c.id, c] as const));
+
+  const tally = (key: (p: (typeof list)[number]) => (string | null)[]) => {
+    const m = new Map<string, number>();
+    for (const p of list) for (const v of key(p)) if (v) m.set(v, (m.get(v) ?? 0) + 1);
+    return m;
+  };
+  const rows = (m: Map<string, number>, order: string[], q: string): StatRow[] =>
+    order.map((k) => ({ label: k, count: m.get(k) ?? 0, href: `/feed?${q}=${encodeURIComponent(k)}` }))
+      .sort((a, b) => b.count - a.count);
+
+  const kindM = tally((p) => [p.article_kind]);
+  const probM = tally((p) => [p.problem_type]);
+  const impM = tally((p) => p.impact_targets ?? []);
+  const certM = tally((p) => [p.result_certainty]);
+  const flagM = tally((p) => p.flags ?? []);
+
+  const byCo = new Map<string, number>();
+  for (const p of list) if (p.company_id) byCo.set(p.company_id, (byCo.get(p.company_id) ?? 0) + 1);
+
+  const nullProblem = list.filter((p) => !p.problem_type).length;
+
+  return {
+    total: list.length,
+    judged: list.filter((p) => p.headline).length,
+    companies: [...byCo.entries()]
+      .map(([id, count]) => ({ label: coName.get(id)?.name ?? "기타", count, href: `/companies/${coName.get(id)?.slug ?? ""}` }))
+      .sort((a, b) => b.count - a.count),
+    kinds: rows(kindM, ARTICLE_KINDS, "kind"),
+    userProblems: rows(probM, USER_PROBLEMS, "pt"),
+    makerProblems: rows(probM, MAKER_PROBLEMS, "pt"),
+    noProblem: { label: "17개 어디에도 안 맞음", count: nullProblem, href: "/feed?pt=none" },
+    impacts: rows(impM, IMPACT_TARGETS, "it"),
+    certainties: rows(certM, ["수치", "정성", "없음"], "rc"),
+    flags: rows(flagM, ARTICLE_FLAGS, "flag"),
+  };
+}
+
+// 같은 problem_type 의 다른 글 — 상세 하단 "같은 문제를 다룬 사례" [분류체계 §6-2]
+export async function getRelatedByProblem(postId: string, problemType: string | null, limit = 3): Promise<Post[]> {
+  if (!problemType) return [];
+  const sb = await createClient();
+  const { data } = await sb.from("posts").select(LIST_SELECT)
+    .eq("problem_type", problemType).neq("id", postId)
+    .order("published_at", { ascending: false }).limit(limit);
+  return attachRefs(sb, (data as unknown as Post[]) ?? []);
+}
+
 export async function getViewedPosts(userId: string): Promise<Post[]> {
   const sb = await createClient();
   const { data: vs, error } = await sb.from("post_views").select("post_id, viewed_at").eq("user_id", userId).order("viewed_at", { ascending: false }).limit(100);

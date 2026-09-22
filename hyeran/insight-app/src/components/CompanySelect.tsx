@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/Icon";
-import { CompanyLogo } from "@/components/PostCard";
+import { CompanyLogo } from "@/components/CompanyLogo";
 import type { Company } from "@/lib/types";
 
 // 기업 상세 상단: 현재 기업명(셀렉트) → 탭 시 다른 기업으로 전환. favorite = 기업명 옆 즐겨찾기 슬롯

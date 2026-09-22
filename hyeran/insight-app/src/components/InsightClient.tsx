@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CompanyLogo } from "@/components/PostCard";
+import { CompanyLogo } from "@/components/CompanyLogo";
 import Icon from "@/components/Icon";
 import ReviewLike from "@/components/ReviewLike";
 import type { Review, CommunityPost } from "@/lib/types";

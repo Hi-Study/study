@@ -1,188 +1,83 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { getHomeData, getReadPostIds, getBookmarkedPostIds, getCompanies } from "@/lib/queries";
-import { FeatureCard, CompanyLogo } from "@/components/PostCard";
-import FeedCard from "@/components/FeedCard";
-import DragScroll from "@/components/DragScroll";
+import { getStats, type StatRow } from "@/lib/queries";
 import Icon from "@/components/Icon";
-import type { Post, Review } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-function SecHead({ title, sub, href }: { title: string; sub?: string; href?: string }) {
+// 홈 = 수집·판정 현황판.
+// 서비스를 쓰기 전에 "어떤 글이 올라오고 있나"를 먼저 파악하기 위한 화면이다.
+// 각 줄은 피드로 이어져 그 묶음의 글을 실제로 읽어볼 수 있다.
+function StatGroup({ title, note, rows, total }: { title: string; note?: string; rows: StatRow[]; total: number }) {
+  const max = Math.max(1, ...rows.map((r) => r.count));
   return (
-    <div className="hsec-head">
-      <div>
-        <div className="hsec-title">{title}</div>
-        {sub && <div className="hsec-sub">{sub}</div>}
+    <section className="stat-sec">
+      <div className="stat-head">
+        <h2>{title}</h2>
+        {note && <span>{note}</span>}
       </div>
-      {href && <Link href={href} className="see-all">더보기</Link>}
-    </div>
+      <div className="stat-rows">
+        {rows.map((r) => {
+          const pct = total ? Math.round((r.count / total) * 100) : 0;
+          const body = (
+            <>
+              <span className="sr-label">{r.label}</span>
+              <span className="sr-bar"><i style={{ width: `${(r.count / max) * 100}%` }} /></span>
+              <span className="sr-n">{r.count}</span>
+              <span className="sr-p">{pct}%</span>
+            </>
+          );
+          return r.href
+            ? <Link key={r.label} href={r.href} className="stat-row">{body}</Link>
+            : <div key={r.label} className="stat-row">{body}</div>;
+        })}
+      </div>
+    </section>
   );
 }
 
-const RQ = ["인상 깊은 부분", "업무 적용", "인사이터에게 질문"] as const;
-
 export default async function HomePage() {
-  const sb = await createClient();
-  const { data: { user } } = await sb.auth.getUser();
-  const [home, readIds, bmIds, companies] = await Promise.all([
-    getHomeData(user!.id),
-    getReadPostIds(user!.id),
-    getBookmarkedPostIds(user!.id),
-    getCompanies(),
-  ]);
-  const mark = (p: Post) => ({ ...p, read: readIds.has(p.id), bookmarked: bmIds.has(p.id) });
-  const swipe = (list: Post[]) => <DragScroll className="swipe">{list.map((p) => <FeedCard key={p.id} post={mark(p)} />)}</DragScroll>;
-  const grid = (list: Post[]) => <div className="pop-grid">{list.slice(0, 4).map((p) => <FeedCard key={p.id} post={mark(p)} />)}</div>;
+  const s = await getStats();
+  const unjudged = s.total - s.judged;
 
   return (
     <>
       <div className="appbar">
         <span className="logo"><span className="name">INSIGHT</span><span className="dot">.</span></span>
         <span className="spacer" />
+        <Link href="/search" className="iconbtn" aria-label="검색"><Icon name="search" /></Link>
         <Link href="/notifications" className="iconbtn" aria-label="알림"><Icon name="bell" /></Link>
       </div>
       <div className="pad">
-        <Link href="/search" className="searchbar" style={{ display: "flex" }}>
-          <Icon name="search" /><span className="ph">글 제목·기업·태그 검색</span>
-        </Link>
+        <div className="stat-top">
+          <div><b>{s.total}</b><span>수집한 글</span></div>
+          <div><b>{s.companies.length}</b><span>출처</span></div>
+          <div><b>{s.judged}</b><span>판정 완료</span></div>
+          {unjudged > 0 && <div className="warn"><b>{unjudged}</b><span>미판정</span></div>}
+        </div>
 
-        {/* ── 발견 존 ── */}
-        {/* ① 오늘의 글 (헤더 없음) */}
-        {home.hero && <section className="hsec"><FeatureCard post={mark(home.hero)} /></section>}
+        <StatGroup title="글의 성격" note="article_kind" rows={s.kinds} total={s.total} />
+        {/* 사용자/내부 구분은 저장되는 값이 아니라 읽기 위한 묶음이다 */}
+        <StatGroup
+          title="다룬 문제 · 쓰는 사람"
+          note={`${s.userProblems.reduce((n, r) => n + r.count, 0)}건 · 서비스를 쓰는 사람이 겪는 문제`}
+          rows={s.userProblems}
+          total={s.total}
+        />
+        <StatGroup
+          title="다룬 문제 · 만드는 쪽"
+          note={`${s.makerProblems.reduce((n, r) => n + r.count, 0)}건 · 만드는 팀이 겪는 문제`}
+          rows={s.makerProblems}
+          total={s.total}
+        />
+        <StatGroup title="어디에도 안 맞음" note="problem_type 없음" rows={[s.noProblem]} total={s.total} />
+        <StatGroup title="무엇이 달라졌나" note="impact_targets · 복수" rows={s.impacts} total={s.total} />
+        <StatGroup title="결과를 어떻게 말하나" note="result_certainty" rows={s.certainties} total={s.total} />
+        <StatGroup title="부수 플래그" note="flags · 복수" rows={s.flags} total={s.total} />
+        <StatGroup title="출처" note={`${s.companies.length}곳`} rows={s.companies} total={s.total} />
 
-        {/* ★ 기업 아이콘 그리드 → 기업 상세 */}
-        {companies.length > 0 && (
-          <section className="hsec">
-            <DragScroll className="co-grid">
-              {companies.map((c) => (
-                <Link key={c.id} href={`/companies/${c.slug}`} className="co-cell">
-                  <CompanyLogo company={c} />
-                  <span className="co-name">{c.name}</span>
-                </Link>
-              ))}
-            </DragScroll>
-          </section>
-        )}
-
-        {/* ② 인기 키워드 */}
-        {home.keywords.length > 0 && (
-          <section className="hsec">
-            <SecHead title="요즘 이 단어들이 자주 보여요 ✨" />
-            <div className="kw-row">
-              {home.keywords.map((k) => (
-                <Link key={k} href={`/search?q=${encodeURIComponent(k)}`} className="kw-chip">{k}</Link>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ③ 인기 글 */}
-        {home.popular.length > 0 && (
-          <section className="hsec">
-            <SecHead
-              title={home.popularFallback ? "막 이야기가 시작됐어요" : "요즘 많이 보고 인사이트를 남긴 글"}
-              sub={home.popularFallback ? "사람들이 인사이트를 남기고 있어요" : undefined}
-            />
-            {swipe(home.popular)}
-          </section>
-        )}
-
-        {/* ④ 인기 인사이트 */}
-        {home.popularInsights.length > 0 && (
-          <section className="hsec">
-            <SecHead
-              title={home.popularInsightsFallback ? "먼저 읽은 사람들의 생각은?" : "이 생각에 공감을 많이 했어요"}
-              sub={home.popularInsightsFallback ? "다양한 인사이트를 함께 확인해보세요" : undefined}
-            />
-            <DragScroll className="swipe">
-              {home.popularInsights.map((r) => (
-                <Link key={r.id} href={`/posts/${r.post_id}?insight=${r.id}`} className="ins-mini">
-                  <div className="ins-mini-head">
-                    <span className="avatar sm">{r.author?.initial ?? "?"}</span>
-                    <span className="ins-mini-name">{r.author?.name ?? "인사이터"}</span>
-                  </div>
-                  <div className="ins-mini-post">{r.post?.title}</div>
-                  <div className="ins-mini-qa">
-                    {RQ.map((label, i) => {
-                      const a = [r.q1, r.q2, r.q3][i]?.trim();
-                      if (!a) return null;
-                      return <div className="imq" key={i}><span className="imq-q">{label}</span><span className="imq-a">{a}</span></div>;
-                    })}
-                  </div>
-                  <div className="ins-mini-foot">
-                    <span className={r.liked ? "on" : ""}><Icon name="heart" size="sm" />{r.like_count ?? 0}</span>
-                    <span><Icon name="comment" size="sm" />{r.comment_count ?? 0}</span>
-                  </div>
-                </Link>
-              ))}
-            </DragScroll>
-          </section>
-        )}
-
-        {/* ── 나 존 ── */}
-        {/* ⑤ 아직 안 끝난 글 */}
-        {home.unfinished.length > 0 && (
-          <section className="hsec zone">
-            <SecHead title="이어서 읽어볼까요?" sub="다 읽고 인사이트도 남겨보세요" href="/my" />
-            {grid(home.unfinished)}
-          </section>
-        )}
-
-        {/* ⑥ 추천 글 */}
-        {home.recommended.length > 0 && (
-          <section className="hsec">
-            <SecHead title="이 글도 관심있으실 것 같아요 👁️" />
-            {swipe(home.recommended)}
-          </section>
-        )}
-
-        {/* ── 관심 존 ── */}
-        {/* ⑦ 즐겨찾기 기업 새 글 */}
-        <section className="hsec zone">
-          {home.favEmpty ? (
-            <>
-              <SecHead title="관심 기업을 골라두세요" />
-              <Link href="/feed" className="home-banner">
-                <div className="hb-txt"><b>자주 보는 기업을 즐겨찾기 하면</b><br />새 글을 여기서 모아 볼 수 있어요</div>
-                <span className="hb-go">기업 고르기 ›</span>
-              </Link>
-            </>
-          ) : home.favGroups.length > 0 ? (
-            <>
-              <SecHead title="관심 기업에 새 글이 올라왔어요" href="/feed" />
-              {home.favGroups.map((g) => (
-                <div key={g.company?.id ?? Math.random()} className="fav-group">
-                  <Link href={`/feed?company=${g.company?.slug ?? ""}`} className="fav-co">
-                    <CompanyLogo company={g.company} />
-                    <span className="fav-co-name">{g.company?.name ?? "기업"}</span>
-                    <span className="fav-co-go">›</span>
-                  </Link>
-                  <div className="pop-grid">{g.posts.map((p) => <FeedCard key={p.id} post={mark(p)} />)}</div>
-                </div>
-              ))}
-            </>
-          ) : null}
-        </section>
-
-        {/* ⑧ 사용자 등록 글 */}
-        <section className="hsec">
-          {home.direct.length > 0 ? (
-            <>
-              <SecHead title="인사이터가 직접 소개하는 글이에요" href="/feed?source=direct" />
-              {swipe(home.direct)}
-            </>
-          ) : (
-            <>
-              <SecHead title="직접 소개하고 싶은 글이 있나요?" />
-              <Link href="/register" className="home-banner">
-                <div className="hb-txt"><b>좋은 글을 찾으셨다면</b><br />인사이터들에게 알려주세요</div>
-                <span className="hb-go">글 등록 ›</span>
-              </Link>
-            </>
-          )}
-        </section>
+        <p className="stat-note" style={{ marginTop: 22 }}>
+          각 줄을 누르면 그 묶음의 글만 볼 수 있어요.
+        </p>
       </div>
     </>
   );

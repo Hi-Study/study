@@ -23,11 +23,11 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
         postId={post.id}
         init={{
           title: post.title,
-          category: post.category,
+          category: post.category ?? "개발",
           tags: post.tags ?? [],
           problem: post.ai_summary?.problem ?? "",
           solution: post.ai_summary?.solution ?? "",
-          learning: post.ai_summary?.learning ?? "",
+          impact: post.ai_summary?.impact ?? "",
         }}
       />
     </div>
