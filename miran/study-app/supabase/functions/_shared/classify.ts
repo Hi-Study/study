@@ -1,70 +1,318 @@
-// 아티클 자동 분류 — 고정 7주제(topic) 1개 + 태그(tags) 여러 개를 키워드 규칙으로 뽑는다.
-// LLM 없이(무료·즉시) 동작. 정확도보다 "대략 맞는 분류 + 검색 태그" 확보가 목적.
-// 규칙 순서 = 우선순위: 앞선(구체적) 주제가 동점 시 이긴다. dev 는 가장 광범위해 맨 뒤.
+// 아티클 자동 분류 — 대분류(topic) 1개 + 태그(tags) 여러 개.
+//
+// ⚠️ 예전에는 **키워드 규칙**으로 뽑았다("쿠버네티스가 있으면 인프라"). 버렸다 —
+//    글의 결론이 아니라 등장 단어로 판정하다 보니, 같은 단어가 나오는 전혀 다른 글이
+//    한 칸에 몰렸다. 대분류는 "무슨 단어가 나왔나"가 아니라 **결론이 무엇인가**로 정해진다.
+//
+// 지금은 본문을 읽고 판단하는 LLM 분류다(docs/분류-기준-v1.md):
+//   ① 판단 순서대로 물어 처음 "예"가 나오는 칸을 고른다
+//   ② "예"라고 답하려면 **본문에서 근거 문장을 그대로 인용**해야 한다
+//   ③ 같은 글을 3번 판정해 **다수결** — 두 번 이상 같은 답이 나와야 채택한다
+//
+// 근거 문장을 본문과 글자 대조해서, 지어낸 근거는 그 판정을 통째로 버린다.
+// 셋 다 다르거나 전부 탈락하면 topic 을 비워 둔다(억지로 넣지 않는다).
 
-export type Topic = "dev" | "product" | "design" | "planning" | "data_ai" | "infra" | "career";
+export type Topic =
+  | "quality_risk"
+  | "ai_use"
+  | "product_plan"
+  | "data_exp"
+  | "user_exp"
+  | "biz_brand"
+  | "collab";
 
-const RULES: { topic: Topic; kw: RegExp }[] = [
-  {
-    topic: "data_ai",
-    kw: /(머신\s*러닝|딥\s*러닝|LLM|GPT|생성형|추천\s*시스템|데이터\s*엔지니어|데이터\s*분석|데이터\s*플랫폼|임베딩|벡터\s*(디비|DB|검색)|하둡|스파크|Spark|Airflow|BigQuery|피처\s*스토어|feature\s*store|모델\s*(학습|서빙)|파이프라인)/i,
-  },
-  {
-    topic: "infra",
-    kw: /(쿠버네티스|Kubernetes|k8s|도커|Docker|CI\/CD|인프라|MSA|마이크로\s*서비스|카프카|Kafka|트래픽|부하|스케일|서버리스|Serverless|Terraform|모니터링|옵저버빌리티|SRE|가용성|장애\s*대응|데이터베이스\s*튜닝|쿼리\s*최적화)/i,
-  },
-  {
-    topic: "design",
-    kw: /(디자인\s*시스템|디자인\s*토큰|UI\/UX|UX\s*라이팅|피그마|Figma|타이포그래피|접근성|a11y|모션\s*(디자인|가이드)|인터랙션\s*디자인|브랜드\s*경험|컴포넌트\s*디자인)/i,
-  },
-  {
-    topic: "planning",
-    kw: /(기획|PM\b|PO\b|프로덕트\s*매니저|요구사항|스펙\s*정의|로드맵|우선순위|지표|KPI|OKR|퍼널|A\/B\s*테스트|실험\s*설계|가설|유저\s*리서치|와이어프레임)/i,
-  },
-  {
-    topic: "career",
-    kw: /(회고|성장|채용|면접|온보딩|조직\s*문화|팀\s*빌딩|리더십|커리어|주니어|시니어|일하는\s*방식|협업\s*문화|스크럼|애자일|agile)/i,
-  },
-  {
-    topic: "product",
-    kw: /(서비스\s*(출시|런칭|개선)|리뉴얼|사용자\s*경험|고객\s*경험|전환율|리텐션|결제|주문|배송|물류|재고|POS|커머스|구독|프로모션|쿠폰|장바구니|검색\s*품질|추천\s*상품|그로스|funnel)/i,
-  },
-  {
-    topic: "dev",
-    kw: /(리팩터|리팩토링|프론트\s*엔드|백\s*엔드|React|리액트|Vue|Spring|스프링|Kotlin|코틀린|자바|자바스크립트|타입스크립트|TypeScript|GraphQL|REST\s*API|테스트\s*코드|성능\s*최적화|아키텍처|시스템\s*설계|구조를?\s*(다시\s*)?설계|모듈화|라이브러리|프레임워크|버그|디버깅)/i,
-  },
+export const TOPICS: Topic[] = [
+  "quality_risk",
+  "ai_use",
+  "product_plan",
+  "data_exp",
+  "user_exp",
+  "biz_brand",
+  "collab",
 ];
 
-// 검색·필터용 태그 후보(발견되면 원형 그대로 태그로 채택).
-const TAG_TOKENS = [
-  "React", "Vue", "Next.js", "Nuxt", "Kotlin", "Spring", "Node.js", "GraphQL", "TypeScript",
-  "Kafka", "Kubernetes", "Docker", "AWS", "MSA", "Redis", "MySQL", "PostgreSQL", "Elasticsearch",
-  "LLM", "머신러닝", "추천", "데이터", "결제", "디자인 시스템", "접근성", "성능", "테스트",
-  "회고", "채용", "온보딩", "A/B 테스트", "리팩토링", "모니터링", "보안", "캐시",
-];
+/** 판단 순서 = 이 순서로 묻고, 처음 "예"가 나오는 칸이 대분류다. */
+export const CLASSIFY_SYS = `너는 기술 블로그 글을 기획자용으로 분류하는 한국어 분류기다.
+반드시 아래 JSON 하나만 출력해라(설명·코드펜스 금지).
+{"include":true,"conclusion":"","topic":"","evidence":"","confidence":"상","purpose":"","method":[],"context":[],"tech":[]}
 
-function countMatches(hay: string, re: RegExp): number {
-  return (hay.match(new RegExp(re.source, "gi")) ?? []).length;
+1) 먼저 conclusion: 이 글의 결론을 한 문장으로 적는다. 아래 판단은 전부 이 결론을 기준으로 한다.
+
+2) include: 서비스에 넣을 글인가?
+   - 넣는다(true): 기획자가 제품 판단에 쓸 수 있는 글. 문제 배경·사용자 영향·의사결정 과정·결과 수치 중
+     하나라도 뚜렷하면 넣는다. 본문에 기술 설명이 섞여 있어도 괜찮다.
+     새로 나온 기능·서비스를 소개하는 글도 넣는다(대분류는 product_plan).
+   - 뺀다(false): 구현 방법(코드, API 설계, 인프라 설정, 성능 튜닝, 모델 학습)이 중심이라
+     제품 판단과 연결되지 않는 글. 행사 모집·참가 안내, 채용 공고, 블로그 운영 공지,
+     본문 없이 발표 안내만 있는 글.
+     ⚠️ **"구현이 나오면 뺀다"가 아니다.** 조건은 "제품 판단과 **연결되지 않는**" 이다.
+     파이프라인·아키텍처·전환·자동화 같은 말이 제목에 있다고 빼면 안 된다 —
+     그것도 **무엇을 가능하게 하려고 만든 것**이고, 그 판단이 기획자가 볼 내용이다.
+     **아래 둘이 다 있으면 본문의 대부분이 기술 설명이어도 넣는다:**
+       ① 왜 만들었는지 — 사람·장사·운영에 어떤 불편이나 한계가 있었는지
+       ② 무엇이 달라졌는지 — 그래서 무엇을 할 수 있게 됐는지
+     예) 전자라벨로 종이 가격표를 없앴다 · 장애가 번지지 않게 서비스를 갈랐다 ·
+        사내 문서를 AI가 찾아 주게 했다 · 흩어진 지표의 기준을 하나로 맞췄다 ·
+        판매자가 예약을 한눈에 보도록 화면을 고쳤다 — 전부 넣는다.
+     ⚠️ **이 예시들은 "넣을지 말지"의 보기일 뿐, 대분류를 고르는 보기가 아니다.**
+        예시에 끌려 전부 product_plan 으로 몰지 마라 — 위 다섯은 차례로
+        product_plan · quality_risk · ai_use · data_exp · user_exp 다.
+        (실측: 예시를 제품 이야기로만 들었더니 새 판정의 63%가 product_plan 으로 쏠렸다.)
+     반대로 ①②가 없는 글은 버린다 — 설정 따라하기, 문법·타입 해설, 모델 학습 기법,
+     라이브러리 버전 올리기, 장애 디버깅 과정 그 자체.
+     ⚠️ **행사 후기·참가기·컨퍼런스 리뷰도 뺀다.** "누가 모여서 무슨 이야기를 했다"는 글에는
+     문제-해결 서사가 없어서, 요약을 만들면 "단체 사진을 촬영했어요" 같은 칸이 생긴다(실측).
+     사내 행사·밋업·데뷔 소식·수상 소식도 같다.
+     ⚠️ **사람 인터뷰·커리어 이야기·팀 소개도 뺀다.** "리더 ○○와 이야기 나눠봤습니다",
+     "합류를 결심했어요", "아직 갈 길이 멀어요" 같은 글은 회고와 포부지 문제-해결이 아니다.
+     채용 브랜딩 글이 대개 이 모양이다. 본문에 제품 이야기가 섞여 있어도,
+     **글을 끌고 가는 것이 사람의 이야기면** 뺀다.
+
+3) topic: 위에서부터 순서대로 물어 **처음 "예"가 나오는 것**을 고른다.
+   quality_risk : 결론이 품질 보증·장애 대응·보안·개인정보·AI 윤리·리스크를 지키는 방법인가?
+   ai_use       : AI 자체가 글의 주제인가? (AI로 일하는 방식을 바꿨거나, AI 기능을 만들었다)
+                  원래 있던 기능(추천·랭킹·검색)에 AI가 쓰인 정도면 아니다.
+   product_plan : **없던 서비스·기능을 내놓았거나** 정책·로드맵을 바꾼 것이 결론인가?
+                  ⚠️ 이미 있던 화면·흐름을 **고친** 것이면 여기가 아니라 user_exp 다.
+                  ⚠️ 기술 스택·인프라를 바꾼 것 **자체**는 여기가 아니다. 그걸로
+                     무엇을 할 수 있게 됐는지를 보고, 그 결과가 걸리는 칸을 고른다
+                     (안 터지게 됐다→quality_risk · 빨라졌다→user_exp · 팀 일이 줄었다→collab).
+   data_exp     : 지표·분석·가설 검증·A/B 테스트로 판단한 과정이 결론인가?
+   user_exp     : 사용자의 문제·행동·반응을 알아냈거나, 이미 있던 화면·흐름을 고친 것이 결론인가?
+   biz_brand    : 매출·수익화·시장·브랜드 인지 자체가 결론인가?
+   collab       : 팀이 일하는 방식(협업·출시 과정·운영 방식)이 결론인가?
+   모두 아니면 결론에 가장 가까운 것을 고른다.
+
+4) evidence: 그 대분류를 고른 근거를 **본문에서 한 문장 그대로 복사**한다.
+   요약하거나 고쳐 쓰지 마라. 그대로 복사할 문장을 못 찾으면 그 대분류가 아니다.
+   ⚠️ **'글에 대한 글'을 고르지 마라.** 아래 같은 문장은 근거가 될 수 없다:
+      "이 글에서는 ~를 살펴봅니다" · "~를 소개하려고 합니다" · "~를 공유하고자 합니다"
+      "도움이 되었으면 좋겠습니다" · "In this post ~" · "I hope ~"
+      이런 문장은 글이 **무엇을 했는지**가 아니라 **무엇을 쓸 것인지**를 말한다.
+      어느 글에나 있어서 대분류를 가르지 못한다.
+      골라야 할 것은 **그 일을 왜 했고 무엇이 달라졌는지**를 말하는 문장이다.
+      (실측: 경계에 있던 글을 다시 판정했더니, 어긋난 4건 중 3건이 이런 문장을 근거로
+       삼은 것이었고 셋 다 오답이었다.)
+
+5) confidence: 상(결론이 분명하고 칸 하나에만 걸림) / 중(두 칸 사이지만 결론으로 고를 수 있음) / 하(불분명).
+
+6) 태그 — 아래 목록에 **있는 말만** 쓴다. 목록에 없으면 비워 둔다(새로 만들지 마라).
+   purpose(필수 1개): 아래 12개 중 **하나만**. 낱말이 아니라 **설명**을 보고 고른다.
+     · 유입     — 서비스를 모르던 사람이 들어오게 한 것
+     · 첫 사용   — 막 들어온 사람이 처음으로 제대로 써보게 한 것
+     · 전환     — 결제·가입·완료처럼 목표 행동까지 가게 한 것(중간에 떠나는 것을 막은 것도 여기)
+     · 재방문    — 썼던 사람이 다시 오게 한 것
+     · 사용성    — 이미 쓰는 사람이 덜 헤매게 한 것
+     · 접근성    — 못 쓰던 사람도 쓸 수 있게 한 것
+     · 속도     — 서비스가 빠르게 반응하게 한 것
+     · 안정성    — 터지지 않게, 장애를 줄인 것
+     · 신뢰     — 보안·정확함·개인정보를 지킨 것
+     · 일관성    — 화면·정책이 제각각이던 것을 하나로 맞춘 것
+     · 효율화    — 만드는 쪽(팀·운영)의 일과 비용을 줄인 것
+     · 수익화    — 돈을 버는 것 자체가 목적인 것
+   ⚠️ 두 칸에 걸리면 **글이 가장 많이 말한** 쪽을 고른다. 넓은 말로 도망가지 마라 —
+      '성장'·'품질' 같은 상위어는 목록에 없다. 그 둘은 아래 칸을 모두 덮어서,
+      붙이는 쪽이 헷갈리면 전부 거기로 흘러갔다(실측: 성장 40 : 활성화 4 : 리텐션 3).
+   method(1~2개): 사용자 인터뷰, 설문 조사, VOC 분석, 사용성 테스트, 로그 분석, 퍼널 분석, 데이터 분석,
+     지표 설계, A/B 테스트, 실험 설계, 실험 플랫폼, 고객 세그먼트, 온보딩, 정책 설계, 운영 설계,
+     화면·흐름 개선, 디자인 시스템, 리브랜딩, 캠페인, 가격 설계, 표준화, 요구사항 정의, 회고, 문서화,
+     QA, 모니터링, 리스크 점검, 업무 자동화, AI 툴, 바이브코딩, 워크숍, MVP, 조직 설계, 교육
+   context(0~2개): 온보딩, 검색, 결제, 추천, 알림, B2B, 구독, 커머스, 물류, 커뮤니티, 크리에이터 지원,
+     고객지원, 광고, 금융, 모빌리티, 헬스, 글로벌, 오프라인, 채용, 사내 업무, 신규 출시
+   tech(0~2개): LLM, RAG, 임베딩, 벡터 검색, 에이전트
+   ⚠️ 태그는 검색용이다. **태그로 topic 을 정하지 마라** — topic 은 결론으로만 정한다.
+
+전부 한국어. include 가 false 면 topic 은 빈 문자열로 둔다.`;
+
+/**
+ * 태그 어휘(docs/분류-기준-v1.md 4단계) — 목적 1개 필수, 방법 1~2개, 제품·상황 0~2개, 기술 0~2개.
+ * ⚠️ 태그는 검색·필터용이고 **대분류 판단에는 쓰지 않는다.** 섞으면 단어로 분류하던 옛 방식으로 돌아간다.
+ */
+export const TAG_VOCAB = {
+  /**
+   * **v2 — 칸끼리 겹치지 않도록 다시 세운 12종.**
+   *
+   * 늘어놓은 순서가 공짜가 아니다: 앞 7개는 **사람이 서비스를 만나는 순서**이고
+   * 뒤 5개는 **만드는 쪽이 지키는 것**이다. 같은 순간을 가리키는 칸은 하나씩만 둔다.
+   *
+   * ⚠️ **왜 바꿨는가 — 옛 목록(14종)은 겹침이 아니라 층위가 섞여 있었다.**
+   * 248건의 분포가 그걸 드러냈다 — 성장 40 : 활성화 4 : 리텐션 3.
+   * 셋이 대등한 형제가 아니라 `성장` 이 나머지 둘을 덮는 상위어였고, 그래서
+   * 붙이는 쪽이 조금이라도 헷갈리면 전부 넓은 말로 흘러갔다.
+   * `품질 24 : 안정화 2 : 일관성 0` 도 같은 병이고, `전환 9 : 이탈 2` 는 한 축의 앞뒷면이었다.
+   * 그래서 상위어 `성장`·`품질` 을 **없앤다** — 도망갈 칸이 있으면 거기로 모인다.
+   *   성장 → 유입·첫 사용·재방문 / 품질 → 안정성·일관성·신뢰·사용성 으로 나눠 다시 판정했다.
+   *
+   * ⚠️ 낱말만 나열하지 마라. CLASSIFY_SYS 에 칸마다 한 줄 설명을 붙인 이유가 이것이다 —
+   *   예전에는 `효율화, 성장, 신뢰 …` 만 주고 고르라고 했고, 그러면 모델도 사람처럼
+   *   가장 넓은 말을 고른다.
+   */
+  purpose: [
+    // 사람이 서비스를 만나는 순서
+    "유입", "첫 사용", "전환", "재방문", "사용성", "접근성", "속도",
+    // 만드는 쪽이 지키는 것
+    "안정성", "신뢰", "일관성", "효율화", "수익화",
+  ],
+  method: [
+    "사용자 인터뷰", "설문 조사", "VOC 분석", "사용성 테스트", "로그 분석", "퍼널 분석", "데이터 분석",
+    "지표 설계", "A/B 테스트", "실험 설계", "실험 플랫폼", "고객 세그먼트", "온보딩", "정책 설계",
+    "운영 설계", "화면·흐름 개선", "디자인 시스템", "리브랜딩", "캠페인", "가격 설계", "표준화",
+    "요구사항 정의", "회고", "문서화", "QA", "모니터링", "리스크 점검", "업무 자동화", "AI 툴",
+    "바이브코딩", "워크숍", "MVP", "조직 설계", "교육",
+  ],
+  context: [
+    "온보딩", "검색", "결제", "추천", "알림", "B2B", "구독", "커머스", "물류", "커뮤니티",
+    "크리에이터 지원", "고객지원", "광고", "금융", "모빌리티", "헬스", "글로벌", "오프라인",
+    "채용", "사내 업무", "신규 출시",
+  ],
+  tech: ["LLM", "RAG", "임베딩", "벡터 검색", "에이전트"],
+} as const;
+
+export interface Verdict {
+  include: boolean;
+  conclusion: string;
+  topic: Topic | "";
+  evidence: string;
+  confidence: string;
+  /** 대표 태그 — 목적 하나. 어휘에 없으면 빈 문자열. */
+  purpose: string;
+  /** 세부 태그 — 방법·제품상황·기술을 합친 것(전부 어휘 안의 말). */
+  details: string[];
+  /** ⚠️ 저장은 **갈래별로** 한다 — `planner_tags` 가 {purpose, methods, contexts, tech} 구조라
+   *   합쳐 두면 되돌릴 수 없다(어느 말이 방법이고 어느 말이 상황인지 사라진다). */
+  methods: string[];
+  contexts: string[];
+  tech: string[];
 }
 
-/** 제목·본문 → { topic(가장 강한 주제 or null), tags(최대 6개) } */
-export function classify(title: string, body: string): { topic: Topic | null; tags: string[] } {
-  const short = body.slice(0, 4000);
-  // 제목 가중치 3배(제목이 주제를 가장 잘 드러냄).
-  const hay = `${title}\n${title}\n${title}\n${short}`;
+/** `topic`(영문 키) → `planner_category`(DB 에 저장되는 한글 라벨). 둘은 항상 짝이어야 한다. */
+export const CATEGORY_LABEL: Record<Topic, string> = {
+  quality_risk: "품질·위험 관리",
+  ai_use: "AI 활용",
+  product_plan: "제품·서비스 기획",
+  data_exp: "데이터·실험",
+  user_exp: "사용자 이해·경험",
+  biz_brand: "사업·브랜드",
+  collab: "협업·프로세스",
+};
 
-  let topic: Topic | null = null;
+const str = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
+
+/** 어휘에 있는 말만 남긴다 — 모델이 새 태그를 지어내면 필터가 금세 쓰레기통이 된다. */
+function pick(raw: unknown, vocab: readonly string[], max: number): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const v of raw) {
+    const t = str(v);
+    if (vocab.includes(t) && !out.includes(t)) out.push(t);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+export function parseVerdict(raw: unknown): Verdict | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  const topic = str(r.topic);
+  const purpose = str(r.purpose);
+  return {
+    include: r.include !== false,
+    conclusion: str(r.conclusion),
+    topic: (TOPICS as string[]).includes(topic) ? (topic as Topic) : "",
+    evidence: str(r.evidence),
+    confidence: str(r.confidence) || "중",
+    purpose: (TAG_VOCAB.purpose as readonly string[]).includes(purpose) ? purpose : "",
+    details: [
+      ...pick(r.method, TAG_VOCAB.method, 2),
+      ...pick(r.context, TAG_VOCAB.context, 2),
+      ...pick(r.tech, TAG_VOCAB.tech, 2),
+    ],
+    methods: pick(r.method, TAG_VOCAB.method, 2),
+    contexts: pick(r.context, TAG_VOCAB.context, 2),
+    tech: pick(r.tech, TAG_VOCAB.tech, 2),
+  };
+}
+
+/**
+ * **글에 대한 글인가** — 근거로 쓸 수 없는 문장을 가려낸다.
+ *
+ * "이 글에서는 ~를 살펴봅니다", "~를 소개하려고 합니다", "도움이 되었으면 좋겠습니다".
+ * 글이 **무엇을 했는지**가 아니라 **무엇을 쓸 것인지**를 말하는 문장이라 어느 글에나 있고,
+ * 대분류를 가르지 못한다.
+ *
+ * ⚠️ **프롬프트로 금지하는 것만으로는 안 막힌다.** CLASSIFY_SYS 에 예문까지 적어 금지했는데도
+ *    같은 문장이 그대로 근거로 돌아왔다(실측: 재판정 12건 중 2건). 부탁이 아니라 게이트여야 한다.
+ */
+export function isMetaSentence(evidence: string): boolean {
+  const s = evidence.trim();
+  if (!s) return false;
+  return [
+    /(이|이번|본|해당)\s*(글|포스팅|아티클|편)(에서(는)?|을|를)/,
+    // ⚠ "시작해 보겠습니다" 같은 **예고 문장**을 놓친 적이 있다 — 낱말을 늘리고 어미를 느슨하게 잡는다.
+    // ⚠ 어미는 **예고형만** 잡는다. `했습니다`까지 넣었더니
+    //   "프로젝트를 시작했습니다" 같은 **실제로 한 일**까지 걸렸다(실측 6건 중 4건이 오탐).
+    /(소개|공유|정리|설명|살펴|알아|다뤄|풀어)[^.]{0,9}?(하고자|하려고|해\s*보려고|해\s*보겠|보겠습니다|드리겠|하겠습니다|합니다)/,
+    /(시작|이야기|여정|담아|짚어)[^.]{0,9}?(하고자|하려고|해\s*보려고|해\s*보겠|보겠습니다|드리겠|하겠습니다)/,
+    /(도움이\s*되|참고가\s*되)[^.]{0,12}(좋겠|바랍)/,
+    /(in|throughout)\s+this\s+(post|article|series)/i,
+    /I\s+hope/i,
+    /we('|’)?ll\s+(walk|cover|share|look)/i,
+  ].some((re) => re.test(s));
+}
+
+/**
+ * **본문이 한국어인가.**
+ *
+ * 이 서비스는 한국어를 읽는 기획자를 위한 것이라, 영어 본문은 읽히지 않는다.
+ * 게다가 같은 글의 한국어판이 따로 올라오는 경우가 많아서(쿠팡·당근·카카오),
+ * 영문판을 넣으면 **같은 이야기가 피드에 두 번** 나온다(실측 10건 중 6건이 그랬다).
+ *
+ * 한글 글자 비율로 가른다. 실측 분포가 깨끗하게 갈렸다 —
+ * 영문 글은 0.0~0.2%, 한국어 글은 가장 낮은 것도 21.6%(코드가 많은 글)였다.
+ * 그 사이가 비어 있어서 15% 를 기준으로 삼아도 헷갈릴 일이 없다.
+ *
+ * ⚠️ 프롬프트로 부탁하지 않고 **게이트로** 막는다. LLM 을 부르기 전에 걸러 토큰도 아낀다.
+ */
+export function isKorean(body: string): boolean {
+  const t = body
+    .replace(/\[\[img:[^\]]*\]\]/g, "")
+    .replace(/\[\[code:[^\]]*\]\]/g, "")
+    .replace(/\s+/g, "");
+  if (t.length < 200) return true; // 너무 짧으면 판단하지 않는다(다른 게이트가 잡는다)
+  const ko = (t.match(/[가-힣]/g) ?? []).length;
+  return ko / t.length >= 0.15;
+}
+
+/**
+ * 근거 문장이 **본문에 실제로 있는가.**
+ * 공백을 지우고 비교한다 — 줄바꿈이나 띄어쓰기만 다른 경우까지 탈락시키면 너무 빡빡하다.
+ * 너무 짧은 근거(10자 미만)는 우연히 맞을 수 있으므로 인정하지 않는다.
+ */
+export function evidenceInBody(evidence: string, body: string): boolean {
+  const e = evidence.replace(/\s+/g, "");
+  if (e.length < 10) return false;
+  return body.replace(/\s+/g, "").includes(e);
+}
+
+/**
+ * 판정 여러 개 → 최종 결론. 두 번 이상 같은 값이어야 채택한다.
+ * 셋 다 다르면 비워 둔다 — 애매한 글에 억지 분류를 넣으면 필터 전체가 못 믿을 것이 된다.
+ */
+export function majority(verdicts: Verdict[]): { topic: Topic | null; include: boolean } {
+  const usable = verdicts.filter((v) => v.topic !== "");
+  const excluded = verdicts.filter((v) => !v.include).length;
+  // 과반이 "뺀다"면 뺀다.
+  if (verdicts.length > 0 && excluded * 2 > verdicts.length) return { topic: null, include: false };
+
+  const count = new Map<string, number>();
+  for (const v of usable) count.set(v.topic, (count.get(v.topic) ?? 0) + 1);
+  let best: Topic | null = null;
   let bestN = 0;
-  for (const r of RULES) {
-    const n = countMatches(hay, r.kw);
+  for (const [t, n] of count) {
     if (n > bestN) {
+      best = t as Topic;
       bestN = n;
-      topic = r.topic;
     }
   }
-
-  const search = `${title}\n${short}`;
-  const tags = TAG_TOKENS.filter((t) => search.includes(t)).slice(0, 6);
-
-  return { topic, tags };
+  return { topic: bestN >= 2 ? best : null, include: true };
 }

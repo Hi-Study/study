@@ -11,6 +11,8 @@ import type { JobRole } from "@/types/database";
 export interface UserWordArticleLite {
   id: string;
   title: string;
+  /** 기준 v1 대분류 — 마이 > 내 활동의 주제 필터가 쓴다(lib/myActivity.ts). */
+  planner_category: string | null;
 }
 
 export interface UserWordRow {
@@ -32,7 +34,7 @@ export interface UserWordRow {
   article: UserWordArticleLite | null;
 }
 
-const WORD_SELECT = "*, article:articles(id, title)";
+const WORD_SELECT = "*, article:articles(id, title, planner_category)";
 
 // ---- raw ----
 export async function listMyWords(uid: string): Promise<UserWordRow[]> {

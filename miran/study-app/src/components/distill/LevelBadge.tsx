@@ -11,6 +11,8 @@
 //
 // ⚠️ 색을 쓰지 않는다. 난이도 파스텔이 주제 칩 파스텔과 같은 팔레트라
 //    카드 안에서 색의 의미가 겹쳤다. 회색 칩 + 라벨만으로 충분히 읽힌다.
+//    다만 **회색의 농도는 골라야 한다** — surfaceSunken 은 페이지 바탕과 거의 같아
+//    칩이 사라졌다. hairline 으로 한 톤 더 내려야 배경에서 분리된다.
 // ⚠️ **읽는 시간(N분)은 붙이지 않는다.** 추정치라 맞지도 않고, 카드에서 "15분"이
 //    먼저 보이면 긴 글을 미리 포기하게 만든다. 고를 근거는 난이도와 개선 사례 한 줄이다.
 import React from "react";
@@ -34,7 +36,10 @@ export function LevelBadge({ level, withHint = false }: Props) {
 
   return (
     <View style={styles.wrap}>
-      <View style={[styles.chip, { backgroundColor: c.surfaceSunken }]}>
+      {/* ⚠️ 배경을 surfaceSunken(#F1F0F5)으로 두면 페이지 바탕(#F5F4F8)과 거의 같아서
+          칩이 **안 보인다**(실제로 받은 지적). 한 톤 더 내린 hairline 을 채워
+          흰 카드 위에서도, 회보라 페이지 위에서도 경계가 선다. 색은 여전히 안 쓴다. */}
+      <View style={[styles.chip, { backgroundColor: c.hairline }]}>
         <Text style={[styles.text, { color: c.textSecondary }]} numberOfLines={1}>
           {meta.label}
         </Text>

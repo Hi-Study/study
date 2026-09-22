@@ -11,7 +11,10 @@
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
-    "recollect": "node scripts/recollect.mjs"
+    "recollect": "node scripts/recollect.mjs",
+    "classify": "node scripts/classify.mjs",
+    "guide": "node scripts/guide.mjs",
+    "series": "node scripts/series.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
@@ -25,9 +28,7 @@
     "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.13",
     "expo-font": "~14.0.12",
-    "expo-image-picker": "~17.0.11",
     "expo-linking": "~8.0.12",
-    "expo-notifications": "~0.32.17",
     "expo-status-bar": "~3.0.9",
     "expo-web-browser": "~15.0.11",
     "lucide-react-native": "^0.462.0",
@@ -38,7 +39,8 @@
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
     "react-native-url-polyfill": "^2.0.0",
-    "react-native-web": "^0.21.0"
+    "react-native-web": "^0.21.0",
+    "react-native-webview": "13.15.0"
   },
   "devDependencies": {
     "@mozilla/readability": "^0.6.0",

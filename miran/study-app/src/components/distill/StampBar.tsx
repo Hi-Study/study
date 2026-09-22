@@ -4,7 +4,7 @@
 // 소수만 흔적을 남긴다. 스탬프는 "글 못 쓰는 다수"에게서 큐레이션 데이터를 얻는 통로다.
 //
 // 눌린 스탬프가 뒤에서 하는 일:
-//   apply    → 홈 "바로 써먹은 사례" 섹션의 재료
+//   apply    → 큐레이션이 맞았는지 보는 신호(이 글이 도움이 됐다)
 //   reason   → 결정 카드가 잘 뽑힌 글인지 확인하는 신호
 //   disagree → "같이 읽는 글"에 넣기 좋은 논쟁적인 글
 //   hard     → 이 글에 용어 예고가 필요하다는 신호(단어장 연결)
@@ -39,7 +39,7 @@ export function StampBar({ articleId, finished = true }: Props) {
   return (
     <View style={[styles.wrap, { borderColor: c.hairline, backgroundColor: c.surfacePageAlt }]}>
       <Text style={[styles.title, { color: c.textPrimary }]}>
-        {finished ? "다 읽으셨네요. 어떠셨어요?" : "읽으면서 느낀 게 있다면"}
+        {finished ? "다 읽으셨네요, 어떠셨어요?" : "읽으면서 느낀 게 있다면"}
       </Text>
       <Text style={[styles.sub, { color: c.textMuted }]}>탭 한 번이면 돼요</Text>
 

@@ -4,8 +4,10 @@ import {
 
   hasDecision,
   isUsableQuestion,
+  metricBelongsToChoice,
   questionFromDecision,
   toDecision,
+  hypothesisQuestionFromDecision,
 } from "@/lib/decision";
 
 const FULL = {
@@ -163,5 +165,117 @@ describe("subjectParticle — 기업명 뒤 은/는", () => {
     expect(questionFromDecision(d, "올리브영")).toBe(
       "올리브영은 왜 시스템 마이그레이션 대신 웹 컴포넌트를 골랐을까요?",
     );
+  });
+});
+
+describe("metricBelongsToChoice — 이 숫자가 고른 것의 성과인가", () => {
+  it("비교 대상의 숫자는 거른다 — 실측 사고(PolicyGuard)", () => {
+    expect(
+      metricBelongsToChoice("PolicyGuard 프레임워크", "Presidio Effective Block Rate 62.2%"),
+    ).toBe(false);
+  });
+
+  it("고른 것의 이름으로 시작하면 통과", () => {
+    expect(metricBelongsToChoice("PolicyGuard 프레임워크", "PolicyGuard EBR 94.1%")).toBe(true);
+  });
+
+  it("지표 이름(일반명사)으로 시작하면 통과 — 과잉 차단하지 않는다", () => {
+    expect(metricBelongsToChoice("재시도 3회 + 멱등키", "실패율 2.1%→0.4%")).toBe(true);
+    expect(metricBelongsToChoice("멀티 센터", "배송 시간 14시간 단축")).toBe(true);
+  });
+
+  // 전부 대문자 약어를 제품명으로 오인해 멀짱한 지표 4건을 버렸던 적이 있다(실측).
+  it("전부 대문자인 약어는 제품명이 아니다", () => {
+    expect(metricBelongsToChoice("Valkey 9.1 업그레이드", "CPU 86.6% 감소")).toBe(true);
+    expect(metricBelongsToChoice("커뮤니티 영역 분리", "RPS 100→4,000→20,000")).toBe(true);
+    expect(metricBelongsToChoice("대시보드 구축", "LLM 비용 64% 절감")).toBe(true);
+    expect(metricBelongsToChoice("match boolean gate", "JSON 파싱 실패율 0건")).toBe(true);
+  });
+
+  it("빈 metric 은 통과시키지 않는다", () => {
+    expect(metricBelongsToChoice("무엇이든", "")).toBe(false);
+  });
+
+  it("남의 숫자면 '골랐더니 ~' 질문을 만들지 않는다", () => {
+    const d = {
+      problem: "",
+      constraint: "",
+      chosen: "PolicyGuard 프레임워크",
+      rejected: "",
+      metric: "Presidio Effective Block Rate 62.2%",
+    };
+    // 조립할 재료가 없으므로 null — 호출부가 유형 템플릿으로 내려간다.
+    expect(questionFromDecision(d, null)).toBeNull();
+  });
+
+  it("제 성과면 ④ 가지가 그대로 동작한다", () => {
+    const d = {
+      problem: "",
+      constraint: "",
+      chosen: "멀티 센터",
+      rejected: "",
+      metric: "배송 시간 14시간 단축",
+    };
+    expect(questionFromDecision(d, null)).toBe(
+      "멀티 센터를 골랐더니 배송 시간 14시간 단축 — 무엇이 이 차이를 만들었을까요?",
+    );
+  });
+});
+
+describe("hypothesisQuestionFromDecision (③ 가설 질문)", () => {
+  const dec = (o: Record<string, string>) => ({
+    problem: "",
+    constraint: "",
+    chosen: "",
+    rejected: "",
+    metric: "",
+    ...o,
+  });
+
+  it("문제+해법이 있으면 **둘 사이의 연결**을 묻는다 — 원인은 글에 있으니 되묻지 않는다", () => {
+    const q = hypothesisQuestionFromDecision(
+      dec({ problem: "결제 실패가 반복됐다", chosen: "지연 재시도" }),
+      "토스",
+    );
+    expect(q).toBe("결제 실패가 반복됐다 — 토스는 왜 지연 재시도로 이게 풀린다고 봤을까요?");
+    // ⚠️ 원인을 되묻는 문장이면 답이 본문 베끼기가 된다.
+    expect(q).not.toContain("무엇이 원인");
+  });
+
+  it("버린 대안이 있으면 '왜 저건 안 되고 이건 된다고 봤나'로 같은 걸 묻는다", () => {
+    const q = hypothesisQuestionFromDecision(
+      dec({ chosen: "지연 재시도", rejected: "즉시 재시도" }),
+      null,
+    );
+    expect(q).toBe("왜 즉시 재시도로는 안 되고 지연 재시도로 풀린다고 봤을까요?");
+  });
+
+  it("제약만 있으면 그 조건에서도 통할 거라고 본 근거를 묻는다", () => {
+    const q = hypothesisQuestionFromDecision(
+      dec({ constraint: "서버를 늘릴 수 없었다", chosen: "캐시 계층" }),
+      null,
+    );
+    expect(q).toContain("고르면 풀린다고 본 근거");
+  });
+
+  it("자기 숫자가 있으면 '해보기 전에' 무엇을 믿었는지 묻는다", () => {
+    const q = hypothesisQuestionFromDecision(
+      dec({ chosen: "멀티 센터", metric: "배송 시간 14시간 단축" }),
+      null,
+    );
+    expect(q).toContain("해보기 전에 이만큼 달라질 거라고 본 근거");
+  });
+
+  it("남의 숫자로는 만들지 않는다 — 사실이 뒤집힌 질문이 나온다", () => {
+    expect(
+      hypothesisQuestionFromDecision(
+        dec({ chosen: "PolicyGuard 프레임워크", metric: "Presidio Effective Block Rate 62.2%" }),
+        null,
+      ),
+    ).toBeNull();
+  });
+
+  it("재료가 없으면 null — 호출부가 유형 템플릿으로 내려간다", () => {
+    expect(hypothesisQuestionFromDecision(dec({}), null)).toBeNull();
   });
 });

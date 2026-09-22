@@ -23,15 +23,44 @@ export type NotificationType =
   | "member_joined";
 
 // ===== distill (테크블로그 수집 + 인사이트 + 토론) =====
+/**
+ * 주제 대분류 — **결론이 무엇인가**로 나눈다(docs/분류-기준-v1.md).
+ *
+ * 옛 분류(dev/product/design/planning/data_ai/infra/career/marketing)는 개발자 언어였다.
+ * "인프라", "데이터/AI" 같은 칸은 비개발자가 무엇이 들어 있는지 짐작할 수 없다.
+ * 판단 순서가 정해져 있고(품질·위험 → AI → 제품 → 데이터 → 사용자 → 사업 → 협업),
+ * 위에서부터 처음 "예"가 나오는 칸이 대분류다.
+ */
 export type Topic =
-  | "dev"
-  | "product"
-  | "design"
-  | "planning"
-  | "data_ai"
-  | "infra"
-  | "career"
-  | "marketing";
+  | "quality_risk"
+  | "ai_use"
+  | "product_plan"
+  | "data_exp"
+  | "user_exp"
+  | "biz_brand"
+  | "collab";
+/**
+ * 기획자용 대분류 — **DB(`articles.planner_category`)에 한글 라벨 그대로** 저장돼 있다.
+ * `Topic`(영문 키)과 같은 7개를 가리킨다. 지금은 두 표현이 병존한다:
+ *   · `planner_category` — 기준 v1로 분류한 245건이 실제로 채워져 있다(마이그레이션 0015)
+ *   · `topic`            — 코드가 쓰는 영문 키. 운영 DB에는 아직 옛 값(dev/product/…)이 남아 있다
+ * 하나로 합치는 건 별도 마이그레이션(0016)에서 한다 — 그때까지 읽는 쪽이 둘 다 받아야 한다.
+ */
+export type PlannerCategory =
+  | "품질·위험 관리"
+  | "AI 활용"
+  | "제품·서비스 기획"
+  | "데이터·실험"
+  | "사용자 이해·경험"
+  | "사업·브랜드"
+  | "협업·프로세스";
+/** 검색·필터용 태그 묶음(기준 v1 4단계). 대분류 판단에는 쓰지 않는다. */
+export interface PlannerTags {
+  purpose?: string;
+  methods?: string[];
+  contexts?: string[];
+  tech?: string[];
+}
 export type CollectMethod = "rss_full" | "rss_scrape" | "nuxt" | "listscrape";
 /** 수집 소스 성격 — 개발 글 밖의 소스를 구분한다(홈 로고 그리드 묶음). */
 export type BlogKind = "tech" | "design" | "product" | "culture";
@@ -62,6 +91,84 @@ export interface ArticleTerm {
   domain: string; // dev/design/marketing/data/infra/product/biz
 }
 export type ReactionTarget = "opinion" | "comment" | "article" | "community";
+
+/**
+ * 리드 — 글을 **세 가지 질문**으로 먼저 세운다.
+ *
+ * 시간순 나열을 버린 이유: "원천 데이터에 메타데이터를 붙여 임베딩을 만든다" 같은 줄이
+ * 순서대로 쌓이면, 그건 **개발자가 한 일의 순서**지 비개발자가 알아야 할 내용이 아니다.
+ * 읽는 사람이 실제로 묻는 건 늘 셋뿐이다 — 무슨 일인가, 왜 했나, 그래서 뭐가 달라졌나.
+ */
+export interface GuideLead {
+  /** 어떤 문제가 있었어요? — 무엇이 반복됐고, 왜 그대로 두기 어려웠나 */
+  what: string;
+  /** 왜 풀어야 했대요? — 안 풀면 무엇이 더 나빠졌나 */
+  why: string;
+  /**
+   * 뭘 했대요? — 그 문제를 **어떻게 풀었나**.
+   *
+   * 예전엔 세 칸(문제·이유·결과)뿐이라 **방법이 통째로 빠졌다.** 그러면 "문제가 있었고
+   * 좋아졌대요"로 끝나서, 정작 기획자가 가져갈 것(어떻게 풀었는지)이 남지 않는다.
+   */
+  how: string;
+  /** 그래서 뭐가 달라졌어요? — 결과와 남은 것 */
+  soWhat: string;
+}
+
+/**
+ * 더 들어가는 칸 — **질문형 소제목** 하나 + 그 답 문단들.
+ *
+ * ⚠️ 소제목은 반드시 리드에서 **이미 나온 이야기를 파고드는 질문**이어야 한다.
+ *    "컨텍스트 엔지니어링" 같은 새 개념이 갑자기 소제목으로 올라오면,
+ *    원문을 안 본 사람은 거기서 길을 잃는다(실제로 그랬다).
+ * `blocks` 는 이 칸의 근거가 있는 원문 덩어리들(눌러서 확인할 수 있게).
+ * ⚠️ **여러 개**다. 한 개만 저장했더니, 답은 글 곳곳에서 모아 썼는데 근거로는 문단 하나만
+ *    떠서 "이 정보로 저 답을 어떻게 썼지?"처럼 보였다. 근거는 답이 선 만큼 있어야 한다.
+ */
+export interface GuideSection {
+  question: string;
+  /**
+   * 이 칸이 다루는 **문제** 한 문장.
+   *
+   * 예전엔 문제와 해결을 `paras` 한 배열에 섞어 담고 "첫 문단은 문제로 시작하라"고
+   * 프롬프트로 부탁했다. 절반쯤만 먹었다 — 감사에서 "해결부터 시작한 칸"이 계속 나왔다.
+   * 순서를 지시로 맡기지 않고 **칸을 나눠 구조로 못 박는다.** 비어 있으면 그 줄만 안 보인다.
+   */
+  problem: string;
+  /** 어떻게 풀었는지 — 문제는 위 `problem` 이 맡으므로 여기는 해결만 담는다. */
+  paras: string[];
+  /**
+   * 그래서 어떻게 됐어요? — **이 칸 하나만의 결말.**
+   *
+   * 예전엔 칸이 "질문 + 문단 두 개"에서 끝났다. 문제를 설명하다 말고 다음 칸으로 넘어가니
+   * 읽고 나도 "그래서 이건 어떻게 됐는데"가 남았다. 위 `lead.soWhat` 은 **글 전체**의 결말이라
+   * 칸 하나하나에는 답이 되지 않는다. 칸마다 자기 결말을 갖는다.
+   */
+  outcome: string;
+  blocks: number[];
+  terms: string[];
+}
+
+/**
+ * 읽기 가이드 — 글을 1분 안에 파악하게 만드는 층.
+ * 전부 선택적으로 소비한다: 어느 칸이 비어도 그 칸만 숨기고 나머지는 그대로 보여준다.
+ */
+export interface ReadingGuide {
+  summary: string; // 제목 아래 요약 한두 문장
+  terms: { term: string; plain: string }[]; // 알아두면 편해요 (최대 8)
+  lead: GuideLead; // 한눈에 — 무슨 일 / 왜 / 그래서
+  /**
+   * 기획 포인트 — **기획자가 이 글을 어떤 눈으로 볼 것인가.**
+   *
+   * `lead.soWhat` 은 *그 팀에게* 뭐가 달라졌는지를 말한다. 읽는 사람에게 뭐가 달라지는지는
+   * 아무도 말해 주지 않았다. "파악했다"와 "내 일에 쓸 수 있다" 사이가 이 한 칸이다.
+   *
+   * ⚠️ AI 가 가장 지어내기 쉬운 칸이다. 원문에 판단·비교·트레이드오프 서술이 없으면
+   *    **빈 문자열로 둔다.** 없는 교훈을 꾸며내면 서비스 전체를 못 믿게 된다.
+   */
+  plannerPoint: string;
+  sections: GuideSection[]; // 더 들어가 볼까요 — 질문형 소제목
+}
 
 export interface Database {
   public: {
@@ -101,6 +208,13 @@ export interface Database {
           brand_color: string | null;
           active: boolean;
           last_collected_at: string | null;
+          /**
+           * 이 블로그를 아이프레임 안에 띄울 수 있나(스키마 §39).
+           * null = 아직 확인 안 함 → 앱은 **새 탭으로 보낸다**(모르는 채로 iframe 을 걸면
+           * 빈 화면이 나오는데, 그건 "안 열린다"보다 나쁘다).
+           */
+          frameable: boolean | null;
+          frameable_checked_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -114,6 +228,8 @@ export interface Database {
           brand_color?: string | null;
           active?: boolean;
           last_collected_at?: string | null;
+          frameable?: boolean | null;
+          frameable_checked_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["blogs"]["Insert"]>;
@@ -137,9 +253,37 @@ export interface Database {
           read_minutes: number | null;
           decision: ArticleDecision | null;
           question: string | null;
-          /** 접목 질문(§32) — "그래서 우리 일엔 어떻게 쓸까요?" */
+          /** 접목 질문(§32) — "우리 제품 어디에 먼저 적용해볼까요?" */
           apply_question: string | null;
+          /**
+           * 기획자용 제목(마이그레이션 0017) — 관형절+명사, 18~28자.
+           * null 이면 화면은 원문 title 을 쓴다. 원문 제목은 카드 아래 회색 한 줄로 남는다.
+           */
+          planner_title: string | null;
+          /**
+           * 가설 질문(마이그레이션 0016) — "왜 그 방법이면 풀린다고 봤을까요?"
+           * ⚠️ 원인을 묻는 칸이 아니다(원인은 요약에 있다). 서버 게이트가 원인 되묻기를 거른다.
+           */
+          hypothesis_question: string | null;
           terms: ArticleTerm[];
+          /** 대표 태그 — 목적 하나(기준 v1 4단계). 세부 태그는 tags 에 담긴다. */
+          reading_guide: ReadingGuide | null;
+          /**
+           * 기획자용 분류(기준 v1 · 마이그레이션 0015) — 운영 DB에 실제로 채워져 있는 값이다.
+           * `topic`(옛 키워드 7주제)과 병행한다. 화면 전환이 끝나면 옛 컬럼을 정리한다.
+           */
+          planner_included: boolean | null;
+          planner_category: PlannerCategory | null;
+          planner_tags: PlannerTags;
+          planner_summary: string | null;
+          planner_evidence: string | null;
+          planner_votes: string | null;
+          planner_version: string | null;
+          planner_at: string | null;
+          /** 시리즈 이름 — 같은 블로그 안에서 이 값이 같으면 한 묶음(§40). */
+          series_key: string | null;
+          /** 시리즈 안에서의 회차. */
+          series_no: number | null;
           ai_summaries: Record<string, string>;
           like_count: number;
           view_count: number;
@@ -164,7 +308,10 @@ export interface Database {
           decision?: ArticleDecision | null;
           question?: string | null;
           apply_question?: string | null;
+          hypothesis_question?: string | null;
+          planner_title?: string | null;
           terms?: ArticleTerm[];
+          reading_guide?: ReadingGuide | null;
           ai_summaries?: Record<string, string>;
           like_count?: number;
           view_count?: number;
@@ -278,6 +425,33 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["user_words"]["Insert"]>;
+        Relationships: [];
+      };
+      // ---- distill: 아카이브(사용자 보관함) ----
+      archives: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          icon: string;
+          sort: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          icon?: string;
+          sort?: number;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["archives"]["Insert"]>;
+        Relationships: [];
+      };
+      archive_articles: {
+        Row: { archive_id: string; article_id: string; created_at: string };
+        Insert: { archive_id: string; article_id: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["archive_articles"]["Insert"]>;
         Relationships: [];
       };
       // ---- distill: 북마크 ----
@@ -722,6 +896,16 @@ export interface Database {
       my_weak_domains: {
         Args: { p_user_id: string };
         Returns: { domain: string; cnt: number }[];
+      };
+      // 아카이브별 글 개수(§34) — 타일마다 목록을 받아오면 쿼리가 타일 수만큼 늘어난다.
+      my_archive_counts: {
+        Args: { p_user_id: string };
+        Returns: { archive_id: string; cnt: number }[];
+      };
+      // 완독률(§34) — 저장한 글 중 읽음 처리된 비율. 분모는 '읽으려고 담아둔 글'.
+      my_read_rate: {
+        Args: { p_user_id: string };
+        Returns: { saved: number; finished: number }[];
       };
     };
     Enums: Record<string, never>;

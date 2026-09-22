@@ -6,7 +6,11 @@ import { useAppFonts } from "@/theme/fonts";
 import { RootNavigator } from "@/navigation/RootNavigator";
 import { Loading } from "@/components";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
+import { installWebDragScroll } from "@/lib/webDragScroll";
+
+// 웹에서만 — 마우스로 가로 스크롤(캐러셀·로고 줄·칩 줄)을 끌 수 있게 한다. 자세한 이유는 lib/webDragScroll.
+if (Platform.OS === "web") installWebDragScroll();
 
 function Root() {
   const { theme } = useTheme();

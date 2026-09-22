@@ -13,6 +13,7 @@
 // ⚠️ 신호가 하나도 없으면 **null 을 돌려준다.** 억지로 아무 태그나 붙이면
 //    태그가 정보가 아니라 소음이 된다(난이도 배지가 85% 한 칸에 몰려 실패했던 이유).
 import { toDecision } from "@/lib/decision";
+import { toReadingGuide } from "@/lib/guide";
 import { instrumentalParticle, objectParticle } from "@/lib/josa";
 
 export type ImprovementType =
@@ -123,6 +124,13 @@ function score(haystack: string, words: string[]): number {
 }
 
 export interface ImprovementInput {
+  /**
+   * 읽기 가이드(articles.reading_guide) — 질문의 **재료**다.
+   * 상세에서 "1분 이해"로 이미 읽은 문장이라, 질문이 그 문장을 이어받으면 맥락이 끊기지 않는다.
+   */
+  guide?: unknown;
+  /** 한 줄 요약(articles.planner_summary) — 1분 이해가 아직 없을 때의 대타. */
+  summary?: string | null;
   decision?: unknown;
   title?: string | null;
   tags?: string[] | null;
@@ -208,6 +216,54 @@ export function improvementSummary(
 }
 
 /**
+ * 유형 문구를 **질문에 넣을 꼴**로 다듬는다 — "장애를 줄인 사례" → "장애를 줄인".
+ *
+ * ⚠️ 이 문구는 **혼자 서지 못한다.** 실측 화면에서 "장애를 줄인 — 이 방법이면 될 거라고 본
+ *    근거는?" 처럼 목적어 없는 문장이 나갔고, "장애를 줄인 방식을 우리 일에 붙인다면"은
+ *    *그 방식이 무엇인지 말하지 않은 채* 적용을 물어서 답을 쓸 수가 없었다.
+ *    그래서 유형 문구는 언제나 **"~ 방법 하나는 무엇이고"** 처럼 뒤에 명사와 짝지어 쓴다 —
+ *    답하는 사람이 **무엇을 말하는지 먼저 적게** 만드는 게 이 단계의 유일한 목적이다.
+ *
+ * 운영 DB 779건 중 결정 카드가 있는 글은 70건뿐이라, 대부분의 글이 이 단계로 내려온다.
+ */
+function typePhrase(type: ImprovementType): string {
+  return IMPROVEMENT_PHRASE[type].replace(/ 사례$/, "");
+}
+
+/**
+ * 질문에 **그대로 끼워 넣을 한 줄** — "1분 이해"의 *뭘 했대요?* 칸(lead.how).
+ *
+ * 유형 문구("장애를 줄인")만으로는 *무엇을* 했는지가 빠진다. 읽은 사람은 아는 내용이지만
+ * 질문이 그걸 말해 주지 않으면 답을 어디서 시작할지 모른다 —
+ * "장애를 줄인 방식을 우리 일에 붙인다면?" 은 붙일 대상이 문장에 없다(실측 화면).
+ *
+ * 그래서 **상세에서 방금 읽은 문장을 질문이 이어받는다.**
+ *   "이상 감지를 자동화하고 롤백을 단계적으로 바꿨다
+ *    — 우리 상황에서도 같은 선택을 할 수 있을까요?"
+ *
+ * ⚠️ RSS 의 `summary` 는 쓰지 않는다. 실측값이 "당근 리더 인터뷰 - 검색실" 수준이라
+ *    질문에 넣어도 아무 말도 하지 않는다.
+ *
+ * ⚠️ **설명하지 않는다 — 지목만 한다.** 방금 읽은 사람에게 내용을 다시 읊어 줄 필요는 없다.
+ *    없으면 안 되는 건 "무엇에 대해 답하라는 건지"뿐이다. 그래서 결정 카드의 짧은 이름
+ *    ("PolicyGuard 프레임워크")이 있으면 그쪽이 먼저고, 이 인용은 이름이 없을 때의 대타다.
+ *    두 문장 이상이면 **첫 문장만**, 그마저 길면(40자 초과) 설명이 되므로 쓰지 않는다.
+ */
+function quotableLine(raw: string | null | undefined): string | null {
+  const t = (raw ?? "").replace(/\s+/g, " ").trim();
+  if (!t) return null;
+  const first = (t.match(/^.*?(?:다\.|\.|!|\?)/)?.[0] ?? t).replace(/[.。!?]+$/, "").trim();
+  if (first.length < 15 || first.length > 40) return null;
+  return first;
+}
+
+/** "1분 이해"에서 **뭘 했는지**를 꺼낸다. 없으면 한 줄 요약(planner_summary)으로 내려간다. */
+function methodLine(input: ImprovementInput): string | null {
+  const how = toReadingGuide(input.guide)?.lead.how;
+  return quotableLine(how) ?? quotableLine(input.summary);
+}
+
+/**
  * 감상문 질문의 **폴백 사다리.**
  *
  * 원래 질문은 결정 카드의 대조쌍(A 대신 B)이 있어야 만들어졌다. 실측 779건 중 **15건.**
@@ -218,15 +274,44 @@ export function fallbackQuestion(input: ImprovementInput): string {
   const d = toDecision(input.decision);
   // ② 무엇을 골랐는지는 아는데 비교 대상이 없을 때.
   if (d.chosen && d.chosen.length <= 20 && !NEGATED.test(d.chosen)) {
-    return `${d.chosen}${objectParticle(d.chosen)} 택한 이유가 우리 상황에도 그대로 해당될까요?`;
+    return `${d.chosen}${objectParticle(d.chosen)} 택한 이유가 우리 상황에도 해당될까요? 아니라면 무엇이 다른가요?`;
   }
-  // ③ 개선 유형만 아는 경우 — "무엇을 보고 그렇게 판단했나"를 묻는다.
+  // ③ "1분 이해"의 *뭘 했대요?* 를 질문 안에 그대로 넣는다.
+  const line = methodLine(input);
+  if (line) {
+    return `${line} — 우리 상황에서도 같은 선택을 할 수 있을까요? 못 한다면 무엇이 달라야 할까요?`;
+  }
+  // ④ 개선 유형만 아는 경우 — **무엇을 고를지 먼저 적게** 한다.
   const type = classifyImprovement(input);
   if (type) {
-    return `${IMPROVEMENT_PHRASE[type].replace(/ 사례$/, "")} 과정에서 이들이 내린 판단 중, 가장 눈에 띈 건 뭐였나요?`;
+    return `여기서 ${typePhrase(type)} 방법 하나를 고른다면 무엇이고, 우리 상황에도 그대로 쓸 수 있을까요?`;
   }
   // ④ 아무 신호도 없을 때. 넓지만 진짜 답이 나오는 질문.
-  return "이 글에서 가장 인상 깊었던 한 가지는 무엇인가요?";
+  return "여기서 쓴 방법 하나는 무엇이고, 우리 상황에도 그대로 쓸 수 있을까요?";
+}
+
+/**
+ * **가설 질문** — "왜 그 방법이면 풀린다고 봤을까".
+ *
+ * 세 질문 중 마지막. ⚠️ **원인을 묻지 않는다** — 원인은 글에 적혀 있다. 글에 없는 건
+ * 원인과 해법 **사이의 연결**(그 방법이면 해소된다고 본 근거)이고, 그 연결을 추론하는
+ * 연습이 자기 가설을 세우는 힘이 된다.
+ * 여기서도 빈 상자("가설을 적어보세요")는 주지 않는다 — 끝까지 답할 수 있게 묻는다.
+ */
+export function hypothesisQuestion(input: ImprovementInput): string {
+  const d = toDecision(input.decision);
+  const type = classifyImprovement(input);
+  if (d.chosen && d.chosen.length <= 20 && !NEGATED.test(d.chosen)) {
+    return `왜 ${d.chosen}${instrumentalParticle(d.chosen)} 이 문제가 풀린다고 봤을까요? 우리 상황에도 그 근거가 성립하나요?`;
+  }
+  const line = methodLine(input);
+  if (line) {
+    return `${line} — 왜 이 방법이면 문제가 풀린다고 봤을까요?`;
+  }
+  if (type) {
+    return `이들이 ${typePhrase(type)} 방법은 무엇이었고, 왜 그게 통할 거라고 봤을까요?`;
+  }
+  return "이들이 고른 방법은 무엇이었고, 왜 그 방법이면 문제가 풀린다고 봤을까요?";
 }
 
 /**
@@ -240,10 +325,14 @@ export function applyQuestion(input: ImprovementInput): string {
   const d = toDecision(input.decision);
   const type = classifyImprovement(input);
   if (d.chosen && d.chosen.length <= 20 && !NEGATED.test(d.chosen)) {
-    return `${d.chosen}${objectParticle(d.chosen)} 우리 일에 그대로 옮긴다면, 어디부터 손대시겠어요?`;
+    return `${d.chosen}${objectParticle(d.chosen)} 우리 제품에 옮긴다면, 어느 화면·기능에 먼저 붙이시겠어요?`;
+  }
+  const line = methodLine(input);
+  if (line) {
+    return `${line} — 이 중 우리 제품에 가져올 하나는 무엇이고, 어느 화면·기능에 먼저 붙이시겠어요?`;
   }
   if (type) {
-    return `${IMPROVEMENT_PHRASE[type].replace(/ 사례$/, "")} 방식을 우리 일에 붙인다면, 어디부터 손대시겠어요?`;
+    return `${typePhrase(type)} 방법 중 가져올 하나는 무엇이고, 어느 화면·기능에 먼저 붙이시겠어요?`;
   }
-  return "이 글에서 우리 일에 바로 옮겨올 수 있는 건 무엇인가요?";
+  return "여기서 가져올 방법 하나는 무엇이고, 우리 제품 어느 화면·기능에 먼저 붙이시겠어요?";
 }

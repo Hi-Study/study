@@ -95,6 +95,32 @@ function asClause(v: string): string {
 }
 
 /**
+ * **이 숫자가 고른 것의 성과인가.**
+ *
+ * 실측 사고: PolicyGuard 글에서 `chosen="PolicyGuard 프레임워크"`,
+ * `metric="Presidio Effective Block Rate 62.2%"` 가 잡혔다. 그런데 62.2% 는 PolicyGuard 의
+ * 성과가 아니라 **비교 대상(Presidio)의 한계**를 보여주는 숫자다
+ * (본문: "Presidio 의 EBR 은 62.2% 에 그쳤으며 … 약 38% 가 탐지되지 않고 통과됨").
+ * 그걸 "PolicyGuard 를 골랐더니 62.2%" 로 이어 붙이니 **사실이 뒤집힌 질문**이 나왔다.
+ *
+ * 그래서 metric 이 **고른 것과 다른 이름으로 시작하면** 남의 숫자로 보고 쓰지 않는다.
+ * 지표 이름(응답 시간, 실패율)은 일반명사로 시작하므로 걸리지 않는다.
+ */
+export function metricBelongsToChoice(chosen: string, metric: string): boolean {
+  const m = metric.trim();
+  if (!m) return false;
+  const first = m.split(/[\s·,(]/)[0] ?? "";
+  // ⚠ **전부 대문자인 약어는 제품명이 아니다.** 처음엔 `^[A-Z]` 로만 보고 걸렀는데,
+  //   그러면 `CPU 86.6% 감소` `RPS 100→4,000` `LLM 비용 64% 절감` `JSON 파싱 실패율 0건`
+  //   같은 **멀짱한 지표까지 전부 버려졌다**(실측 5건 중 4건이 오탐).
+  //   제품명은 `Presidio` `PolicyGuard` 처럼 **첫 글자만 대문자**다.
+  const looksLikeName = /^[A-Z][a-z][A-Za-z0-9.-]*$/.test(first);
+  if (!looksLikeName) return true;
+  const norm = (v: string) => v.toLowerCase().replace(/[\s·-]/g, "");
+  return norm(chosen).includes(norm(first));
+}
+
+/**
  * 결정 카드로 **인사이트 질문**을 조립한다.
  *
  * ⚠️ 예전엔 대조쌍(A 대신 B)이 있어야만 질문을 만들었다. 그래서 결정 카드가 있는
@@ -124,7 +150,12 @@ export function questionFromDecision(
     return `${asClause(d.problem)} — 이 문제를 ${d.chosen}${instrumentalParticle(d.chosen)} 풀었는데, 우리라면 같은 선택을 할까요?`;
   }
   // ④ 숫자 결과만 남았을 때 — 그 숫자가 나온 이유를 묻는다.
-  if (usablePhrase(d.metric, 40) && usablePhrase(d.chosen)) {
+  //    ⚠️ "골랐더니 ~" 는 인과를 단정하는 문장이다. 그 숫자가 **고른 것의 성과일 때만** 쓴다.
+  if (
+    usablePhrase(d.metric, 40) &&
+    usablePhrase(d.chosen) &&
+    metricBelongsToChoice(d.chosen, d.metric)
+  ) {
     return `${d.chosen}${objectParticle(d.chosen)} 골랐더니 ${asClause(d.metric)} — 무엇이 이 차이를 만들었을까요?`;
   }
   return null;
@@ -137,7 +168,8 @@ export function questionFromDecision(
 export function applyQuestionFromDecision(raw: unknown): string | null {
   const d = toDecision(raw);
   // 숫자 결과가 있으면 "우리는 무엇으로 잴까"가 가장 실행에 가깝다.
-  if (usablePhrase(d.metric, 40)) {
+  // 남의 숫자면 쓰지 않는다(위 metricBelongsToChoice 주석 참고).
+  if (usablePhrase(d.metric, 40) && metricBelongsToChoice(d.chosen, d.metric)) {
     return `${asClause(d.metric)} — 우리 일에서는 무엇으로 이 변화를 재 볼 수 있을까요?`;
   }
   if (usablePhrase(d.chosen)) {
@@ -145,6 +177,47 @@ export function applyQuestionFromDecision(raw: unknown): string | null {
   }
   if (usablePhrase(d.problem, 40)) {
     return `${asClause(d.problem)} — 우리에게도 같은 문제가 있나요? 있다면 어디에서 드러나나요?`;
+  }
+  return null;
+}
+
+/**
+ * 결정 카드로 **가설 질문**을 조립한다("왜 그 방법이면 풀린다고 봤을까").
+ *
+ * ⚠️ **원인을 묻지 않는다.** 원인은 글이 이미 말해 준다("결제 실패가 반복됐다") —
+ *    그걸 되물으면 답이 본문 베끼기가 된다. 글에 없는 건 그 다음 칸이다:
+ *    원인과 해법 **사이의 연결**, 즉 "그 방법이면 이 원인이 해소된다"고 본 근거.
+ *    그 연결을 추론해 보는 연습이 쌓여야 자기 가설을 세울 수 있다.
+ *
+ * 재료가 없으면 null — 호출부가 lib/improvement 의 템플릿으로 내려간다.
+ */
+export function hypothesisQuestionFromDecision(
+  raw: unknown,
+  blogName?: string | null,
+): string | null {
+  const d = toDecision(raw);
+  const name = blogName?.trim() ?? "";
+  const who = name ? `${name}${subjectParticle(name)} ` : "";
+
+  // ① 문제와 해법이 함께 있으면 **둘 사이의 연결**을 묻는다 — 가장 좋은 재료다.
+  if (usablePhrase(d.chosen) && usablePhrase(d.problem, 40)) {
+    return `${asClause(d.problem)} — ${who}왜 ${d.chosen}${instrumentalParticle(d.chosen)} 이게 풀린다고 봤을까요?`;
+  }
+  // ② 버린 대안이 있으면 "왜 저건 안 되고 이건 된다고 봤나"로 같은 걸 묻는다.
+  if (comparablePair(d.chosen, d.rejected)) {
+    return `${who}왜 ${d.rejected}${instrumentalParticle(d.rejected)}는 안 되고 ${d.chosen}${instrumentalParticle(d.chosen)} 풀린다고 봤을까요?`;
+  }
+  // ③ 제약만 있을 때 — 그 조건 아래에서 통할 거라고 본 근거.
+  if (usablePhrase(d.chosen) && usablePhrase(d.constraint, 40)) {
+    return `${asClause(d.constraint)} — 그런데도 ${d.chosen}${objectParticle(d.chosen)} 고르면 풀린다고 본 근거는 뭐였을까요?`;
+  }
+  // ④ 자기 숫자만 남았을 때 — 해보기 전에 이만큼 달라질 거라고 본 근거.
+  if (
+    usablePhrase(d.metric, 40) &&
+    usablePhrase(d.chosen) &&
+    metricBelongsToChoice(d.chosen, d.metric)
+  ) {
+    return `${asClause(d.metric)} — 해보기 전에 이만큼 달라질 거라고 본 근거는 뭐였을까요?`;
   }
   return null;
 }

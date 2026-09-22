@@ -156,7 +156,7 @@ export function DistillSearchScreen() {
               </View>
             ) : (
               <Text style={[styles.hint, { color: c.textMuted }]}>
-                글을 읽고 독후감을 남기면 관심사에 맞는 추천이 생겨요.
+                글을 읽고 인사이트를 남기면 관심사에 맞는 추천이 생겨요.
               </Text>
             )}
           </View>

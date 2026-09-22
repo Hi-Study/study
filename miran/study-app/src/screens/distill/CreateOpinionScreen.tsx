@@ -29,10 +29,11 @@ import { cleanInsight, EMPTY_INSIGHT, type Insight } from "@/lib/insight";
 import { draftFromHighlights, draftPromptSource } from "@/lib/insightDraft";
 import {
   applyQuestionFromDecision,
+  hypothesisQuestionFromDecision,
   isUsableQuestion,
   questionFromDecision,
 } from "@/lib/decision";
-import { applyQuestion, fallbackQuestion } from "@/lib/improvement";
+import { applyQuestion, fallbackQuestion, hypothesisQuestion } from "@/lib/improvement";
 import { dtype , PRETENDARD} from "@/theme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "CreateOpinion">;
@@ -174,6 +175,11 @@ export function CreateOpinionScreen({ route }: Props) {
     decision: articleQ.data?.decision,
     title: articleQ.data?.title,
     tags: articleQ.data?.tags,
+    // 결정 카드가 없을 때 질문이 인용할 재료 — **상세의 "1분 이해"** 가 1순위다.
+    //   유형 문구("장애를 줄인")만으로는 *무엇을* 했는지가 빠져서 답을 시작할 수 없다.
+    //   방금 읽은 문장을 질문이 이어받으면 맥락이 끊기지 않는다(lib/improvement.methodLine).
+    guide: articleQ.data?.reading_guide,
+    summary: articleQ.data?.planner_summary,
   };
   // 질문은 **좋은 것부터** 고른다.
   //   ① enrich 가 저장해 둔 질문(LLM 이 쓰고 서버 게이트를 통과한 것) — 이 글에만 있는
@@ -193,14 +199,30 @@ export function CreateOpinionScreen({ route }: Props) {
     (isUsableQuestion(savedApply) ? savedApply : null) ??
     applyQuestionFromDecision(articleQ.data?.decision) ??
     applyQuestion(qInput);
+  /**
+   * ③ **왜 그 방법이면 풀린다고 봤을까** — 남이 세운 가설의 **근거**를 추론하는 질문.
+   *
+   * ⚠️ 원인을 묻는 게 아니다. 원인("결제 실패가 반복됐다")은 상세가 이미 말해 주므로
+   *    되물으면 답이 본문 베끼기가 된다. 글에 없는 건 원인과 해법 **사이의 연결** —
+   *    "그 방법이면 이게 해소된다"고 본 근거다. 그 연결을 추론해 보는 연습이
+   *    자기 가설을 세우는 힘이 된다.
+   * 셋 중 가장 품이 들어 **맨 뒤**에 둔다(중간에 그만두어도 앞 둘은 남는다).
+   *
+   * 사다리는 앞의 둘과 같다: 저장된 LLM 질문(서버 게이트 통과분) → 결정 카드 조립 → 템플릿.
+   */
+  const savedHypothesis = articleQ.data?.hypothesis_question ?? null;
+  const question3 =
+    (isUsableQuestion(savedHypothesis) ? savedHypothesis : null) ??
+    hypothesisQuestionFromDecision(articleQ.data?.decision, articleQ.data?.blog?.name) ??
+    hypothesisQuestion(qInput);
 
-  const fromRegister = route.params?.fromRegister === true;
   const [insight, setInsight] = useState<Insight>({ ...EMPTY_INSIGHT });
   // 두 질문의 답. ①은 핵심 인사이트(core), ②는 접목(apply) 으로 그대로 저장된다.
   //   따로 "인상 깊은 부분"·"접목하고 싶은 방법" 빈 칸을 또 두지 않는다 — 같은 걸 두 번 묻는 꼴이라
   //   빈 폼만 늘어나고 아무도 안 채웠다.
   const [answer, setAnswer] = useState("");
   const [answer2, setAnswer2] = useState("");
+  const [answer3, setAnswer3] = useState("");
   const set = (patch: Partial<Insight>) => setInsight((p) => ({ ...p, ...patch }));
 
   const draft = useMemo(
@@ -222,14 +244,16 @@ export function CreateOpinionScreen({ route }: Props) {
   const filled = [
     answer.trim().length > 0,
     answer2.trim().length > 0,
+    answer3.trim().length > 0,
     free.trim().length > 0,
   ];
   const canSave =
-    (fromRegister ? filled.every(Boolean) : filled.some(Boolean)) && !create.isPending;
+    filled.some(Boolean) && !create.isPending;
 
   const save = () => {
     const a = answer.trim();
     const a2 = answer2.trim();
+    const a3 = answer3.trim();
     const merged: Insight = {
       ...insight,
       // ①의 답이 핵심 인사이트. ①이 비었으면 ②의 답을 핵심으로 올린다(빈 저장 방지).
@@ -240,6 +264,9 @@ export function CreateOpinionScreen({ route }: Props) {
       //   무슨 질문에 대한 답인지 모른다. 이어붙이면 카드에서 잘리므로 자기 자리에 둔다.
       coreQ: a ? question : question2,
       applyQ: a && a2 ? question2 : undefined,
+      // ③ 가설은 앞 칸으로 올리지 않는다 — 성격이 다른 답이라 섞으면 무슨 말인지 모른다.
+      hypothesis: a3,
+      hypothesisQ: a3 ? question3 : undefined,
       // ⚠️ 밑줄 문장·메모는 저장하지 않는다(위 주석 참고).
       quote: "",
       interpretation: "",
@@ -260,7 +287,7 @@ export function CreateOpinionScreen({ route }: Props) {
           <ChevronLeft size={24} color={c.textPrimary} />
         </Pressable>
         <Text style={[styles.hTitle, { color: c.textPrimary }]}>
-          {fromRegister ? "감상문 쓰기" : "인사이트 쓰기"}
+          인사이트 쓰기
         </Text>
         <Pressable onPress={save} disabled={!canSave} hitSlop={8} style={styles.hBtn}>
           <Text style={[styles.save, { color: canSave ? c.primary : c.textMuted }]}>저장</Text>
@@ -283,22 +310,18 @@ export function CreateOpinionScreen({ route }: Props) {
           automaticallyAdjustKeyboardInsets
           showsVerticalScrollIndicator={false}
         >
-          {fromRegister ? (
-            <Text style={[styles.registerNote, { color: c.textSecondary }]}>
-              아래 세 칸을 채우면 글 등록이 끝나요. 링크만 있는 글은 아무도 안 읽어요.
-            </Text>
-          ) : null}
           {/* ⚠️ 예전엔 여기서 **밑줄 문장을 그냥 보여주기만** 했다. 보여주는 건 필요 없다 —
                  필요한 건 그 밑줄로 **질문의 답 초안을 대신 써 주는 것**이다.
                  그래서 카드를 없애고 ①번 질문 안에 "밑줄로 초안 쓰기" 버튼을 넣었다. */}
 
-          {/* ② 질문 두 개 — **하나는 이 글에서 무엇을 봤나, 하나는 그래서 우리는 무엇을 하나.**
-                 예전엔 질문 하나 + 빈 칸 3개("인상 깊은 부분"·"접목하고 싶은 방법"·"질문·토론")
-                 였는데, 앞의 둘은 질문이 묻는 것과 같은 내용이라 같은 걸 두 번 묻는 꼴이었다.
-                 빈 칸을 없애고 질문에 답하게 한다 — 빈 상자보다 질문이 훨씬 쓰기 쉽다. */}
+          {/* ② 질문 셋 — **판단 → 착지점 → 가설.**
+                 빈 칸("인상 깊은 부분" 같은)을 두지 않고 질문에 답하게 한다 —
+                 빈 상자보다 질문이 훨씬 쓰기 쉽다.
+                 ⚠️ "이 글에서 무엇을 보셨나요"는 뺐다. 상세가 이미 무슨 일·왜·결과를 말해 주므로
+                    그 질문의 답은 요약을 옮겨 적은 것이 된다. 요약에 없는 것만 묻는다. */}
           <QuestionBlock
             step="1"
-            label="이 글에서 무엇을 보셨나요?"
+            label="우리라면 같은 선택을 할 수 있을까요?"
             question={question}
             value={answer}
             onChangeText={setAnswer}
@@ -317,16 +340,24 @@ export function CreateOpinionScreen({ route }: Props) {
           />
           <QuestionBlock
             step="2"
-            label="그래서 우리 일엔 어떻게 쓸까요?"
+            label="우리 제품 어디에 먼저 적용해볼까요?"
             question={question2}
             value={answer2}
             onChangeText={setAnswer2}
-            placeholder="떠오르는 대로 적어도 괜찮아요"
+            placeholder="화면·기능 이름까지 적으면 다음에 바로 꺼내 쓸 수 있어요"
+          />
+          <QuestionBlock
+            step="3"
+            label="왜 그 방법이면 풀린다고 봤을까요?"
+            question={question3}
+            value={answer3}
+            onChangeText={setAnswer3}
+            placeholder="맞히는 게 아니라 짚어보는 칸이에요 — 무엇을 믿고 그 방법을 골랐을까요"
           />
 
           {/* ③ 여기서부터는 자유롭게 — 정해진 틀 없이 나누고 싶은 말. */}
           <Field
-            label="질문 · 토론하고 싶은 것"
+            label="나누고 싶은 이야기"
             value={insight.questions[0] ?? ""}
             onChangeText={(t) => set({ questions: t ? [t] : [] })}
             placeholder="인사이터들과 자유롭게 나누고 싶은 이야기"
@@ -348,19 +379,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   hBtn: { minWidth: 44, height: 40, alignItems: "center", justifyContent: "center" },
-  hBtnWide: { paddingHorizontal: 8, height: 40, alignItems: "center", justifyContent: "center" },
   hTitle: { ...dtype.title, flex: 1, textAlign: "center" },
   save: { ...dtype.cardTitle },
-  draft: { ...dtype.bodyS, fontWeight: "700", fontFamily: PRETENDARD["700"] },
-  draftCard: { borderWidth: 1, borderRadius: 14, padding: 14, gap: 6 },
-  draftLabel: { ...dtype.label, fontSize: 12 },
-  draftQuote: { ...dtype.body, lineHeight: 24, fontWeight: "600", fontFamily: PRETENDARD["600"] },
-  draftQuestion: { ...dtype.cardTitle, fontSize: 16, lineHeight: 24 },
-  draftHint: { ...dtype.meta },
 
   // 아래 여백은 키보드 위로 마지막 칸을 끌어올릴 여유다(40 이면 가려졌다).
   content: { padding: 16, gap: 18, paddingBottom: 220 },
-  registerNote: { ...dtype.bodyS, marginBottom: -4 },
   field: { gap: 8 },
   label: { ...dtype.label, fontSize: 13 },
   hint: { ...dtype.bodyS, fontSize: 13.5, lineHeight: 20, marginTop: -2 },
@@ -387,19 +410,4 @@ const styles = StyleSheet.create({
     ...dtype.body,
   },
   inputMulti: { minHeight: 64, textAlignVertical: "top" },
-
-  qRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  qDel: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
-  addQ: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginTop: 2,
-  },
-  addQText: { ...dtype.bodyS, fontWeight: "700", fontFamily: PRETENDARD["700"] },
 });

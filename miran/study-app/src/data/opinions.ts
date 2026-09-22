@@ -6,7 +6,7 @@ import { qk } from "@/lib/queryKeys";
 import { useUid } from "@/auth/AuthProvider";
 import { isMissingColumnError } from "@/lib/pgError";
 import type { Insight } from "@/lib/insight";
-import type { ArticleLevel, Topic } from "@/types/database";
+import type { ArticleLevel, PlannerCategory, Topic } from "@/types/database";
 
 export interface OpinionAuthor {
   name: string;
@@ -90,6 +90,8 @@ export interface OpinionArticleLite {
   level: ArticleLevel | null;
   url: string;
   summary: string | null;
+  /** 기준 v1 대분류 — 마이 > 내 활동의 주제 필터가 쓴다(lib/myActivity.ts). */
+  planner_category: PlannerCategory | null;
   blog: { id: string; key: string; name: string; brand_color: string | null; homepage: string | null } | null;
 }
 
@@ -98,25 +100,13 @@ export interface OpinionFeedItem extends OpinionWithAuthor {
 }
 
 const OPINION_SELECT =
-  "*, author:users(name, role_title), article:articles(id, title, og_image, topic, level, url, summary, blog:blogs(id, key, name, brand_color, homepage))";
+  // reading_guide 까지 함께 받는다 — 마이 > 그날 활동의 "레퍼런스로 내보내기"가
+  // 한 줄 요약·1분 이해·용어를 이 값에서 꺼낸다(글마다 따로 조회하면 하루치가 N+1이 된다).
+  "*, author:users(name, role_title), article:articles(id, title, og_image, topic, level, url, summary, reading_guide, planner_category, blog:blogs(id, key, name, brand_color, homepage))";
 
-/** 전체 의견 피드 — 작성자 + 출처 글 요약 포함. 인기순(like_count) 또는 최신순.
- *  like_count 는 스키마 §11 컬럼이라 SQL 미적용 DB 에선 없다 → 그 경우 최신순으로 폴백해
- *  "인기 인사이트" 섹션이 통째로 비지 않게 한다. */
-export async function listOpinionsFeed(sort: OpinionSort = "latest"): Promise<OpinionFeedItem[]> {
-  const build = (byLike: boolean) => {
-    const base = supabase.from("opinions").select(OPINION_SELECT).limit(50);
-    return byLike
-      ? base.order("like_count", { ascending: false }).order("created_at", { ascending: false })
-      : base.order("created_at", { ascending: false });
-  };
-  let { data, error } = await build(sort === "popular");
-  if (error && sort === "popular" && isMissingColumnError(error)) {
-    ({ data, error } = await build(false));
-  }
-  if (error) throw error;
-  return (data ?? []) as unknown as OpinionFeedItem[];
-}
+// ⚠️ 전체 인사이트 피드(listOpinionsFeed / useOpinionsFeed)는 지웠다 — PRODUCT.md §4.
+//    인사이트는 그 글을 읽은 사람에게만 의미가 있다. 목록으로 떼면 남의 감상문 모음일 뿐이다.
+//    인사이트를 보는 곳은 ① 글 상세 하단 ② 마이 "내 의견" 둘뿐이다.
 
 export async function getOpinion(opinionId: string): Promise<OpinionFeedItem> {
   const { data, error } = await supabase
@@ -126,13 +116,6 @@ export async function getOpinion(opinionId: string): Promise<OpinionFeedItem> {
     .single();
   if (error) throw error;
   return data as unknown as OpinionFeedItem;
-}
-
-export function useOpinionsFeed(sort: OpinionSort = "latest") {
-  return useQuery({
-    queryKey: qk.opinionsFeed(sort === "latest" ? undefined : sort),
-    queryFn: () => listOpinionsFeed(sort),
-  });
 }
 
 export function useOpinion(opinionId: string) {
@@ -157,28 +140,11 @@ export async function listMyOpinions(uid: string): Promise<OpinionFeedItem[]> {
 export function useMyOpinions() {
   const uid = useUid();
   return useQuery({
-    queryKey: [...qk.opinionsFeed(), "mine", uid] as const,
+    queryKey: qk.myOpinions(uid),
     queryFn: () => listMyOpinions(uid),
     enabled: Boolean(uid),
   });
 }
 
-/** 특정 인사이터가 쓴 의견(프로필 페이지). */
-export async function listOpinionsByAuthor(userId: string): Promise<OpinionFeedItem[]> {
-  const { data, error } = await supabase
-    .from("opinions")
-    .select(OPINION_SELECT)
-    .eq("author_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(50);
-  if (error) throw error;
-  return (data ?? []) as unknown as OpinionFeedItem[];
-}
-
-export function useOpinionsByAuthor(userId: string) {
-  return useQuery({
-    queryKey: qk.opinionsByAuthor(userId),
-    queryFn: () => listOpinionsByAuthor(userId),
-    enabled: Boolean(userId),
-  });
-}
+// ⚠️ 작성자별 인사이트 조회(인사이터 프로필)는 지웠다 — PRODUCT.md §4.
+//    사람을 따라다니게 만들면 글이 아니라 사람이 중심이 된다.

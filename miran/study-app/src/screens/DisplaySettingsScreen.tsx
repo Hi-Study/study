@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import { LogOut } from "lucide-react-native";
+import { ChevronRight, LogOut, Star } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { useRootNav } from "@/navigation/types";
 import { useSetTheme } from "@/data/profile";
 import { signOut } from "@/auth/googleSignIn";
 import { Screen, ScreenHeader, SectionLabel } from "@/components/Chrome";
+import { FavoriteBlogsSheet } from "@/components/distill/FavoriteBlogsSheet";
+import { useFavoriteBlogIds } from "@/data";
 import type { ThemeMode } from "@/theme";
 import { PRETENDARD } from "@/theme";
 
@@ -14,6 +17,8 @@ export function DisplaySettingsScreen() {
   const c = theme.colors;
   const nav = useRootNav();
   const setTheme = useSetTheme();
+  const [favOpen, setFavOpen] = useState(false);
+  const favCount = (useFavoriteBlogIds().data ?? []).length;
 
   function choose(next: ThemeMode) {
     if (next === mode) return;
@@ -41,7 +46,35 @@ export function DisplaySettingsScreen() {
         선택한 화면 모드는 앱 전체에 즉시 적용됩니다.
       </Text>
 
+      {/* 읽기 — 관심 기업은 "내 기록"이 아니라 **목록을 고르는 설정**이다.
+          홈(기업 아이콘 옆)에서도 켤 수 있지만, 설정에서도 찾을 수 있어야 한다. */}
+      <SectionLabel>읽기</SectionLabel>
+      <Pressable
+        onPress={() => setFavOpen(true)}
+        style={[styles.accountRow, { backgroundColor: c.surfaceCard, borderColor: c.hairline }]}
+      >
+        <Text style={[styles.accountText, { color: c.textPrimary }]}>관심 기업</Text>
+        <View style={styles.rowRight}>
+          <Text style={[styles.rowMeta, { color: c.textMuted }]}>
+            {favCount > 0 ? `${favCount}곳` : "없음"}
+          </Text>
+          <Star size={18} color={favCount > 0 ? c.hot : c.textMuted} />
+        </View>
+      </Pressable>
+      <Text style={[styles.hint, { color: c.textMuted }]}>
+        관심 기업의 새 글은 홈에 따로 모여요.
+      </Text>
+
       <SectionLabel>계정</SectionLabel>
+      {/* 프로필 편집 — 마이 화면의 프로필 카드는 보여주기만 하고, 고치는 곳은 여기 하나다.
+          예전엔 이 화면이 스택에 등록만 돼 있고 **들어가는 길이 어디에도 없었다.** */}
+      <Pressable
+        onPress={() => nav.navigate("ProfileEdit")}
+        style={[styles.accountRow, { backgroundColor: c.surfaceCard, borderColor: c.hairline }]}
+      >
+        <Text style={[styles.accountText, { color: c.textPrimary }]}>프로필 편집</Text>
+        <ChevronRight size={18} color={c.textMuted} />
+      </Pressable>
       <Pressable
         onPress={confirmSignOut}
         style={[styles.accountRow, { backgroundColor: c.surfaceCard, borderColor: c.hairline }]}
@@ -49,6 +82,8 @@ export function DisplaySettingsScreen() {
         <Text style={[styles.accountText, { color: c.danger }]}>로그아웃</Text>
         <LogOut size={18} color={c.danger} />
       </Pressable>
+
+      <FavoriteBlogsSheet visible={favOpen} onClose={() => setFavOpen(false)} />
     </Screen>
   );
 }
@@ -103,6 +138,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   hint: { fontSize: 13, marginTop: 6, marginHorizontal: 4, lineHeight: 20 },
+  rowRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+  rowMeta: { fontSize: 13 },
   accountRow: {
     flexDirection: "row",
     alignItems: "center",

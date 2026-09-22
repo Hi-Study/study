@@ -1,36 +1,18 @@
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
-
-export type StudyTabParamList = {
-  Home: undefined;
-  Search: undefined;
-  MyPage: undefined;
-};
+import type { Topic } from "@/types/database";
+import type { ServiceKind } from "@/lib/serviceKind";
 
 export type DistillTabParamList = {
   Home: undefined;
-  Feed: undefined;
-  Insight: undefined;
+  /** 홈의 대분류·목적 태그·서비스 종류를 누르면 그게 켜진 채로 열린다. */
+  Feed: { topic?: Topic; purpose?: string; service?: ServiceKind } | undefined;
+  Archive: undefined;
   MyPage: undefined;
 };
 
 export type RootStackParamList = {
-  MyStudies: undefined;
-  CreateStudy: undefined;
-  JoinStudy: undefined;
-  Notifications: undefined;
-  Study: { studyId: string; screen?: keyof StudyTabParamList } & Partial<
-    NavigatorScreenParams<StudyTabParamList>
-  >;
-  ShareDetail: { studyId: string; shareId: string };
-  CreateShare: { studyId: string; defaultDay?: number; editShareId?: string };
-  DiscussionDetail: { studyId: string; discussionId: string };
-  CreateDiscussion: { studyId: string; editDiscussionId?: string };
-  Members: { studyId: string };
-  StudyManage: undefined;
-  StudyEdit: { studyId: string };
-  ActivityList: { kind: "study" | "share" | "comment" | "pending" };
   ProfileEdit: undefined;
   DisplaySettings: undefined;
 
@@ -39,15 +21,16 @@ export type RootStackParamList = {
   ArticleDetail: { articleId: string; focusOpinionId?: string };
   BlogArticles: { blogId: string; blogName: string };
   //   질문은 CreateOpinionScreen 이 글의 decision 을 읽어 스스로 조립한다(param 으로 안 넘긴다).
-  /** fromRegister: URL 로 방금 등록한 글 — 감상문을 써야 등록이 끝난다(3칸 전부 필수). */
-  CreateOpinion: { articleId: string; fromRegister?: boolean };
-  OpinionDetail: { opinionId: string };
-  CreateArticle: undefined;
-  CreateCommunityPost: undefined;
-  CommunityPostDetail: { postId: string };
-  DistillNotifications: undefined;
-  InsighterProfile: { userId: string };
+  CreateOpinion: { articleId: string };
+  // 인사이트 상세는 없앴다 — 인사이트는 **글 상세의 인사이트 시트**에서만 오간다.
+  //   (마이·그날 활동에서 누르면 ArticleDetail 의 focusOpinionId 로 그 자리까지 스크롤)
   DayActivity: { date: string }; // 'YYYY-MM-DD' — 마이 활동 캘린더에서 날짜 탭
+  /** 원문 보기 — 앱 안 웹뷰(§33). 밖으로 나가지 않는다. */
+  ArticleWebView: { url: string; title?: string | null };
+  /** 아카이브 상세 — archiveId 가 null 이면 '모든 저장글'(북마크 전체). */
+  ArchiveDetail: { archiveId: string | null; name: string };
+  /** 아카이브 만들기/수정 — archiveId 가 있으면 수정 모드. */
+  CreateArchive: { archiveId?: string } | undefined;
   Search: { q?: string } | undefined;
 };
 

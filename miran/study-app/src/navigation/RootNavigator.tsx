@@ -7,6 +7,7 @@ import {
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { View } from "react-native";
+import * as Linking from "expo-linking";
 
 import { useAuth } from "@/auth/AuthProvider";
 import { env } from "@/lib/env";
@@ -15,36 +16,52 @@ import { useProfile } from "@/data";
 import { Loading, ErrorState } from "@/components";
 import { LoginScreen } from "@/screens/LoginScreen";
 import { OnboardingScreen } from "@/screens/OnboardingScreen";
-import { MyStudiesScreen } from "@/screens/MyStudiesScreen";
-import { CreateStudyScreen } from "@/screens/CreateStudyScreen";
-import { JoinStudyScreen } from "@/screens/JoinStudyScreen";
-import { StudyScreen } from "./StudyTabs";
-import { ShareDetailScreen } from "@/screens/study/ShareDetailScreen";
-import { CreateShareScreen } from "@/screens/study/CreateShareScreen";
-import { DiscussionDetailScreen } from "@/screens/study/DiscussionDetailScreen";
-import { CreateDiscussionScreen } from "@/screens/study/CreateDiscussionScreen";
-import { MembersScreen } from "@/screens/MembersScreen";
-import { StudyManageScreen } from "@/screens/StudyManageScreen";
-import { StudyEditScreen } from "@/screens/StudyEditScreen";
-import { ActivityListScreen } from "@/screens/ActivityListScreen";
 import { ProfileEditScreen } from "@/screens/ProfileEditScreen";
 import { DisplaySettingsScreen } from "@/screens/DisplaySettingsScreen";
-import { NotificationsScreen } from "@/screens/NotificationsScreen";
 import { DistillTabs } from "./DistillTabs";
 import { ArticleDetailScreen } from "@/screens/distill/ArticleDetailScreen";
 import { BlogArticlesScreen } from "@/screens/distill/BlogArticlesScreen";
 import { CreateOpinionScreen } from "@/screens/distill/CreateOpinionScreen";
-import { OpinionDetailScreen } from "@/screens/distill/OpinionDetailScreen";
-import { CreateArticleScreen } from "@/screens/distill/CreateArticleScreen";
-import { CreateCommunityPostScreen } from "@/screens/distill/CreateCommunityPostScreen";
-import { CommunityPostDetailScreen } from "@/screens/distill/CommunityPostDetailScreen";
-import { DistillNotificationsScreen } from "@/screens/distill/DistillNotificationsScreen";
-import { InsighterProfileScreen } from "@/screens/distill/InsighterProfileScreen";
+import { ArticleWebViewScreen } from "@/screens/distill/ArticleWebViewScreen";
+import { ArchiveDetailScreen } from "@/screens/distill/ArchiveDetailScreen";
+import { CreateArchiveScreen } from "@/screens/distill/CreateArchiveScreen";
 import { DayActivityScreen } from "@/screens/distill/DayActivityScreen";
 import { DistillSearchScreen } from "@/screens/distill/DistillSearchScreen";
+import type { LinkingOptions } from "@react-navigation/native";
 import type { RootStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+/**
+ * 주소 연결(linking) — 화면마다 URL 을 준다.
+ *
+ * 웹에서는 이게 없으면 **브라우저 뒤로가기가 앱과 따로 논다.** 어느 화면으로 가든 주소가
+ * 그대로라 브라우저는 "이동한 적 없음"으로 보고, 뒤로가기를 누르면 앱 밖으로 나가버린다.
+ * 화면과 주소를 묶어두면 뒤로가기·앞으로가기·새로고침·링크 공유가 전부 자연스러워진다.
+ *
+ * 네이티브에서도 같은 표를 쓴다(scheme: studyapp) — 딥링크 규칙이 두 벌이 되지 않게.
+ */
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: [Linking.createURL("/"), "https://distill.app"],
+  config: {
+    screens: {
+      DistillTabs: {
+        // 탭은 경로의 첫 칸을 차지한다. 홈은 루트("")라 첫 화면 주소가 지저분해지지 않는다.
+        screens: { Home: "", Feed: "feed", Archive: "archive", MyPage: "my" },
+      },
+      ArticleDetail: "article/:articleId",
+      ArticleWebView: "article/original",
+      BlogArticles: "blog/:blogId",
+      CreateOpinion: "article/:articleId/write",
+      ArchiveDetail: "archive/detail",
+      CreateArchive: "archive/new",
+      DayActivity: "activity/:date",
+      Search: "search",
+      ProfileEdit: "settings/profile",
+      DisplaySettings: "settings",
+    },
+  },
+};
 
 function navTheme(base: NavTheme, colors: ReturnType<typeof useTheme>["theme"]["colors"]): NavTheme {
   return {
@@ -113,45 +130,24 @@ function AppStack() {
   const { theme } = useTheme();
   return (
     <NavigationContainer
+      linking={linking}
       theme={navTheme(theme.mode === "dark" ? DarkTheme : DefaultTheme, theme.colors)}
     >
       <Stack.Navigator initialRouteName="DistillTabs" screenOptions={{ headerShown: false }}>
-        {/* distill (테크블로그 발견) */}
         <Stack.Screen name="DistillTabs" component={DistillTabs} />
         <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
         <Stack.Screen name="BlogArticles" component={BlogArticlesScreen} />
         <Stack.Screen name="CreateOpinion" component={CreateOpinionScreen} />
-        <Stack.Screen name="OpinionDetail" component={OpinionDetailScreen} />
-        <Stack.Screen name="CreateArticle" component={CreateArticleScreen} />
-        <Stack.Screen name="CreateCommunityPost" component={CreateCommunityPostScreen} />
-        <Stack.Screen name="CommunityPostDetail" component={CommunityPostDetailScreen} />
-        <Stack.Screen name="DistillNotifications" component={DistillNotificationsScreen} />
-        <Stack.Screen name="InsighterProfile" component={InsighterProfileScreen} />
         <Stack.Screen name="DayActivity" component={DayActivityScreen} />
+        <Stack.Screen name="ArticleWebView" component={ArticleWebViewScreen} />
+        <Stack.Screen name="ArchiveDetail" component={ArchiveDetailScreen} />
+        <Stack.Screen
+          name="CreateArchive"
+          component={CreateArchiveScreen}
+          options={{ presentation: "modal" }}
+        />
         <Stack.Screen name="Search" component={DistillSearchScreen} />
 
-        <Stack.Screen name="MyStudies" component={MyStudiesScreen} />
-        <Stack.Screen name="CreateStudy" component={CreateStudyScreen} />
-        <Stack.Screen name="JoinStudy" component={JoinStudyScreen} />
-        <Stack.Screen name="Notifications" component={NotificationsScreen} />
-        <Stack.Screen
-          name="Study"
-          component={StudyScreen}
-          options={{
-            headerShown: true,
-            title: "스터디",
-            headerTitleAlign: "left",
-            headerShadowVisible: false,
-          }}
-        />
-        <Stack.Screen name="ShareDetail" component={ShareDetailScreen} />
-        <Stack.Screen name="CreateShare" component={CreateShareScreen} />
-        <Stack.Screen name="DiscussionDetail" component={DiscussionDetailScreen} />
-        <Stack.Screen name="CreateDiscussion" component={CreateDiscussionScreen} />
-        <Stack.Screen name="Members" component={MembersScreen} />
-        <Stack.Screen name="StudyManage" component={StudyManageScreen} />
-        <Stack.Screen name="StudyEdit" component={StudyEditScreen} />
-        <Stack.Screen name="ActivityList" component={ActivityListScreen} />
         <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
         <Stack.Screen name="DisplaySettings" component={DisplaySettingsScreen} />
       </Stack.Navigator>

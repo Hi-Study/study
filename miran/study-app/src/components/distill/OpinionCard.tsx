@@ -13,11 +13,9 @@ import type { OpinionFeedItem } from "@/data/opinions";
 export function OpinionCard({
   opinion,
   onPress,
-  onAuthorPress,
 }: {
   opinion: OpinionFeedItem;
   onPress: () => void;
-  onAuthorPress?: () => void;
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
@@ -31,14 +29,10 @@ export function OpinionCard({
         { backgroundColor: c.surfaceCard, borderColor: c.hairline, opacity: pressed ? 0.95 : 1 },
       ]}
     >
-      {/* 작성자(탭하면 인사이터 프로필) + 메타 */}
+      {/* 작성자 + 메타 — 이름은 보여주되 누를 수는 없다.
+          인사이터 프로필은 걷어냈다(PRODUCT.md §4): 사람을 따라다니게 만들면 글이 중심에서 밀린다. */}
       <View style={styles.head}>
-        <Pressable
-          style={styles.headAuthor}
-          onPress={onAuthorPress}
-          disabled={!onAuthorPress}
-          hitSlop={4}
-        >
+        <View style={styles.headAuthor}>
           <Avatar name={opinion.author?.name ?? "게스트"} size={36} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.who, { color: c.textPrimary }]}>
@@ -48,13 +42,16 @@ export function OpinionCard({
               <Text style={[styles.role, { color: c.textMuted }]}>{opinion.author.role_title}</Text>
             ) : null}
           </View>
-        </Pressable>
+        </View>
         <View style={styles.headRight}>
           <Text style={[styles.date, { color: c.textMuted }]}>{relativeDate(opinion.created_at)}</Text>
-          <View style={styles.likeMeta}>
-            <Heart size={12} color={c.textMuted} />
-            <Text style={[styles.likeNum, { color: c.textMuted }]}>{opinion.like_count ?? 0}</Text>
-          </View>
+          {/* 공감 수는 있을 때만 — 0 이 붙으면 "아무도 공감 안 한 글"로 읽힌다. */}
+          {(opinion.like_count ?? 0) > 0 ? (
+            <View style={styles.likeMeta}>
+              <Heart size={12} color={c.textMuted} />
+              <Text style={[styles.likeNum, { color: c.textMuted }]}>{opinion.like_count}</Text>
+            </View>
+          ) : null}
         </View>
       </View>
 

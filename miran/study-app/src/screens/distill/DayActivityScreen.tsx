@@ -24,6 +24,8 @@ import { OpinionCard } from "@/components/distill/OpinionCard";
 import { ArticleRow } from "@/components/distill/ArticleCards";
 import { dayKey } from "@/components/distill/ActivityCalendar";
 import { buildReferenceMarkdown } from "@/lib/exportRef";
+import { leadRows, toReadingGuide } from "@/lib/guide";
+import { summaryLine } from "@/lib/summaryLine";
 import { EmptyState, Loading } from "@/components";
 
 type Props = NativeStackScreenProps<RootStackParamList, "DayActivity">;
@@ -81,35 +83,97 @@ export function DayActivityScreen({ route }: Props) {
 
   const total = opinions.length + highlights.length + comments.length + words.length + reads.length;
 
-  // 레퍼런스 문서(마크다운) — 노션에 그대로 붙여넣을 수 있는 형태.
-  //   활동이 없으면 빈 문자열이 나오고 버튼도 안 그린다.
+  /**
+   * 레퍼런스 문서(마크다운) — 노션에 그대로 붙여넣는 형태.
+   *
+   * **글 단위로 묶는다.** 예전엔 활동 종류별(인사이트 / 밑줄 / 단어 / 읽은 글)로 섹션을
+   * 나눴는데, 붙여넣고 나면 같은 글의 조각이 네 군데로 흩어져 무슨 글 얘긴지 알 수 없었다.
+   * 자료로 쓰이는 단위는 활동이 아니라 글이다.
+   *
+   * 한 줄 요약·1분 이해·용어는 그 글의 `reading_guide` 에서 꺼낸다(화면과 같은 출처).
+   * 활동이 없으면 빈 문자열이 나오고 버튼도 안 그린다.
+   */
+  const { articleRefs, readOnly } = useMemo(() => {
+    type Acc = {
+      id: string;
+      title: string;
+      blogName: string | null;
+      url: string | null;
+      summary: string | null;
+      guideRaw: unknown;
+      insights: unknown[];
+      highlights: { quote: string | null; note: string | null }[];
+    };
+    const map = new Map<string, Acc>();
+    const touch = (base: Omit<Acc, "insights" | "highlights">): Acc => {
+      const found = map.get(base.id);
+      if (found) return found;
+      const fresh: Acc = { ...base, insights: [], highlights: [] };
+      map.set(base.id, fresh);
+      return fresh;
+    };
+
+    for (const o of opinions) {
+      const a = o.article;
+      if (!a) continue;
+      touch({
+        id: a.id,
+        title: a.title,
+        blogName: a.blog?.name ?? null,
+        url: a.url ?? null,
+        summary: a.summary ?? null,
+        guideRaw: (a as { reading_guide?: unknown }).reading_guide,
+      }).insights.push(o.insight);
+    }
+    for (const h of highlights) {
+      const a = h.article;
+      if (!a) continue;
+      touch({
+        id: a.id,
+        title: a.title,
+        blogName: a.blog?.name ?? null,
+        url: a.url ?? null,
+        summary: a.summary ?? null,
+        guideRaw: a.reading_guide,
+      }).highlights.push({ quote: h.quote, note: h.note });
+    }
+
+    const refs = [...map.values()].map((x) => {
+      const guide = toReadingGuide(x.guideRaw);
+      return {
+        title: x.title,
+        blogName: x.blogName,
+        url: x.url,
+        oneLine: guide?.summary || summaryLine(x.summary ?? "") || null,
+        lead: guide ? leadRows(guide) : [],
+        plannerPoint: guide?.plannerPoint ?? null,
+        terms: guide?.terms ?? [],
+        insights: x.insights,
+        highlights: x.highlights,
+      };
+    });
+    // 인사이트도 밑줄도 없이 **읽기만** 한 글은 맨 뒤 링크 목록으로 몰아 둔다.
+    const rest = reads.filter((a) => !map.has(a.id));
+    return { articleRefs: refs, readOnly: rest };
+  }, [opinions, highlights, reads]);
+
   const markdown = useMemo(
     () =>
       buildReferenceMarkdown({
         date,
-        opinions: opinions.map((o) => ({
-          articleTitle: o.article?.title ?? "",
-          blogName: o.article?.blog?.name ?? null,
-          articleUrl: o.article?.url ?? null,
-          insight: o.insight,
-        })),
-        highlights: highlights.map((h) => ({
-          quote: h.quote,
-          note: h.note,
-          articleTitle: h.article?.title ?? null,
-        })),
+        articles: articleRefs,
         comments: comments.map((m) => ({
           text: m.text,
           sourceTitle: commentSource(m)?.title ?? null,
         })),
         words: words.map((w) => ({ term: w.term, definition: w.definition })),
-        reads: reads.map((a) => ({
+        reads: readOnly.map((a) => ({
           title: a.title,
           blogName: a.blog?.name ?? null,
           url: a.url,
         })),
       }),
-    [date, opinions, highlights, comments, words, reads],
+    [date, articleRefs, comments, words, readOnly],
   );
 
   const onCopy = async () => {
@@ -168,10 +232,11 @@ export function DayActivityScreen({ route }: Props) {
                 <OpinionCard
                   key={o.id}
                   opinion={o}
+                  // 인사이트는 글 상세의 시트에서 본다 — 그 인사이트 자리로 스크롤된다.
                   onPress={() =>
                     o.article
                       ? nav.navigate("ArticleDetail", { articleId: o.article.id, focusOpinionId: o.id })
-                      : nav.navigate("OpinionDetail", { opinionId: o.id })
+                      : undefined
                   }
                 />
               ))}
@@ -205,13 +270,16 @@ export function DayActivityScreen({ route }: Props) {
                 <Pressable
                   key={m.id}
                   style={[styles.row, { borderColor: c.hairline }]}
-                  disabled={!src}
+                  disabled={!m.opinion?.article}
                   onPress={() =>
-                    src?.kind === "opinion"
-                      ? nav.navigate("OpinionDetail", { opinionId: src.id })
-                      : src
-                        ? nav.navigate("CommunityPostDetail", { postId: src.id })
-                        : undefined
+                    // 댓글 출처는 인사이트뿐이고(커뮤니티 자유글은 걷어냈다),
+                    // 인사이트는 그 글의 시트 안에 있다.
+                    m.opinion?.article
+                      ? nav.navigate("ArticleDetail", {
+                          articleId: m.opinion.article.id,
+                          focusOpinionId: m.opinion.id,
+                        })
+                      : undefined
                   }
                 >
                   <Text style={[styles.note, { color: c.textPrimary }]}>{m.text}</Text>

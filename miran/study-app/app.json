@@ -20,7 +20,7 @@
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#4F46E5"
+        "backgroundColor": "#7C3AED"
       }
     },
     "web": {
@@ -30,13 +30,12 @@
       "name": "distill",
       "shortName": "distill",
       "lang": "ko",
-      "themeColor": "#4F46E5",
-      "backgroundColor": "#F9FAFB",
+      "themeColor": "#7C3AED",
+      "backgroundColor": "#F5F4F8",
       "display": "standalone"
     },
     "plugins": [
       "expo-font",
-      "expo-notifications",
       "expo-web-browser"
     ],
     "extra": {

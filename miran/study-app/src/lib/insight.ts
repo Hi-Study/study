@@ -16,6 +16,16 @@ export interface Insight {
    */
   coreQ?: string;
   applyQ?: string;
+  /**
+   * 3. **왜 그 방법이면 풀린다고 봤을까** — 남이 세운 가설의 근거를 추론한 답.
+   *
+   * 앞의 둘(우리라면 / 어디에 적용)은 *우리* 이야기다. 이 칸만 **글 쓴 쪽의 추론**을 되짚는다.
+   * ⚠️ 원인을 묻는 칸이 아니다 — 원인은 글에 적혀 있다. 글에 없는 건 원인과 해법 사이의
+   * 연결이고, 그 연결을 추론하는 연습이 자기 가설을 세우는 힘이 된다.
+   * 셋 중 가장 품이 드는 질문이라 **맨 뒤**에 둔다 — 중간에 그만두어도 앞 둘은 남는다.
+   */
+  hypothesis?: string;
+  hypothesisQ?: string;
 }
 
 export const EMPTY_INSIGHT: Insight = {
@@ -40,6 +50,8 @@ export function toInsight(raw: unknown): Insight {
     questions: Array.isArray(r.questions) ? r.questions.filter((q): q is string => typeof q === "string") : [],
     coreQ: typeof r.coreQ === "string" ? r.coreQ : undefined,
     applyQ: typeof r.applyQ === "string" ? r.applyQ : undefined,
+    hypothesis: typeof r.hypothesis === "string" ? r.hypothesis : undefined,
+    hypothesisQ: typeof r.hypothesisQ === "string" ? r.hypothesisQ : undefined,
   };
 }
 
@@ -57,6 +69,8 @@ export function cleanInsight(i: Insight): Insight | null {
     // 답이 없으면 질문도 저장하지 않는다 — 질문만 남은 껍데기를 만들지 않는다.
     coreQ: core ? i.coreQ?.trim() || undefined : undefined,
     applyQ: i.apply.trim() ? i.applyQ?.trim() || undefined : undefined,
+    hypothesis: i.hypothesis?.trim() || undefined,
+    hypothesisQ: i.hypothesis?.trim() ? i.hypothesisQ?.trim() || undefined : undefined,
   };
 }
 

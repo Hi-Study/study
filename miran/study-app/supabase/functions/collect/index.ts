@@ -21,6 +21,7 @@
 // 스케줄(A5): pg_cron 으로 주기 호출(예: 매시 정각).
 import { corsHeaders, json } from "../_shared/cors.ts";
 import { serviceClient } from "../_shared/supabase.ts";
+import { seriesOf } from "../_shared/series.ts";
 import {
   BROWSER_UA,
   CRAWLER_UA,
@@ -33,7 +34,6 @@ import {
   stripFooter,
 } from "../_shared/extract.ts";
 import { extractStateBody, parseFeed, type FeedItem } from "../_shared/feed.ts";
-import { classify } from "../_shared/classify.ts";
 
 const PER_BLOG_LIMIT = 8; // 실행당 블로그별 신규 최대 처리 수(엣지 함수 시간 예산 보호)
 const SINCE_CAP = 60;     // since 백필 시 블로그별 1회 최대 처리 수(초과분은 재실행으로 이어서)
@@ -295,6 +295,18 @@ async function collectBlog(
       if (v === null || v === undefined || v === "") continue;
       row[k] = v;
     }
+    // 시리즈(§40) — 제목에서 뽑아 **수집 때 바로 적는다.** 나중에 손으로 채우면
+    // 새 글은 시리즈로 안 잡히고, 그 사이에 읽은 사람은 이야기가 끊긴 채로 본다.
+    // 1편만 있어도 적어 둔다 — 2편이 들어오면 그때 저절로 묶인다.
+    //
+    // ⚠️ 판정은 **원문 제목(title)만** 본다. 기획자용 제목(planner_title)은 "(1)", "2편",
+    //    "상/하" 같은 회차 표시를 일부러 떼고 다시 쓴 문장이라 회차를 못 읽는다.
+    //    그걸로 묶으면 같은 시리즈가 흩어지거나 남남끼리 묶인다.
+    const ser = seriesOf(String(built.title ?? ""));
+    if (ser) {
+      row.series_key = ser.key;
+      row.series_no = ser.no;
+    }
     rows.push(row);
   }
   if (rows.length === 0) return { found: items.length, inserted: 0, skipped: skipped.length };
@@ -544,7 +556,9 @@ async function buildArticle(
   if (since && published && published < since) return null;
   if (!title || body.length < 200) return null; // 제목·최소 본문 없으면 저장 안 함.
 
-  const { topic, tags } = classify(title, body);
+  // ⚠️ 여기서 분류하지 않는다. 대분류는 본문을 읽고 판단해야 하는데(기준 v1),
+  //    수집 한 번에 글 수십 건이 들어오므로 LLM 판정 3회를 여기 끼우면 수집이 타임아웃 난다.
+  //    topic 은 비워 두고, summarize 의 classify 단계가 나중에 채운다.
   return {
     url: it.url,
     title,
@@ -553,7 +567,7 @@ async function buildArticle(
     summary: excerpt,
     body,
     og_image: image,
-    topic,
-    tags,
+    topic: null,
+    tags: [],
   };
 }

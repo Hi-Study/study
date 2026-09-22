@@ -87,11 +87,10 @@ export function useToggleReaction(targetType: ReactionTarget, targetId: string) 
         qc.invalidateQueries({ queryKey: qk.articles() }); // 목록 like_count 갱신
       } else if (targetType === "opinion") {
         qc.invalidateQueries({ queryKey: qk.opinion(targetId) });
-        qc.invalidateQueries({ queryKey: qk.opinionsFeed() });
-      } else if (targetType === "community") {
-        qc.invalidateQueries({ queryKey: qk.communityPost(targetId) });
-        qc.invalidateQueries({ queryKey: qk.communityPosts() });
+        qc.invalidateQueries({ queryKey: ["opinions"] });
       }
+      // 'community' 대상은 더 이상 없다(커뮤니티 자유글을 걷어냈다). DB 의 check 제약에는
+      // 값이 남아 있지만 앱에서는 만들지 않는다 — 옛 데이터를 지우지 않기 위해 제약은 둔다.
     },
   });
 }

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { qk } from "@/lib/queryKeys";
 import { useUid } from "@/auth/AuthProvider";
-import type { Topic } from "@/types/database";
+import type { PlannerCategory, Topic } from "@/types/database";
 
 export interface ArticleHighlightAuthor {
   name: string;
@@ -12,10 +12,18 @@ export interface ArticleHighlightAuthor {
 }
 
 // 내 하이라이트 모아보기용 — 문장 + 감상 + 출처 글(제목/주제).
+// url·summary·reading_guide 는 마이 > 그날 활동의 "레퍼런스로 내보내기"가 쓴다
+// (밑줄만 남긴 글도 한 줄 요약·1분 이해·용어까지 붙은 블록으로 나가야 한다).
 export interface MyHighlightArticleLite {
   id: string;
   title: string;
   topic: Topic | null;
+  /** 기준 v1 대분류 — 마이 > 내 활동의 주제 필터가 쓴다(lib/myActivity.ts). */
+  planner_category: PlannerCategory | null;
+  url: string | null;
+  summary: string | null;
+  reading_guide: unknown;
+  blog: { name: string } | null;
 }
 
 export interface MyHighlightRow {
@@ -92,7 +100,9 @@ export async function deleteArticleHighlight(id: string): Promise<void> {
 export async function listMyHighlights(uid: string): Promise<MyHighlightRow[]> {
   const { data, error } = await supabase
     .from("article_highlights")
-    .select("id, article_id, sentence_index, quote, color, note, created_at, article:articles(id, title, topic)")
+    .select(
+      "id, article_id, sentence_index, quote, color, note, created_at, article:articles(id, title, topic, planner_category, url, summary, reading_guide, blog:blogs(name))",
+    )
     .eq("author_id", uid)
     .order("created_at", { ascending: false });
   if (error) throw error;

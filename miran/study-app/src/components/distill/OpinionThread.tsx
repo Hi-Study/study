@@ -1,4 +1,7 @@
-// distill 댓글 스레드(인라인 재사용) — 좋아요 + 댓글/**대댓글** + 본인 수정·삭제 + 입력.
+// distill 댓글 스레드(인라인 재사용) — 공감 + 댓글/**대댓글** + 본인 수정·삭제 + 입력.
+//
+// ⚠️ "좋아요"라고 부르지 않는다. 여기 달리는 건 남의 게시물이 아니라 **인사이트**다 —
+//    "좋아요"는 소비의 말이고, 읽고 같은 생각에 닿았다는 뜻은 **공감**이 담는다.
 //   인사이트(의견)와 커뮤니티 자유글이 같은 컴포넌트를 쓴다(target 으로 구분).
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
@@ -106,7 +109,7 @@ export function CommentItem({
                 fill={liked.data ? c.danger : "transparent"}
               />
               <Text style={[styles.cmActionText, { color: liked.data ? c.danger : c.textMuted }]}>
-                좋아요
+                공감
               </Text>
             </Pressable>
             {onReply ? (
@@ -159,7 +162,7 @@ function threaded(rows: OpinionCommentRow[]): OpinionCommentRow[] {
   return out;
 }
 
-/** 좋아요 + 댓글 스레드 + 입력(인라인). hideLike: 카드가 이미 좋아요를 보이면 숨김. */
+/** 공감 + 댓글 스레드 + 입력(인라인). hideLike: 카드가 이미 공감 수를 보이면 숨김. */
 export function CommentThread({
   target,
   hideLike,
@@ -174,7 +177,7 @@ export function CommentThread({
   const createComment = useCreateThreadComment(target);
   const updateComment = useUpdateThreadComment(target);
   const deleteComment = useDeleteThreadComment(target);
-  const likeTarget = target.kind === "opinion" ? "opinion" : "community";
+  const likeTarget = "opinion"; // 댓글은 인사이트에만 달린다(PRODUCT.md §4)
   const liked = useLiked(likeTarget, target.id);
   const toggleLike = useToggleReaction(likeTarget, target.id);
   const [text, setText] = useState("");
@@ -207,7 +210,9 @@ export function CommentThread({
             style={styles.actionBtn}
           >
             <Heart size={17} color={liked.data ? c.danger : c.textMuted} fill={liked.data ? c.danger : "transparent"} />
-            <Text style={[styles.actionText, { color: liked.data ? c.danger : c.textSecondary }]}>좋아요</Text>
+            <Text style={[styles.actionText, { color: liked.data ? c.danger : c.textSecondary }]}>
+              인사이트 공감
+            </Text>
           </Pressable>
           <View style={styles.actionBtn}>
             <MessageSquare size={17} color={c.textMuted} />

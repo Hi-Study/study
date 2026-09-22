@@ -37,10 +37,30 @@ export function ArticleHighlightSection({
   articleId,
   text,
   fontScale = 1,
+  range,
+  hideHint = false,
+  hideRollup = false,
+  rollupOnly = false,
 }: {
   articleId: string;
   text: string;
   fontScale?: number;
+  /**
+   * 그릴 블록 구간 [from, to] — 읽기 가이드(§33)의 한 단계만 그릴 때 쓴다.
+   * ⚠️ 구간을 잘라도 **문장 번호(index)는 전역 그대로**다. 밑줄은 그 번호에 앵커돼 있어서,
+   *    구간마다 0부터 다시 세면 다른 기기와 밑줄 위치가 어긋난다.
+   */
+  range?: { from: number; to: number };
+  /** 단계 안에서는 "눌러서 밑줄" 안내를 매번 반복하지 않는다(맨 위 한 번이면 족하다). */
+  hideHint?: boolean;
+  /** 내 밑줄 모아보기는 단계마다가 아니라 글 맨 아래에 한 번만. */
+  hideRollup?: boolean;
+  /**
+   * 본문은 그리지 않고 **모아보기만** 그린다.
+   * 흐름 모드(§33)에서는 본문이 단계마다 쪼개져 들어가므로, 모아보기는 글 맨 아래에
+   * 이 모드로 한 번만 붙인다. 밑줄을 눌러 수정하는 시트도 여기에 함께 산다.
+   */
+  rollupOnly?: boolean;
 }) {
   const { theme } = useTheme();
   const c = theme.colors;
@@ -56,23 +76,21 @@ export function ArticleHighlightSection({
 
   return (
     <View style={styles.section}>
-      <View style={styles.head}>
-        <Highlighter size={14} color={c.primary} />
-        <Text style={[styles.headText, { color: c.primary }]}>
-          눌러서 밑줄·메모(나만 보기) · 길게 눌러 단어 저장
-        </Text>
-      </View>
+      {hideHint || rollupOnly ? null : <HighlightHint />}
 
+      {rollupOnly ? null : (
       <HighlightableText
         text={text}
+        range={range}
         highlights={list}
         activeIndex={active?.index ?? null}
         fontScale={fontScale}
         onTap={(index, quote) => setActive({ index, quote })}
         onLongPress={(quote) => setWordSentence(quote)}
       />
+      )}
 
-      {list.length > 0 ? (
+      {list.length > 0 && !hideRollup ? (
         <View style={[styles.rollup, { borderTopColor: c.hairline }]}>
           <View style={styles.rollupHead}>
             <Lock size={12} color={c.textMuted} />
@@ -139,8 +157,30 @@ export function ArticleHighlightSection({
   );
 }
 
+/**
+ * 밑줄 안내 한 줄.
+ *
+ * ⚠️ 별도 컴포넌트인 이유: 흐름 모드(§33)에서는 본문이 단계마다 쪼개져 들어가면서
+ *    단계마다 `hideHint` 가 걸린다. 그대로 두면 안내가 **어디에도 안 뜨고**,
+ *    밑줄·단어 저장이 있다는 걸 아무도 모르게 된다(기능은 살아 있는데 입구가 사라진다).
+ *    그래서 화면이 본문 위에 이걸 한 번 직접 붙인다.
+ */
+export function HighlightHint() {
+  const { theme } = useTheme();
+  const c = theme.colors;
+  return (
+    <View style={styles.head}>
+      <Highlighter size={14} color={c.primary} />
+      <Text style={[styles.headText, { color: c.primary }]}>
+        눌러서 밑줄·메모(나만 보기) · 길게 눌러 단어 저장
+      </Text>
+    </View>
+  );
+}
+
 function HighlightableText({
   text,
+  range,
   highlights,
   activeIndex,
   fontScale,
@@ -148,6 +188,7 @@ function HighlightableText({
   onLongPress,
 }: {
   text: string;
+  range?: { from: number; to: number };
   highlights: ArticleHighlightRow[];
   activeIndex: number | null;
   fontScale: number;
@@ -157,7 +198,12 @@ function HighlightableText({
   const { theme } = useTheme();
   const c = theme.colors;
   const sentences = useMemo(() => splitSentences(text), [text]);
-  const blocks = useMemo(() => groupSentencesIntoBlocks(sentences), [sentences]);
+  const allBlocks = useMemo(() => groupSentencesIntoBlocks(sentences), [sentences]);
+  // 구간 자르기는 **블록을 다 만든 뒤**에 한다. 자른 텍스트로 다시 쪼개면 문장 번호가 어긋난다.
+  const blocks = useMemo(
+    () => (range ? allBlocks.slice(range.from, range.to + 1) : allBlocks),
+    [allBlocks, range],
+  );
   const byIndex = useMemo(() => {
     const m = new Map<number, ArticleHighlightRow>();
     for (const h of highlights) m.set(h.sentence_index, h);

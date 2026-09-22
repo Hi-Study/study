@@ -53,3 +53,33 @@ describe("hasInsight", () => {
     expect(hasInsight({ quote: "q" })).toBe(false);
   });
 });
+
+describe("가설 칸(hypothesis)", () => {
+  it("답과 질문이 함께 저장된다", () => {
+    const r = cleanInsight({
+      ...EMPTY_INSIGHT,
+      core: "핵심",
+      hypothesis: "  재시도 간격이 원인이라고 본 듯  ",
+      hypothesisQ: " 무엇이 원인이라고 봤길래 지연 재시도로 풀었을까요? ",
+    });
+    expect(r?.hypothesis).toBe("재시도 간격이 원인이라고 본 듯");
+    expect(r?.hypothesisQ).toBe("무엇이 원인이라고 봤길래 지연 재시도로 풀었을까요?");
+  });
+
+  it("답이 없으면 질문만 남기지 않는다 — 질문만 남은 껍데기를 만들지 않는다", () => {
+    const r = cleanInsight({
+      ...EMPTY_INSIGHT,
+      core: "핵심",
+      hypothesis: "   ",
+      hypothesisQ: "무엇이 원인이라고 봤을까요?",
+    });
+    expect(r?.hypothesis).toBeUndefined();
+    expect(r?.hypothesisQ).toBeUndefined();
+  });
+
+  it("jsonb 로 읽어 올 때도 그대로 복원된다", () => {
+    const i = toInsight({ core: "핵심", hypothesis: "가설", hypothesisQ: "질문?" });
+    expect(i.hypothesis).toBe("가설");
+    expect(i.hypothesisQ).toBe("질문?");
+  });
+});

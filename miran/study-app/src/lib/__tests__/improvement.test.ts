@@ -2,7 +2,9 @@ import {
   IMPROVEMENT_LABEL,
   classifyImprovement,
   improvementSummary,
+  applyQuestion,
   fallbackQuestion,
+  hypothesisQuestion,
 } from "@/lib/improvement";
 import { instrumentalParticle } from "@/lib/josa";
 
@@ -119,12 +121,95 @@ describe("fallbackQuestion — 질문은 항상 있다", () => {
 
   it("② 결정 카드가 없어도 유형만 알면 그 유형을 묻는다", () => {
     const q = fallbackQuestion({ title: "응답 속도를 3초에서 0.4초로 줄인 방법" });
-    expect(q).toContain("속도를 끌어올린");
+    expect(q).toBe(
+      "여기서 속도를 끌어올린 방법 하나를 고른다면 무엇이고, 우리 상황에도 그대로 쓸 수 있을까요?",
+    );
+  });
+
+  it("유형 문구를 홀로 두지 않는다 — '무엇을 말하는지' 먼저 적게 한다", () => {
+    // 실측 사고: "장애를 줄인 방식을 우리 일에 붙인다면, 어디부터 손대시겠어요?"
+    //   — 그 방식이 무엇인지 말하지 않은 채 적용을 물어서 답을 쓸 수 없었다.
+    const input = { title: "결제 장애를 90% 줄인 방법" };
+    for (const q of [fallbackQuestion(input), applyQuestion(input), hypothesisQuestion(input)]) {
+      expect(q).toContain("방법");
+      expect(q).toContain("무엇");
+      expect(q.endsWith("?")).toBe(true);
+    }
   });
 
   it("③ 아무 신호가 없어도 빈 상자를 주지 않는다", () => {
     const q = fallbackQuestion({ title: "" });
     expect(q.length).toBeGreaterThan(10);
     expect(q.endsWith("?")).toBe(true);
+  });
+});
+
+describe("hypothesisQuestion (③ 가설 질문의 폴백 사다리)", () => {
+  it("고른 것을 알면 '왜 그걸로 풀린다고 봤나'를 묻고, 우리 조건까지 되묻는다", () => {
+    const q = hypothesisQuestion({ decision: dec({ chosen: "캐시 계층" }) });
+    expect(q).toBe(
+      "왜 캐시 계층으로 이 문제가 풀린다고 봤을까요? 우리 상황에도 그 근거가 성립하나요?",
+    );
+  });
+
+  it("유형만 알아도 '무엇을 골랐고 왜 통할 거라 봤나'를 묻는다", () => {
+    const q = hypothesisQuestion({
+      decision: dec({}),
+      title: "응답 속도를 3배 끌어올린 방법",
+      tags: ["성능"],
+    });
+    expect(q).toBe("이들이 속도를 끌어올린 방법은 무엇이었고, 왜 그게 통할 거라고 봤을까요?");
+  });
+
+  it("아무 신호가 없어도 빈 상자를 주지 않는다", () => {
+    expect(hypothesisQuestion({ decision: dec({}) })).toBe(
+      "이들이 고른 방법은 무엇이었고, 왜 그 방법이면 문제가 풀린다고 봤을까요?",
+    );
+  });
+});
+
+describe("질문의 재료 — 상세의 '1분 이해'에서 뽑는다", () => {
+  /** 뭘 했대요? 칸(lead.how)이 두 문장이면 **첫 문장만** 쓴다. */
+  const guide = {
+    summary: "배포 장애를 줄인 이야기",
+    terms: [],
+    lead: {
+      what: "배포할 때마다 장애가 났다",
+      why: "고객 이탈이 커졌다",
+      how: "이상 감지를 자동화하고 롤백을 단계로 나눴다. 이후 모니터링도 붙였다",
+      soWhat: "장애가 90% 줄었다",
+    },
+    plannerPoint: "",
+    sections: [],
+  };
+
+  it("① 판단 — 방금 읽은 문장을 그대로 이어받는다", () => {
+    expect(fallbackQuestion({ guide })).toBe(
+      "이상 감지를 자동화하고 롤백을 단계로 나눴다 — 우리 상황에서도 같은 선택을 할 수 있을까요? 못 한다면 무엇이 달라야 할까요?",
+    );
+  });
+
+  it("② 착지점 — 무엇을 가져올지 그 문장 안에서 고르게 한다", () => {
+    expect(applyQuestion({ guide })).toBe(
+      "이상 감지를 자동화하고 롤백을 단계로 나눴다 — 이 중 우리 제품에 가져올 하나는 무엇이고, 어느 화면·기능에 먼저 붙이시겠어요?",
+    );
+  });
+
+  it("③ 가설 — 그 방법이면 풀린다고 본 근거를 묻는다", () => {
+    expect(hypothesisQuestion({ guide })).toBe(
+      "이상 감지를 자동화하고 롤백을 단계로 나눴다 — 왜 이 방법이면 문제가 풀린다고 봤을까요?",
+    );
+  });
+
+  it("1분 이해가 아직 없으면 한 줄 요약(planner_summary)으로 내려간다", () => {
+    const q = fallbackQuestion({ summary: "운영실은 Shape Up을 8주 스프린트로 바꿔 적용했다" });
+    expect(q).toContain("Shape Up을 8주 스프린트로");
+  });
+
+  it("RSS 요약처럼 짧고 빈 문장은 쓰지 않는다 — 유형 템플릿으로 내려간다", () => {
+    // 실측값: "당근 리더 인터뷰 - 검색실" — 질문에 넣어도 아무 말을 하지 않는다.
+    const q = fallbackQuestion({ summary: "당근 리더 인터뷰", title: "장애를 줄인 방법" });
+    expect(q).not.toContain("당근 리더 인터뷰");
+    expect(q).toContain("방법");
   });
 });

@@ -49,7 +49,8 @@ export function WeakDomains() {
 }
 
 const styles = StyleSheet.create({
-  card: { borderWidth: 1, borderRadius: 14, padding: 16, marginTop: 12 },
+  // 외부 여백 없음 — 섹션 간격은 화면의 gap 이 정한다.
+  card: { borderWidth: 1, borderRadius: 18, padding: 16 },
   title: { ...dtype.cardTitle, fontSize: 15 },
   hint: { ...dtype.meta, marginTop: 2, marginBottom: 12 },
   rows: { gap: 10 },

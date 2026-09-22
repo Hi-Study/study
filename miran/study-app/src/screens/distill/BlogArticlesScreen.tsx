@@ -1,7 +1,7 @@
 // distill 기업(브랜드) 홈 — 홈의 서비스 로고/캐러셀 헤더 탭으로 진입.
 //   피드와 다르게: [브랜드 히어로 + 즐겨찾기] · [인기글 큐레이션 캐러셀] · [주제별 최신글].
 import React, { useMemo, useState } from "react";
-import { Dimensions, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Check, ChevronDown, ChevronLeft, Star, X } from "lucide-react-native";
@@ -24,14 +24,15 @@ import { Loading, ErrorState, EmptyState } from "@/components";
 
 type Props = NativeStackScreenProps<RootStackParamList, "BlogArticles">;
 
-const W = Dimensions.get("window").width;
-const CURATION_W = Math.round(W * 0.6);
 
 export function BlogArticlesScreen({ route }: Props) {
   const { blogId, blogName } = route.params;
   const { theme } = useTheme();
   const c = theme.colors;
   const nav = useRootNav();
+  // 창 폭을 따라간다 — 모듈 최상위에서 한 번 읽으면 웹에서 창을 좁혀도 그대로 남는다.
+  const winW = useWindowDimensions().width;
+  const curationW = Math.round(winW * 0.6);
   const [topic, setTopic] = useState<Topic | null>(null);
   const [switchOpen, setSwitchOpen] = useState(false);
 
@@ -83,7 +84,10 @@ export function BlogArticlesScreen({ route }: Props) {
           <ChevronLeft size={24} color={c.textPrimary} />
         </Pressable>
         <Pressable style={styles.headerSelect} onPress={() => setSwitchOpen(true)}>
-          <Text style={[styles.headerSelectText, { color: c.textPrimary }]} numberOfLines={1}>
+          <Text
+            style={[styles.headerSelectText, { color: c.textPrimary, maxWidth: winW * 0.72 }]}
+            numberOfLines={1}
+          >
             {blogName}
           </Text>
           <ChevronDown size={24} color={c.textPrimary} />
@@ -193,13 +197,13 @@ export function BlogArticlesScreen({ route }: Props) {
                   keyExtractor={(a) => a.id}
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  snapToInterval={CURATION_W + 12}
+                  snapToInterval={curationW + 12}
                   decelerationRate="fast"
                   contentContainerStyle={styles.curationRow}
                   renderItem={({ item }) => (
                     <ArticleCardH
                       article={item}
-                      width={CURATION_W}
+                      width={curationW}
                       onPress={() => nav.navigate("ArticleDetail", { articleId: item.id })}
                     />
                   )}
@@ -254,7 +258,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 8, paddingBottom: 4 },
   backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   headerSelect: { flexDirection: "row", alignItems: "center", gap: 4, flex: 1 },
-  headerSelectText: { ...dtype.titleL, fontWeight: "800", fontFamily: PRETENDARD["800"], maxWidth: W * 0.72 },
+  headerSelectText: { ...dtype.titleL, fontWeight: "800", fontFamily: PRETENDARD["800"] },
 
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
   switchPanel: {

@@ -788,16 +788,26 @@ alter table public.users add column if not exists job_role text
 alter table public.users add column if not exists onboarded_at timestamptz;
 
 -- 관심 주제에 'marketing' 추가(기존 7주제 + 1). articles.topic 도 동일하게 확장.
+--
+-- ⚠️ 값 목록에 **기준 v1 의 새 7값도 함께** 넣어 둔다(§36 에서 이 값들로 이관한다).
+--    여기서 옛 값만 허용하면, 이미 이관을 끝낸 DB 에 이 파일을 다시 돌릴 때
+--    `articles_topic_check is violated by some row` 로 터진다 — 실제로 그렇게 겪었다.
+--    이 파일은 **처음부터 끝까지 다시 돌려도 되어야** 한다. 제약을 좁히는 건 §36-5 한 곳뿐이다.
 alter table public.user_topics drop constraint if exists user_topics_topic_check;
 alter table public.user_topics
   add constraint user_topics_topic_check
-  check (topic in ('dev','product','design','planning','data_ai','infra','career','marketing'));
+  check (topic in (
+    'dev','product','design','planning','data_ai','infra','career','marketing',
+    'ai_use','product_plan','data_exp','user_exp','biz_brand','collab','quality_risk'
+  ));
 
 alter table public.articles drop constraint if exists articles_topic_check;
 alter table public.articles
   add constraint articles_topic_check
-  check (topic is null or topic in
-    ('dev','product','design','planning','data_ai','infra','career','marketing'));
+  check (topic is null or topic in (
+    'dev','product','design','planning','data_ai','infra','career','marketing',
+    'ai_use','product_plan','data_exp','user_exp','biz_brand','collab','quality_risk'
+  ));
 
 -- ============================================================
 -- 25) 수집 소스 확장 — blogs.kind 로 "개발 글" 밖의 소스를 구분한다.
@@ -1012,3 +1022,530 @@ grant execute on function public.all_top_reader_roles() to anon, authenticated;
 --     읽고 끝나면 남는 게 없으므로 두 번째가 이 서비스의 값어치다.
 -- ============================================================
 alter table public.articles add column if not exists apply_question text;
+
+-- ============================================================================
+-- 33) 읽기 가이드 — 테크 블로그를 비개발자가 따라 읽을 수 있게 만드는 층
+-- ----------------------------------------------------------------------------
+-- 원문 순서는 **바꾸지 않는다.** 원문 소제목 단위로 덩어리를 나누고, 덩어리마다
+-- ① 쉬운 제목 ② 여기서 하는 말 한 줄 ③ 중요도(핵심/참고/개발자용)를 얹는다.
+--
+-- 왜 재배치가 아니라 덧붙이기인가:
+--   · 글쓴이가 A→B→C 로 쓴 데는 이유가 있다(앞을 알아야 뒤가 이해된다). 흩으면 더 안 읽힌다.
+--   · 덧붙이기는 AI 가 틀려도 원문이 그대로다. 재배치는 틀리면 글이 뒤죽박죽이 된다.
+--   · 결정 카드(§26 decision)를 화면에서 뺀 이유와 같다 — 데이터가 비면 껍데기가 되는 구조는 쓰지 않는다.
+--
+-- reading_guide jsonb 모양:
+--   {
+--     "intro": "이 글은 …(2~3문장)",
+--     "terms": [{"term":"파티셔닝","plain":"큰 데이터를 기간별로 나눠 보관하는 것"}],
+--     "steps": [{"start":0,"title":"어쩌다 느려졌나","say":"…","weight":"core|ref|dev"}],
+--     "takeaways": ["…","…"]
+--   }
+--   steps[i].start = **블록(문단) 번호**. 끝 번호는 저장하지 않는다 —
+--   다음 단계의 start-1 이 곧 끝이라, 구간이 겹치거나 비는 일이 구조적으로 불가능하다.
+--   (마지막 단계는 본문 끝까지.) 블록 번호는 앱의 groupSentencesIntoBlocks 순번과 같다.
+alter table public.articles add column if not exists reading_guide jsonb;
+
+-- ============================================================================
+-- 34) 아카이브 — 사용자가 직접 만드는 보관함(이름 + 아이콘)
+-- ----------------------------------------------------------------------------
+-- 북마크(§6 article_bookmarks)는 그대로 둔다. 북마크 = "저장", 아카이브 = "분류".
+-- 둘을 합치면 저장이 무거워진다(담을 때마다 폴더를 골라야 한다).
+-- 아카이브에 담긴 글은 북마크에도 자동으로 들어간다(앱에서 처리) — 저장 안 한 글이
+-- 보관함에만 있으면 "내 북마크"와 숫자가 어긋나 보인다.
+create table if not exists public.archives (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references public.users(id) on delete cascade,
+  name        text not null check (char_length(trim(name)) between 1 and 15),
+  icon        text not null default 'all',
+  sort        int  not null default 0,
+  created_at  timestamptz not null default now()
+);
+create index if not exists archives_user_idx on public.archives (user_id, sort, created_at);
+
+create table if not exists public.archive_articles (
+  archive_id  uuid not null references public.archives(id) on delete cascade,
+  article_id  uuid not null references public.articles(id) on delete cascade,
+  created_at  timestamptz not null default now(),
+  primary key (archive_id, article_id)
+);
+create index if not exists archive_articles_article_idx on public.archive_articles (article_id);
+
+alter table public.archives          enable row level security;
+alter table public.archive_articles  enable row level security;
+
+drop policy if exists archives_all_own on public.archives;
+create policy archives_all_own on public.archives
+  for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- 담긴 글 행은 **부모 아카이브의 주인**만 만질 수 있다(행 자체에는 user_id 가 없다).
+drop policy if exists archive_articles_all_own on public.archive_articles;
+create policy archive_articles_all_own on public.archive_articles
+  for all to authenticated
+  using (exists (select 1 from public.archives a where a.id = archive_id and a.user_id = auth.uid()))
+  with check (exists (select 1 from public.archives a where a.id = archive_id and a.user_id = auth.uid()));
+
+-- 아카이브별 글 개수 — 그리드 타일의 "N개". 목록을 다 받아와 세면 카드 수만큼 쿼리가 늘어난다.
+create or replace function public.my_archive_counts(p_user_id uuid)
+returns table (archive_id uuid, cnt bigint)
+language sql stable security definer set search_path = public as $$
+  select aa.archive_id, count(*)::bigint
+  from public.archive_articles aa
+  join public.archives a on a.id = aa.archive_id
+  where a.user_id = p_user_id
+  group by aa.archive_id;
+$$;
+
+-- 완독률 — 홈 상단 "영이님의 완독률 48/62". 저장(북마크)한 글 중 읽음 처리된 비율.
+--   읽을 생각으로 담아둔 글이 분모다. 전체 글을 분모로 잡으면 영원히 0% 라 아무 동기도 안 된다.
+create or replace function public.my_read_rate(p_user_id uuid)
+returns table (saved bigint, finished bigint)
+language sql stable security definer set search_path = public as $$
+  select
+    (select count(*) from public.article_bookmarks b where b.user_id = p_user_id)::bigint,
+    (select count(*) from public.article_bookmarks b
+       join public.article_reads r on r.article_id = b.article_id and r.user_id = p_user_id
+     where b.user_id = p_user_id)::bigint;
+$$;
+
+-- ============================================================================
+-- 35) 완독률 분모 교체 — 북마크 → 아카이브
+-- ----------------------------------------------------------------------------
+-- 북마크(저장)와 아카이브(분류)를 하나로 합쳤다. 버튼 두 개가 나란히 있으면
+-- "둘이 뭐가 다르지"를 매번 생각해야 하고, 실제로는 저장만 하고 분류는 안 해서
+-- 두 숫자가 계속 어긋났다. 이제 담는 곳은 아카이브 하나뿐이다.
+--
+-- ⚠️ `article_bookmarks` 테이블과 기존 행은 **지우지 않는다.** 앱이 안 쓸 뿐이다.
+--    되돌리기 쉽게 남겨둔다(§4 안 하는 것과 같은 방침).
+create or replace function public.my_read_rate(p_user_id uuid)
+returns table (saved bigint, finished bigint)
+language sql stable security definer set search_path = public as $$
+  with mine as (
+    -- 한 글이 여러 아카이브에 담겨도 하나로 센다.
+    select distinct aa.article_id
+    from public.archive_articles aa
+    join public.archives a on a.id = aa.archive_id
+    where a.user_id = p_user_id
+  )
+  select
+    (select count(*) from mine)::bigint,
+    (select count(*) from mine
+       join public.article_reads r
+         on r.article_id = mine.article_id and r.user_id = p_user_id)::bigint;
+$$;
+
+
+-- ============================================================================
+-- 36) 주제 대분류 교체 — 개발자 언어에서 기획자 언어로 (기준 v1)
+-- ----------------------------------------------------------------------------
+-- 옛 주제(dev/product/design/planning/data_ai/infra/career/marketing)는 **개발자가 만든 말**이었다.
+-- "인프라", "데이터/AI" 같은 칸은 비개발자가 무엇이 들어 있는지 짐작하지 못한다.
+-- 비개발자가 끝까지 읽게 만들겠다면서 정작 고르는 칸이 개발자 언어였다.
+--
+-- 새 대분류 7개는 **결론이 무엇인가**로 나눈다(docs/분류-기준-v1.md):
+--   품질·위험 관리 → AI 활용 → 제품·서비스 기획 → 데이터·실험
+--   → 사용자 이해·경험 → 사업·브랜드 → 협업·프로세스
+-- 위에서부터 처음 "예"가 나오는 칸이 대분류다. "예"라고 답하려면
+-- **본문에서 근거 문장을 그대로 인용**할 수 있어야 한다(못 하면 예가 아니다).
+--
+-- ⚠️ 이관은 추측하지 않는다. 사람이 245건을 판정한 결과(docs/분류-결과-245.csv)를
+--    url 로 맞춰 그대로 넣는다. 그 표에 없는 글은 null 로 남고, 수집기가 다시 판정한다.
+-- 재실행 안전: 같은 값을 다시 써도 결과가 같다.
+
+-- 36-1) 새 값 집합을 먼저 허용한다(기존 값도 당분간 함께 허용 — 이관 중 위반 방지).
+alter table public.articles drop constraint if exists articles_topic_check;
+alter table public.articles add constraint articles_topic_check
+  check (topic is null or topic in (
+    'ai_use','product_plan','data_exp','user_exp','biz_brand','collab','quality_risk',
+    'dev','product','design','planning','data_ai','infra','career','marketing'
+  ));
+
+alter table public.user_topics drop constraint if exists user_topics_topic_check;
+alter table public.user_topics add constraint user_topics_topic_check
+  check (topic in (
+    'ai_use','product_plan','data_exp','user_exp','biz_brand','collab','quality_risk',
+    'dev','product','design','planning','data_ai','infra','career','marketing'
+  ));
+
+-- 36-2) 사람이 판정한 245건을 url 로 맞춰 이관한다.
+update public.articles a set topic = v.topic
+from (values
+  ('https://seed-design.io/updates/why-we-hired-a-design-engineer', 'collab'),
+  ('https://toss.tech/article/tech_talk_talk_1', 'quality_risk'),
+  ('https://seed-design.io/updates/pickers-dialog-select', 'product_plan'),
+  ('https://medium.com/daangn/%EC%8B%A4%ED%97%98%EC%9D%84-%EB%8D%94-%ED%8E%B8%ED%95%98%EA%B2%8C-%EC%84%A4%EA%B3%84%ED%95%A0-%EC%88%98-%EC%9E%88%EA%B2%8C-%EB%8B%B9%EA%B7%BC-%EC%8B%A4%ED%97%98%ED%94%8C%EB%9E%AB%ED%8F%BC-%EC%9D%B4%EC%95%BC%EA%B8%B0-3fa344b4391b', 'data_exp'),
+  ('https://aws.amazon.com/ko/blogs/tech/a1mobilsoft-ops-automation-1/', 'ai_use'),
+  ('https://toss.tech/article/llm_context_topic', 'ai_use'),
+  ('https://d2.naver.com/helloworld/4821538', 'ai_use'),
+  ('https://oliveyoung.tech/2026-07-24/offline-payment-upgrade-phase1/', 'user_exp'),
+  ('https://medium.com/daangn/%ED%94%84%EB%A1%A0%ED%8A%B8%EC%97%94%EB%93%9C%EC%99%80-%EB%B0%B1%EC%97%94%EB%93%9C%EB%A5%BC-%ED%95%9C-%ED%8C%80%EC%9C%BC%EB%A1%9C-%ED%95%A9%EC%B9%98%EB%A9%B4-%EC%96%B4%EB%96%A4-%EC%9D%BC%EC%9D%B4-%EC%9D%BC%EC%96%B4%EB%82%A0%EA%B9%8C-f8b32edb2eb1', 'collab'),
+  ('https://techblog.musinsa.com/match%EB%9E%80-%EB%AC%B4%EC%97%87%EC%9D%B8%EA%B0%80-5776910908af', 'product_plan'),
+  ('https://careers.daangn.com/blog/post/behind-cafe-team-relay/', 'product_plan'),
+  ('https://blog.gangnamunni.com/post/config2026', 'ai_use'),
+  ('https://d2.naver.com/helloworld/1883072', 'ai_use'),
+  ('https://seed-design.io/updates/why-design-system-needs-branding', 'biz_brand'),
+  ('https://techblog.woowahan.com/26459/', 'ai_use'),
+  ('https://d2.naver.com/helloworld/2541696', 'ai_use'),
+  ('https://blog.gangnamunni.com/post/rebranding-2026-5-behind', 'biz_brand'),
+  ('https://blog.gangnamunni.com/post/rebranding-2026-4-campaign', 'biz_brand'),
+  ('https://careers.daangn.com/blog/post/behind-recruit-site-renewal/', 'biz_brand'),
+  ('https://blog.gangnamunni.com/post/rebranding-2026-3-product', 'biz_brand'),
+  ('https://blog.gangnamunni.com/post/rebranding-2026-2-visual', 'biz_brand'),
+  ('https://blog.gangnamunni.com/post/rebranding-2026-1-BIS', 'biz_brand'),
+  ('https://medium.com/daangn/%ED%98%BC%EC%9E%90-%EC%8B%9C%EC%9E%91%ED%95%B4-%EC%A0%84%EA%B5%AD-%EC%98%A4%ED%94%88%EA%B9%8C%EC%A7%80-%EB%8B%B9%EA%B7%BC-%EB%A0%88%EC%8A%A8-%EA%B3%BC%EC%99%B8-%EB%B9%8C%EB%94%A9-%EB%A1%9C%EA%B7%B8-d4e61f6ba32f', 'product_plan'),
+  ('https://techblog.woowahan.com/26379/', 'data_exp'),
+  ('https://toss.tech/article/50893', 'quality_risk'),
+  ('https://toss.tech/article/technical-writing-6', 'collab'),
+  ('https://toss.tech/article/technical-writing-5', 'ai_use'),
+  ('https://toss.tech/article/technical-writing-4', 'collab'),
+  ('https://toss.tech/article/technical-writing-3', 'collab'),
+  ('https://toss.tech/article/ai_contest', 'ai_use'),
+  ('https://toss.tech/article/technical-writing-2', 'product_plan'),
+  ('https://toss.tech/article/technical-writing-1', 'collab'),
+  ('https://toss.tech/article/todolist', 'ai_use'),
+  ('https://toss.tech/article/chatbot', 'ai_use'),
+  ('https://tech.cloud.nongshim.co.kr/blog/aws/ai/4129/', 'ai_use'),
+  ('https://seed-design.io/updates/how-seed-evolved', 'user_exp'),
+  ('https://toss.tech/article/deadend', 'ai_use'),
+  ('https://toss.tech/article/tues', 'data_exp'),
+  ('https://tech.kakao.com/posts/823', 'ai_use'),
+  ('https://medium.com/daangn/%EB%94%94%EC%9E%90%EC%9D%B8%EC%8B%9C%EC%8A%A4%ED%85%9C-%ED%8C%80%EC%9D%80-%EB%94%94%EC%9E%90%EC%9D%B8%EC%8B%9C%EC%8A%A4%ED%85%9C%EB%A7%8C-%EC%9E%98-%EB%A7%8C%EB%93%A4%EB%A9%B4-%EB%90%A0%EA%B9%8C-4f6f2478a8db', 'ai_use'),
+  ('https://toss.tech/article/tam-connect-2025', 'quality_risk'),
+  ('https://careers.daangn.com/blog/post/interview-commerce-team/', 'product_plan'),
+  ('https://tech.cloud.nongshim.co.kr/blog/aws/3921/', 'ai_use'),
+  ('https://tech.cloud.nongshim.co.kr/blog/aws/3891/', 'quality_risk'),
+  ('https://medium.com/daangn/%EB%88%84%EA%B5%AC%EB%82%98-%EC%B0%BE%EC%95%84%EB%B3%BC-%EC%88%98-%EC%9E%88%EB%8A%94-%EC%A4%91%EA%B3%A0%EA%B1%B0%EB%9E%98-%EC%84%9C%EB%B2%84-llm-%EB%A6%B4%EB%A6%AC%EC%A6%88-%EB%85%B8%ED%8A%B8-%EB%8F%84%EC%9E%85%EA%B8%B0-93afe203d766', 'ai_use'),
+  ('https://careers.daangn.com/blog/post/당근-신입-프로덕트-디자이너-인턴/', 'user_exp'),
+  ('https://blog.gangnamunni.com/post/ax-voyage-2026', 'ai_use'),
+  ('https://techblog.musinsa.com/%EB%AC%B4%EC%8B%A0%EC%82%AC-%EB%A9%94%EA%B0%80%EC%8A%A4%ED%86%A0%EC%96%B4-%EC%84%B1%EC%88%98-%EB%B3%B4%EC%9D%B4%EC%A7%80-%EC%95%8A%EB%8A%94-%EA%B8%B0%EC%88%A0-%EC%84%A0%EB%AA%85%ED%95%B4%EC%A7%80%EB%8A%94-%EA%B2%BD%ED%97%98-a1976d599e83', 'product_plan'),
+  ('https://medium.com/daangn/%ED%94%84%EB%A1%AC%ED%94%84%ED%8A%B8-%ED%95%9C-%EC%A4%84%EB%A1%9C-%ED%99%94%EB%A9%B4%EC%9D%B4-%EB%82%98%EC%98%A4%EB%8A%94-%EC%8B%9C%EB%8C%80-%EB%8B%B9%EA%B7%BC%EC%8A%A4%EB%9F%AC%EC%9A%B4-%ED%99%94%EB%A9%B4%EC%9D%84-%EB%A7%8C%EB%93%9C%EB%8A%94-%EB%B2%95-0bc268f819c7', 'ai_use'),
+  ('https://careers.daangn.com/blog/post/당근-인턴-회의봇-당번이-비개발자-ai/', 'ai_use'),
+  ('https://techblog.musinsa.com/the-human-%EC%A0%90%EC%88%98-%EB%84%88%EB%A8%B8%EC%9D%98-%ED%8C%90%EB%8B%A8-bccc190c9c93', 'ai_use'),
+  ('https://helloworld.kurly.com/blog/claude-code-redesign-my-day/', 'ai_use'),
+  ('https://oliveyoung.tech/2026-04-16/oliveyoung-tech-ai-dlc-workshop/', 'ai_use'),
+  ('https://techblog.musinsa.com/gemini-%EA%B8%B0%EB%B0%98-%ED%85%8C%EC%8A%A4%ED%8A%B8-%EC%BC%80%EC%9D%B4%EC%8A%A4-%EC%9E%90%EB%8F%99%ED%99%94-%EC%8B%A4%ED%8C%A8%EC%99%80-%EC%84%B1%EA%B3%B5%EA%B8%B0-5d558317f2a5', 'ai_use'),
+  ('https://www.bucketplace.com/post/2026-04-10-ai-%EC%8B%9C%EB%8C%80-%EA%B0%80%EC%9E%A5-%ED%9D%A5%EB%AF%B8%EB%A1%9C%EC%9A%B4-%EB%AC%B8%EC%A0%9C%EB%8A%94-%EC%8A%A4%ED%81%AC%EB%A6%B0-%EB%B0%96%EC%97%90%EC%9E%88%EB%8B%A4/', 'biz_brand'),
+  ('https://www.bucketplace.com/post/2026-04-09-%EA%B8%B0%EB%A1%9D%EC%97%90-%EB%A8%B8%EB%AC%BC%EB%8D%98-%EB%A1%9C%EA%B7%B8%EB%8A%94-%EC%96%B4%EB%96%BB%EA%B2%8C-%E2%80%98%EC%9E%90%EC%82%B0%E2%80%99%EC%9D%B4-%EB%90%98%EC%97%88%EC%9D%84%EA%B9%8C/', 'data_exp'),
+  ('https://techblog.musinsa.com/self-pos-%EB%AC%B4%EC%9D%B8-%EA%B3%84%EC%82%B0%EB%8C%80-%EB%AC%B4%EC%8B%A0%EC%82%AC%EB%8B%A4%EC%9A%B4-%EC%98%A4%ED%94%84%EB%9D%BC%EC%9D%B8-%EA%B3%A0%EA%B0%9D%EA%B2%BD%ED%97%98%EC%9D%84-%EC%84%A4%EA%B3%84%ED%95%98%EB%8B%A4-586169f788c7', 'product_plan'),
+  ('https://techblog.woowahan.com/26162/', 'ai_use'),
+  ('https://helloworld.kurly.com/blog/ai-orchestration-1/', 'ai_use'),
+  ('https://www.bucketplace.com/post/2026-03-31-%EB%82%AF%EC%84%A0-%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8%EB%A5%BC-%ED%91%B8%EB%8A%94-%EC%83%88%EB%A1%9C%EC%9A%B4-%ED%8C%8C%ED%8A%B8%EB%84%88-ai-%EA%B3%BC%EC%99%B8%EC%84%A0%EC%83%9D%EB%8B%98/', 'ai_use'),
+  ('https://blog.gangnamunni.com/post/ai-discovery-collaboration', 'collab'),
+  ('https://techblog.woowahan.com/25888/', 'ai_use'),
+  ('https://techblog.woowahan.com/26034/', 'ai_use'),
+  ('https://blog.gangnamunni.com/post/brandmarketing-self-esteem', 'biz_brand'),
+  ('https://techblog.woowahan.com/25900/', 'ai_use'),
+  ('https://tech.cloud.nongshim.co.kr/blog/aws/ai/3854/', 'ai_use'),
+  ('https://oliveyoung.tech/2026-03-06/delivery-optimization/', 'product_plan'),
+  ('https://oliveyoung.tech/2026-02-27/2026-02-27-oliveyoung-store-journey-renewal-ux/', 'user_exp'),
+  ('https://www.bucketplace.com/post/2026-02-24-%EB%A6%AC%EC%86%8C%EC%8A%A4-8%EB%B0%B0-%EC%A0%88%EA%B0%90-ai%EB%A1%9C-%ED%95%B4%EA%B2%B0%ED%95%9C-%EB%A1%9C%EC%BB%AC%EB%9D%BC%EC%9D%B4%EC%A6%88-%EB%8C%80%EA%B3%B5%EC%82%AC/', 'ai_use'),
+  ('https://careers.daangn.com/blog/post/당근-커뮤니티실-모임-커리어-채용-팀문화/', 'user_exp'),
+  ('https://www.bucketplace.com/post/2026-02-06-%EC%8B%A0%EB%A2%B0%ED%95%A0-%EC%88%98-%EC%9E%88%EB%8A%94-%EB%A9%94%ED%8A%B8%EB%A6%AD%EA%B3%BC-%EC%8B%A4%ED%97%98-%ED%94%8C%EB%9E%AB%ED%8F%BC/', 'data_exp'),
+  ('https://www.bucketplace.com/post/2026-02-04-%EA%B3%B5%EA%B0%84%EC%9D%98-%EB%B3%80%ED%99%94-%EC%A6%90%EA%B1%B0%EC%9A%B4-%EA%B3%A0%EB%AF%BC%EB%A7%8C-%ED%95%A0-%EC%88%98-%EC%9E%88%EB%8F%84%EB%A1%9D/', 'biz_brand'),
+  ('https://techblog.woowahan.com/25189/', 'quality_risk'),
+  ('https://blog.banksalad.com/pnc/banksalad-welcome-kit/', 'biz_brand'),
+  ('https://careers.daangn.com/blog/post/당근-중고거래실-엔지니어-커리어/', 'ai_use'),
+  ('https://tech.cloud.nongshim.co.kr/blog/etc/3620/', 'ai_use'),
+  ('https://careers.daangn.com/blog/post/당근-에이전시-세일즈-매니저-커리어/', 'biz_brand'),
+  ('https://www.bucketplace.com/post/2026-01-05-%EC%98%A4%EB%8A%98%EC%9D%98%EC%A7%91-ai%EB%A1%9C-%EC%9D%BC%ED%95%98%EB%8A%94-%EB%B0%A9%EC%8B%9D%EC%9D%84-%EB%8B%A4%EC%8B%9C-%EC%93%B0%EB%8B%A4/', 'ai_use'),
+  ('https://blog.gangnamunni.com/post/return-from-parental-leave', 'collab'),
+  ('https://techblog.woowahan.com/25049/', 'product_plan'),
+  ('https://helloworld.kurly.com/blog/oms-claude-ai-workflow/', 'ai_use'),
+  ('https://blog.banksalad.com/pnc/fintechweek-2025/', 'ai_use'),
+  ('https://www.bucketplace.com/post/2025-12-12-%EA%B2%80%EC%83%89/%EB%94%94%EC%8A%A4%ED%94%8C%EB%A0%88%EC%9D%B4-%EA%B4%91%EA%B3%A0-%EB%82%B4%EC%9E%AC%ED%99%94-%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8/', 'data_exp'),
+  ('https://techblog.woowahan.com/24820/', 'collab'),
+  ('https://www.bucketplace.com/post/2025-12-09-%EB%A6%AC%EC%84%9C%EC%B9%98%EC%9D%98-%EB%A7%88%EC%A7%80%EB%A7%89-%ED%8D%BC%EC%A6%90-%ED%95%A8%EA%BB%98-%EC%9D%BC%ED%95%98%EB%8A%94-%EC%82%AC%EB%9E%8C%EB%93%A4/', 'user_exp'),
+  ('https://oliveyoung.tech/2025-12-08/creating-video-with-ai/', 'ai_use'),
+  ('https://techblog.woowahan.com/24605/', 'user_exp'),
+  ('https://tech.kakao.com/posts/799', 'ai_use'),
+  ('https://www.bucketplace.com/post/2025-12-04-%EC%98%A4%EB%8A%98%EC%9D%98%EC%A7%91-%EB%A6%AC%EB%B8%8C%EB%9E%9C%EB%94%A9-%EB%B9%84%ED%95%98%EC%9D%B8%EB%93%9C-%EC%8A%A4%ED%86%A0%EB%A6%AC-%E2%91%A2-%EC%9D%B8%ED%84%B0%EB%B7%B0/', 'biz_brand'),
+  ('https://helloworld.kurly.com/blog/tech-spec-adoption-with-ai-automation/', 'collab'),
+  ('https://careers.daangn.com/blog/post/당근-모바일-엔지니어-채용/', 'user_exp'),
+  ('https://www.bucketplace.com/post/2025-12-02-%EC%98%A4%EB%8A%98%EC%9D%98%EC%A7%91-%EB%A0%8C%EC%A6%88-%ED%85%8D%EC%8A%A4%ED%8A%B8%EB%A5%BC-%EB%84%98%EC%96%B4-%EC%9D%B4%EB%AF%B8%EC%A7%80%EB%A1%9C-%ED%99%95%EC%9E%A5%EB%90%98%EB%8A%94-%EA%B2%80%EC%83%89-%EA%B2%BD%ED%97%98/', 'product_plan'),
+  ('https://www.bucketplace.com/post/2025-11-25-%EC%98%A4%EB%8A%98%EC%9D%98%EC%A7%91-%EC%A0%84%EC%82%AC-%EC%A7%80%EC%8B%9D-%ED%83%90%EC%83%89-%EC%8B%9C%EC%8A%A4%ED%85%9C-%E2%80%98ori-%EC%98%A4%EB%A6%AC-%E2%80%99-%EA%B0%9C%EB%B0%9C%EA%B8%B0/', 'ai_use'),
+  ('https://tech.kakao.com/posts/795', 'collab'),
+  ('https://www.bucketplace.com/post/2025-11-20-%EC%98%A4%EB%8A%98%EC%9D%98%EC%A7%91-%EB%A6%AC%EB%B8%8C%EB%9E%9C%EB%94%A9-%EB%B9%84%ED%95%98%EC%9D%B8%EB%93%9C-%EC%8A%A4%ED%86%A0%EB%A6%AC-%E2%91%A1/', 'biz_brand'),
+  ('https://www.bucketplace.com/post/2025-11-20-%EC%98%A4%EB%8A%98%EC%9D%98%EC%A7%91-%EB%A6%AC%EB%B8%8C%EB%9E%9C%EB%94%A9-%EB%B9%84%ED%95%98%EC%9D%B8%EB%93%9C-%EC%8A%A4%ED%86%A0%EB%A6%AC-%E2%91%A0/', 'biz_brand'),
+  ('https://tech.kakao.com/posts/796', 'collab'),
+  ('https://tech.kakao.com/posts/791', 'ai_use'),
+  ('https://www.bucketplace.com/post/2025-11-13-%EC%A0%95%ED%95%B4%EC%A7%84-%EB%8B%B5%EC%9D%B4-%EC%97%86%EB%8A%94-%EC%98%81%EC%97%AD%EC%97%90%EC%84%9C-%EC%98%A4%EB%8A%98%EC%9D%98%EC%A7%91%EC%9D%98-%EC%98%A4%EB%A6%AC%EC%A7%80%EB%84%90%EB%A6%AC%ED%8B%B0%EB%A5%BC-%EC%8C%93%EC%95%84%EA%B0%80%EB%8B%A4/', 'biz_brand'),
+  ('https://techblog.woowahan.com/23836/', 'ai_use'),
+  ('https://www.bucketplace.com/post/2025-11-06-%EC%98%A4%EB%8A%98%EC%9D%98%EC%A7%91%EC%9D%80-%EC%96%B4%EB%96%BB%EA%B2%8C-200%EB%AA%85%EC%9D%98-%EB%A6%AC%EC%84%9C%EC%B2%98%EB%A5%BC-%EB%A7%8C%EB%93%A4%EC%97%88%EC%9D%84%EA%B9%8C/', 'user_exp'),
+  ('https://tech.kakao.com/posts/790', 'ai_use'),
+  ('https://tech.kakao.com/posts/784', 'ai_use'),
+  ('https://tech.kakao.com/posts/783', 'ai_use'),
+  ('https://techblog.woowahan.com/23377/', 'collab'),
+  ('https://oliveyoung.tech/2025-10-17/review-of-orderpay-squad/', 'collab'),
+  ('https://careers.daangn.com/blog/post/당근-커뮤니티실-커리어-채용-팀문화/', 'user_exp'),
+  ('https://techblog.woowahan.com/23273/', 'ai_use'),
+  ('https://oliveyoung.tech/2025-09-24/wms-pda-web-app/', 'user_exp'),
+  ('https://oliveyoung.tech/2025-09-24/API-testing-v1/', 'quality_risk'),
+  ('https://www.bucketplace.com/post/2025-09-24-%EB%B0%80%EB%8F%84-%EC%9E%88%EA%B2%8C-%EC%84%B1%EC%9E%A5%ED%95%98%EB%A9%B0-%EC%83%88%EB%A1%9C%EC%9A%B4-%EA%B0%80%EB%8A%A5%EC%84%B1%EC%9D%98-%EB%AC%B8%EC%9D%84-%EC%97%B4%EB%8B%A4/', 'user_exp'),
+  ('https://blog.gangnamunni.com/post/focus-on-problems-not-features-chat-consulting-improvement', 'user_exp'),
+  ('https://tech.kakao.com/posts/762', 'ai_use'),
+  ('https://tech.kakao.com/posts/761', 'ai_use'),
+  ('https://tech.kakao.com/posts/759', 'quality_risk'),
+  ('https://tech.kakao.com/posts/758', 'ai_use'),
+  ('https://careers.daangn.com/blog/post/당근-광고실-프로덕트-매니저-커리어/', 'product_plan'),
+  ('https://tech.kakao.com/posts/727', 'ai_use'),
+  ('https://tech.kakao.com/posts/723', 'ai_use'),
+  ('https://www.bucketplace.com/post/2025-09-19-%EC%97%B0%EA%B2%B0%EC%9D%98-%EC%8B%9C%EB%84%88%EC%A7%80-%EC%98%A4%EB%8A%98%EC%9D%98%EC%A7%91-%E2%80%98%EC%BB%A4%EB%AE%A4%EB%8B%88%ED%8B%B0%E2%80%99-%EC%8A%A4%EC%BF%BC%EB%93%9C-%ED%98%91%EC%97%85%EA%B8%B0/', 'collab'),
+  ('https://tech.kakao.com/posts/738', 'quality_risk'),
+  ('https://tech.kakao.com/posts/741', 'quality_risk'),
+  ('https://blog.gangnamunni.com/post/why-standardize-review-info-1-writing', 'user_exp'),
+  ('https://oliveyoung.tech/2025-09-08/gms-qa-strategy/', 'quality_risk'),
+  ('https://careers.daangn.com/blog/post/당근-광고실-세일즈-커리어/', 'biz_brand'),
+  ('https://blog.banksalad.com/tech/banksalad-vibe-coding/', 'ai_use'),
+  ('https://oliveyoung.tech/2025-09-04/article-editor/', 'product_plan'),
+  ('https://careers.daangn.com/blog/post/당근-프로덕트디자이너-pd-인턴-커리어/', 'user_exp'),
+  ('https://www.bucketplace.com/post/2025-08-29-%ED%95%9C-%EB%B0%9C-%EC%95%9E%EC%84%A0-%EC%8B%9C%EC%84%A0%EC%9C%BC%EB%A1%9C-%ED%95%A8%EA%BB%98-%EB%8D%94-%EB%A9%80%EB%A6%AC-%EB%82%98%EC%95%84%EA%B0%80%EB%8A%94-%EB%B2%95/', 'collab'),
+  ('https://tech.kakaopay.com/post/building-ai-loan-coaching-service/', 'ai_use'),
+  ('https://tech.kakao.com/posts/720', 'ai_use'),
+  ('https://careers.daangn.com/blog/post/당근-마케팅-오프라인-캠페인-플리마켓/', 'biz_brand'),
+  ('https://oliveyoung.tech/2025-08-01/logistics-system/', 'product_plan'),
+  ('https://tech.kakao.com/posts/719', 'ai_use'),
+  ('https://www.bucketplace.com/post/2025-07-22-%EB%A6%AC%EC%84%9C%EC%B2%98%EA%B0%80-%EB%B0%98%EB%B3%B5%EC%9D%84-%EB%8D%9C%EA%B3%A0-%E2%80%98%ED%86%B5%EC%B0%B0%E2%80%99%EC%97%90-%EB%8D%94-%EC%A7%91%EC%A4%91%ED%95%A0-%EC%88%98-%EC%9E%88%EB%8B%A4%EB%A9%B4/', 'ai_use'),
+  ('https://medium.com/naver-dna-tech-blog/naver-search-self-serve-83ca658a3c6f', 'data_exp'),
+  ('https://blog.banksalad.com/tech/the-illusion-of-supporting-accessibility/', 'quality_risk'),
+  ('https://blog.gangnamunni.com/post/eean', 'collab'),
+  ('https://www.bucketplace.com/post/2025-06-30-%ED%95%98%EB%82%98%EC%9D%98-%EB%8B%B5%EC%97%90%EC%84%9C-%EB%98%90-%EB%8B%A4%EB%A5%B8-%EC%A7%88%EB%AC%B8%EC%9C%BC%EB%A1%9C/', 'data_exp'),
+  ('https://oliveyoung.tech/2025-06-19/journey-to-joining-oliveyoung-qa/', 'quality_risk'),
+  ('https://blog.gangnamunni.com/post/ios-skan-performance', 'data_exp'),
+  ('https://tech.cloud.nongshim.co.kr/blog/aws/ai/3108/', 'ai_use'),
+  ('https://blog.gangnamunni.com/post/medical_standardization', 'product_plan'),
+  ('https://oliveyoung.tech/2025-05-29/dplot-qa-docs/', 'quality_risk'),
+  ('https://oliveyoung.tech/2025-05-23/app-review-system/', 'product_plan'),
+  ('https://careers.daangn.com/blog/post/당근-ai-프로덕트-조직문화-사용자경험/', 'ai_use'),
+  ('https://careers.daangn.com/blog/post/당근-로컬맵스-동네지도-사용자경험-채용-팀문화/', 'product_plan'),
+  ('https://oliveyoung.tech/2025-02-28/oy-workshop-2024/', 'collab'),
+  ('https://oliveyoung.tech/2025-02-14/oy-global-mall-address/', 'user_exp'),
+  ('https://tech.kakaopay.com/post/choonsiri/', 'ai_use'),
+  ('https://careers.daangn.com/blog/post/당근-프로덕트-디자이너-인턴-커리어/', 'user_exp'),
+  ('https://careers.daangn.com/blog/post/당근-개발자-프로덕트-엔지니어-팀빌딩-회고/', 'collab'),
+  ('https://careers.daangn.com/blog/post/당근-개발자-목적조직-프로덕트-엔지니어/', 'collab'),
+  ('https://careers.daangn.com/blog/post/당근-피드실-채용-홈화면-개발자-pm/', 'user_exp'),
+  ('https://tech.kakaopay.com/post/ifkakao2024-instant-insurance-claim-payment/', 'product_plan'),
+  ('https://seed-design.io/updates/whats-new-in-action-button', 'user_exp'),
+  ('https://careers.daangn.com/blog/post/당근-광고실-개발자-서버-엔지니어-dsp/', 'biz_brand'),
+  ('https://medium.com/naver-dna-tech-blog/data-analytics-in-the-gpt-era-5e4496acedff', 'ai_use'),
+  ('https://careers.daangn.com/blog/post/당근-해커톤-개발자-몰입-협업/', 'ai_use'),
+  ('https://oliveyoung.tech/2024-09-06/introduce-oy-po/', 'product_plan'),
+  ('https://careers.daangn.com/blog/post/당근-동네생활-커뮤니티-사용자경험-채용-팀문화/', 'user_exp'),
+  ('https://careers.daangn.com/blog/post/당근-로컬비즈니스-몰입-채용-팀문화/', 'biz_brand'),
+  ('https://careers.daangn.com/blog/post/당근페이-카드출시-하나카드-동네금융-브랜딩/', 'product_plan'),
+  ('https://careers.daangn.com/blog/post/당근-광고-개발자-dsp/', 'biz_brand'),
+  ('https://careers.daangn.com/blog/post/부동산-직거래-해커톤-피처톤/', 'collab'),
+  ('https://careers.daangn.com/blog/post/당근-리브랜딩-프로세스-브랜드/', 'biz_brand'),
+  ('https://careers.daangn.com/blog/post/당근-리더십-채용-팀문화/', 'collab'),
+  ('https://careers.daangn.com/blog/post/당근-부동산-실험문화-채용-팀문화/', 'product_plan'),
+  ('https://careers.daangn.com/blog/post/당근-중고차-직거래-실험문화-사용자경험-팀문화/', 'product_plan'),
+  ('https://careers.daangn.com/blog/post/당근-광고실-채용-목표달성-매출-팀문화/', 'biz_brand'),
+  ('https://careers.daangn.com/blog/post/당근-문화의-날-조직문화-문화회의-문화활동-피플팀/', 'collab'),
+  ('https://careers.daangn.com/blog/post/당근-선거-서비스-tf-우리-동네-투표율/', 'product_plan'),
+  ('https://careers.daangn.com/blog/post/당근-실험-문화-pm-데이터/', 'data_exp'),
+  ('https://medium.com/naver-dna-tech-blog/%EC%83%9D%EC%84%B1%ED%98%95-%EA%B2%80%EC%83%89-%EB%8D%B0%EB%AA%A8%EC%97%90%EC%84%9C-%EC%84%9C%EB%B9%84%EC%8A%A4%EB%A1%9C-b6e5de32c009', 'ai_use'),
+  ('https://careers.daangn.com/blog/post/당근-리더-인터뷰-중고거래실-리더십-조직문화/', 'product_plan'),
+  ('https://careers.daangn.com/blog/post/당근-리더-인터뷰-공통서비스개발팀-리더십-조직문화/', 'collab'),
+  ('https://careers.daangn.com/blog/post/당근-리더-인터뷰-로컬비즈니스실-리더십-조직문화/', 'collab'),
+  ('https://careers.daangn.com/blog/post/당근-리더-인터뷰-검색실-리더십-조직문화/', 'collab'),
+  ('https://careers.daangn.com/blog/post/당근-리더-인터뷰-당근알바-리더십-조직문화/', 'product_plan'),
+  ('https://careers.daangn.com/blog/post/당근-채팅팀-채용-비전-문화/', 'product_plan'),
+  ('https://careers.daangn.com/blog/post/당근-리브랜딩-비하인드-스토리/', 'biz_brand'),
+  ('https://medium.com/naver-dna-tech-blog/%EB%A8%B8%EC%8B%A0%EB%9F%AC%EB%8B%9D%EC%9D%84-%ED%99%9C%EC%9A%A9%ED%95%9C-%EA%B2%80%EC%83%89-%ED%92%88%EC%A7%88-%EC%A7%80%ED%91%9C-%EA%B0%9C%EB%B0%9C-sigir23-paper-recap-6090914005a8', 'data_exp'),
+  ('https://oliveyoung.tech/2024-01-23/incident/', 'quality_risk'),
+  ('https://careers.daangn.com/blog/post/당근-프로덕트디자이너-채용-인터뷰/', 'collab'),
+  ('https://careers.daangn.com/blog/post/당근-pm-프로덕트매니저-채용-인터뷰/', 'product_plan'),
+  ('https://careers.daangn.com/blog/post/당근-ml-머신러닝엔지니어-채용-인터뷰/', 'collab'),
+  ('https://careers.daangn.com/blog/post/당근-데이터분석가-채용-인터뷰/', 'data_exp'),
+  ('https://oliveyoung.tech/2023-12-19/self-checkout/', 'product_plan'),
+  ('https://careers.daangn.com/blog/post/당근-광고실-동네-사장님-광고/', 'biz_brand'),
+  ('https://careers.daangn.com/blog/post/당근-워크샵-문화의날-회의/', 'collab'),
+  ('https://careers.daangn.com/blog/post/사용자중심-kpt-회고-당근-팀문화/', 'collab'),
+  ('https://careers.daangn.com/blog/post/당근-소프트웨어-개발자-서비스-운영개발-운영실-팀문화/', 'collab'),
+  ('https://careers.daangn.com/blog/post/프로덕트-디자이너-면접후기-이직-커리어-채용/', 'collab'),
+  ('https://careers.daangn.com/blog/post/당근-프로덕트-디자이너-8년차-커리어-채용/', 'collab'),
+  ('https://tech.kakaopay.com/post/bluetooth-remittance/', 'product_plan'),
+  ('https://oliveyoung.tech/2023-10-10/oliveyoung-pickup-cart/', 'user_exp'),
+  ('https://careers.daangn.com/blog/post/당근-ceo-대표-인터뷰-비전-기업문화/', 'biz_brand'),
+  ('https://careers.daangn.com/blog/post/당근-기능-개선-업데이트-새소식-2023-상반기/', 'product_plan'),
+  ('https://oliveyoung.tech/2022-12-24/live-squard-with-agile/', 'collab'),
+  ('https://careers.daangn.com/blog/post/당근-리브랜딩-서비스명-로고-리뉴얼/', 'biz_brand'),
+  ('https://careers.daangn.com/blog/post/3일-동안-3년-내다보기/', 'product_plan'),
+  ('https://careers.daangn.com/blog/post/당근알바-성장-비결-okr-pmf/', 'collab'),
+  ('https://careers.daangn.com/blog/post/당근마켓-마케팅-조직문화-회고/', 'collab'),
+  ('https://careers.daangn.com/blog/post/당근마켓-it-개발-협업-pm-개발자-디자이너/', 'collab'),
+  ('https://tech.kakaopay.com/post/dictionary-bot/', 'product_plan'),
+  ('https://medium.com/naver-dna-tech-blog/%EC%83%9D%EC%84%B1%ED%98%95-ai%EC%99%80-%EB%8D%B0%EC%9D%B4%ED%84%B0-%EC%82%AC%EC%9D%B4%EC%96%B8%EC%8A%A4%EC%9D%98-%EB%AF%B8%EB%9E%98-672b659e0a10', 'ai_use'),
+  ('https://tech.kakaopay.com/post/bella-cmx-platform-segmentation/', 'data_exp'),
+  ('https://medium.com/naver-dna-tech-blog/chatgpt%EC%99%80-%EA%B2%80%EC%83%89%EC%9D%98-%EB%AF%B8%EB%9E%98-60dd438cee64', 'quality_risk'),
+  ('https://careers.daangn.com/blog/post/당근마켓-프로덕트-디자이너-채용-당프소/', 'collab'),
+  ('https://oliveyoung.tech/2022-12-16/performance-marketing/', 'collab'),
+  ('https://oliveyoung.tech/2022-12-07/planning-poker/', 'collab'),
+  ('https://tech.kakaopay.com/post/accessibility-stories-for-everyone/', 'user_exp'),
+  ('https://careers.daangn.com/blog/post/당근마켓-매너온도-해외시장-진출-2/', 'user_exp'),
+  ('https://careers.daangn.com/blog/post/당근마켓-매너온도-해외시장-진출-1/', 'user_exp'),
+  ('https://careers.daangn.com/blog/post/당근-pm-채용-실험문화-데이터/', 'data_exp'),
+  ('https://careers.daangn.com/blog/post/당근알바-탄생배경/', 'product_plan'),
+  ('https://careers.daangn.com/blog/post/당근마켓-실험문화-데이터가치화팀/', 'data_exp'),
+  ('https://careers.daangn.com/blog/post/당근-pm-인터뷰-2022-전직군채용/', 'collab'),
+  ('https://careers.daangn.com/blog/post/당근-프로덕트디자이너-인터뷰-2022-전직군채용/', 'collab'),
+  ('https://oliveyoung.tech/2021-09-09/How-Alldev-Work/', 'collab'),
+  ('https://careers.daangn.com/blog/post/마스크-대란-사태-당근마켓-가격제한/', 'product_plan'),
+  ('https://blog.gangnamunni.com/post/Maximize-reusability-with-component-design', 'collab'),
+  ('https://blog.gangnamunni.com/post/Kill-the-Company', 'quality_risk'),
+  ('https://www.bucketplace.com/post/2026-05-11-%EB%B8%8C%EB%9E%9C%EB%94%A9-%ED%94%84%EB%A1%9C%EB%AA%A8%EC%85%98%EC%9D%84-%ED%95%98%EB%82%98%EC%9D%98-%E2%80%98%EC%84%B8%EA%B3%84%EA%B4%80%E2%80%99%EC%9C%BC%EB%A1%9C-%EC%84%A4%EA%B3%84%ED%95%9C%EB%8B%A4%EB%8A%94-%EA%B2%83/', 'ai_use'),
+  ('https://www.bucketplace.com/post/2026-05-06-%EB%94%94%EC%9E%90%EC%9D%B4%EB%84%88%EA%B0%80-ai%EB%A5%BC-%EC%93%B0%EB%8A%94-%EB%B2%95-%EB%8D%94-%EB%B9%A0%EB%A5%B4%EA%B2%8C-%EA%B3%A0%EB%AF%BC%ED%95%98%EA%B3%A0-%EB%8D%94-%EA%B9%8A%EA%B2%8C-%EA%B2%80%EC%A6%9D%ED%95%98%EA%B8%B0/', 'ai_use'),
+  ('https://www.bucketplace.com/post/2026-05-08-%EC%9E%AC%EB%AC%B4%EC%9D%98-%EB%B9%97%EC%9E%A5%EC%9D%84-%ED%92%80%EC%96%B4-%EB%8D%B0%EC%9D%B4%ED%84%B0%EC%9D%98-%ED%98%B8%EC%88%98%EB%A1%9C/', 'ai_use'),
+  ('https://www.bucketplace.com/post/2026-06-12-%EB%88%84%EA%B5%AC%EB%82%98-60%EC%A0%90%EC%9D%84-%EB%A7%8C%EB%93%9C%EB%8A%94-%EC%8B%9C%EB%8C%80%EC%97%90-%ED%94%84%EB%A1%9C%EB%8D%95%ED%8A%B8-%EB%94%94%EC%9E%90%EC%9D%B4%EB%84%88%EA%B0%80-%EB%8D%98%EC%A0%B8%EC%95%BC-%ED%95%A0-%EC%A7%84%EC%A7%9C-%EC%A7%88%EB%AC%B8/', 'ai_use'),
+  ('https://www.bucketplace.com/post/2026-04-24-%EB%94%94%EC%9E%90%EC%9D%B4%EB%84%88%EC%9D%98-%E2%80%98%EA%B0%90%EA%B0%81%E2%80%99%EC%9D%B4-ai%EB%A5%BC-%EB%A7%8C%EB%82%98-%E2%80%98%EC%8B%9C%EC%8A%A4%ED%85%9C%E2%80%99%EC%9D%B4-%EB%90%A0-%EB%95%8C/', 'ai_use'),
+  ('https://www.bucketplace.com/post/2026-04-23-%EB%94%94%EC%9E%90%EC%9D%B4%EB%84%88%EB%8A%94-%EC%96%B4%EB%96%BB%EA%B2%8C-%EB%8B%A8-2%EC%A3%BC-%EB%A7%8C%EC%97%90-ai%EB%A1%9C-%EA%B0%80%EC%84%A4%EC%9D%84-%EC%A6%9D%EB%AA%85%ED%95%B4-%EB%83%88%EC%9D%84%EA%B9%8C/', 'ai_use'),
+  ('https://www.bucketplace.com/post/2026-07-08-ureka-%EC%A0%9C%EC%9E%91%EA%B8%B0-%EC%9D%B8%EC%82%AC%EC%9D%B4%ED%8A%B8%EB%8A%94-%EC%96%B4%EB%96%BB%EA%B2%8C-%EC%A1%B0%EC%A7%81%EC%9D%98-%EC%9E%90%EC%82%B0%EC%9D%B4-%EB%90%A0%EA%B9%8C/', 'ai_use'),
+  ('https://www.bucketplace.com/post/2026-05-29-%EB%B0%98%EB%B3%B5%EB%90%98%EB%8A%94-%EC%96%B4%EB%93%9C%EB%AF%BC-%EB%94%94%EC%9E%90%EC%9D%B8-prd%EB%A1%9C-%EC%96%B4%EB%94%94%EA%B9%8C%EC%A7%80-%EC%9E%90%EB%8F%99%ED%99%94%ED%95%A0-%EC%88%98-%EC%9E%88%EC%9D%84%EA%B9%8C/', 'ai_use')
+) as v(url, topic)
+where a.url = v.url;
+
+-- 36-3) 제외 판정된 글 — 지우지 않고 주제를 비운다.
+--   지우면 그 글에 달린 인사이트·밑줄·담기까지 사라진다. 목록에서 안 보이게 하는 것으로 충분하다.
+--   (앱은 주제 필터를 쓰고, 주제가 빈 글은 '제외' 취급한다.)
+update public.articles a set topic = null
+from (values
+  ('https://tech.kakao.com/posts/825'),
+  ('https://d2.naver.com/helloworld/6647064'),
+  ('https://d2.naver.com/helloworld/0107009'),
+  ('https://oliveyoung.tech/2025-12-17/QA-Conference-2025/'),
+  ('https://tech.kakao.com/posts/797'),
+  ('https://careers.daangn.com/blog/post/당근-해커톤-엔지니어-채용/'),
+  ('https://tech.kakaopay.com/post/how-llm-works/'),
+  ('https://oliveyoung.tech/2024-11-22/designsystem-development/'),
+  ('https://careers.daangn.com/blog/post/당근-조직문화-피플팀-자율-학습문화-인턴십/'),
+  ('https://oliveyoung.tech/2024-04-01/goods-detail-description-improvement/'),
+  ('https://oliveyoung.tech/2023-10-11/offline-store-settlement/'),
+  ('https://careers.daangn.com/blog/post/당근마켓-프로덕트-디자이너-지원팁-7문-7답/'),
+  ('https://oliveyoung.tech/2021-01-23/App-Part-Work-Process-Establishment/'),
+  ('https://tech.kakaopay.com/post/tam-connect/')
+) as v(url)
+where a.url = v.url;
+
+-- 36-4) 표에 없던 글 — 옛 값을 비운다.
+--   245건은 사람이 판정한 표가 있지만, 그 뒤 수집된 글은 표에 없어서 옛 값이 그대로 남는다.
+--   옛 값을 새 값으로 **기계적으로 바꾸지 않는다.** "인프라 → 품질·위험 관리" 같은 매핑은
+--   결론을 보지 않은 추측이고, 기준 v1 의 판단 순서를 정면으로 어긴다.
+--   비워두면 classify 단계(LLM 판정 3회 + 다수결)가 본문을 읽고 다시 정한다.
+--
+--   얼마나 남았는지 먼저 보려면:
+--     select topic, count(*) from public.articles
+--      where topic in ('dev','product','design','planning','data_ai','infra','career','marketing')
+--      group by topic order by 2 desc;
+update public.articles set topic = null
+where topic in ('dev','product','design','planning','data_ai','infra','career','marketing');
+
+-- 관심 주제는 비울 수 없다(PK 의 일부). 옛 값 행은 지운다 — 사용자가 다시 고르면 된다.
+delete from public.user_topics
+where topic in ('dev','product','design','planning','data_ai','infra','career','marketing');
+
+-- 36-5) 이제 옛 값은 더 이상 받지 않는다.
+--   ⚠️ 이 블록은 **위 update·delete 가 끝난 뒤** 실행해야 한다. 남은 옛 값이 있으면 실패하는데,
+--      그건 안전장치다 — 이관이 덜 됐다는 뜻이므로 제약을 조이면 안 된다.
+alter table public.articles drop constraint if exists articles_topic_check;
+alter table public.articles add constraint articles_topic_check
+  check (topic is null or topic in
+    ('ai_use','product_plan','data_exp','user_exp','biz_brand','collab','quality_risk'));
+
+alter table public.user_topics drop constraint if exists user_topics_topic_check;
+alter table public.user_topics add constraint user_topics_topic_check
+  check (topic in
+    ('ai_use','product_plan','data_exp','user_exp','biz_brand','collab','quality_risk'));
+
+-- 이관 결과 확인:
+--   select coalesce(topic,'(미분류)') as topic, count(*)
+--     from public.articles group by 1 order by 2 desc;
+-- '(미분류)' 가 남는 건 정상이다 — classify 단계가 본문을 읽고 채운다.
+
+-- ============================================================================
+-- 37) 태그 — 대표(목적) 1개 + 세부(방법·제품상황·기술)
+-- ----------------------------------------------------------------------------
+-- 지금 tags 에 들어 있는 값(#성능 #AWS #모니터링 #테스트)은 **옛 키워드 분류기**가
+-- 본문에 나온 단어를 집어 넣은 것이다. 기술 이름이 태그가 되면 결국 개발자 언어로 돌아간다.
+--
+-- 기준 v1(docs/분류-기준-v1.md 4단계)은 태그를 네 갈래로 나눈다:
+--   목적(11) 필수 1개 · 방법(34) 1~2개 · 제품·상황(21) 0~2개 · 기술(5) 0~2개
+-- 이 중 **목적**이 대표 태그다 — "이 글이 무엇을 하려던 글인가"라서 혼자서도 뜻이 통한다.
+-- 나머지 셋은 세부 태그로 tags 에 함께 담는다(검색·필터용).
+--
+-- ⚠️ 대분류(topic)와 역할이 다르다. 대분류는 **결론**으로 나눈 칸이고,
+--    태그는 그 안에서 다시 찾기 위한 색인이다. 태그로 대분류를 정하지 않는다.
+alter table public.articles add column if not exists purpose_tag text
+  check (purpose_tag is null or purpose_tag in (
+    '전환','접근성','활성화','이탈','신뢰','속도','안정화','효율화','품질','사용성','일관성'
+  ));
+
+create index if not exists idx_articles_purpose on public.articles(purpose_tag);
+
+-- 옛 키워드 태그를 비운다 — 새 어휘로 다시 채운다(classify 단계).
+--   기술 이름 태그는 그대로 두면 새 태그와 섞여 필터가 두 벌이 된다.
+update public.articles set tags = '{}' where tags <> '{}';
+
+-- ============================================================
+-- §38. 자동 처리 시도 시각 — 크론이 **같은 글에 갇히지 않게** 한다.
+--
+-- 크론은 "아직 요약 없는 글 1건"을 골라 부른다. 그런데 어떤 글은 몇 번을 돌려도
+-- 게이트를 통과하지 못한다(본문이 토막 나 있거나, 모델이 계속 같은 실수를 하거나).
+-- 정렬이 published_at 뿐이면 **그 한 글이 매 시간 다시 뽑혀** 하루 치 토큰을 통째로 태운다.
+-- 실제로 일일 한도를 한 번 태운 적이 있어서, 같은 방식으로 또 당하지 않게 막아 둔다.
+--
+-- 그래서 고를 때마다 시도 시각을 찍고 **안 해본 글 → 오래전에 해본 글** 순으로 돈다.
+-- 성공하면 reading_guide/topic 이 채워져 후보에서 빠지므로 따로 지울 필요가 없다.
+-- ============================================================
+alter table public.articles add column if not exists guide_tried_at timestamptz;
+alter table public.articles add column if not exists classify_tried_at timestamptz;
+
+-- 후보 고르기 전용 인덱스 — nulls first 정렬을 그대로 태운다.
+create index if not exists idx_articles_guide_try
+  on public.articles (guide_tried_at nulls first, published_at desc nulls last);
+create index if not exists idx_articles_classify_try
+  on public.articles (classify_tried_at nulls first, published_at desc nulls last);
+
+-- ============================================================
+-- §39. blogs.frameable — 이 블로그를 **아이프레임 안에 띄울 수 있나.**
+--
+-- 웹에는 웹뷰가 없다. 남의 페이지를 내 화면에 넣는 수단은 iframe 하나뿐이고,
+-- `X-Frame-Options` 는 서버가 브라우저에게 내리는 명령이라 클라이언트가 못 피한다.
+-- 더 나쁜 건 **막혔다는 걸 클라이언트가 감지할 수 없다**는 점이다(크로스오리진이라 안을 못 보고
+-- onError 도 안 온다). 그래서 예전엔 눌러야 빈 화면을 만났고, 안내조차 못 띄웠다.
+--
+-- 그래서 서버가 **미리 확인해** 여기에 적어 둔다. 앱은 누르기 전에 올바른 문을 고른다:
+--   true  → 웹에서도 앱 안 iframe
+--   false → 새 탭(웹에서는 브라우저가 곧 앱이다)
+--   null  → 아직 모름. **새 탭으로 보낸다** — 모르는 채로 iframe 을 걸면 빈 화면이 나오는데,
+--           그건 "안 열린다"보다 나쁘다(무엇이 잘못됐는지 알 수 없다).
+--
+-- 실측(2026-09-21, 19곳): 7곳 차단(네이버 D2 DENY · DNA · 플레이스 · 페이, 쿠팡, 무신사, AWS).
+-- ============================================================
+alter table public.blogs add column if not exists frameable boolean;
+alter table public.blogs add column if not exists frameable_checked_at timestamptz;
+
+-- ============================================================
+-- §40. 시리즈 — **여러 편으로 나뉜 글을 한 묶음으로 본다.**
+--
+-- 시리즈 중간편은 그 편만 열면 무슨 이야기인지 알 수 없다. "왜 만들었나"는 1편에만 있고
+-- 중간편은 구현만 다루는 일이 흔하다. 그렇다고 중간편을 빼면 이야기가 끊긴다 —
+-- 그래서 **빼지 않고, 상세에서 같은 시리즈를 함께 보여준다.**
+--
+-- 왜 컬럼인가: 제목으로 매번 계산할 수는 있지만, "같은 시리즈 글 찾기"를 하려면
+-- LIKE 검색이 되어 느리고 부정확하다. 키를 적어 두면 `series_key = ?` 한 번이면 된다.
+--
+-- ⚠️ 정본은 `src/lib/series.ts` 의 `seriesOf()` 다. 이 컬럼은 그 결과를 적어 둔 것이라,
+--    규칙을 고치면 `npm run series` 로 다시 채워야 한다.
+--
+-- 실측(2026-09-22): 시리즈 23개 · 글 56건.
+--   리브랜딩 비하인드 5편 · 올리브영 결제 이야기 4편 · 10년 된 레거시를 현대화하다 3편 …
+-- ============================================================
+alter table public.articles add column if not exists series_key text;
+alter table public.articles add column if not exists series_no int;
+
+-- 상세에서 "같은 시리즈 글"을 찾는 경로. 블로그까지 함께 봐야
+-- 제목이 겹치는 남의 글과 섞이지 않는다.
+create index if not exists idx_articles_series
+  on public.articles (blog_id, series_key, series_no)
+  where series_key is not null;

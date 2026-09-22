@@ -1,9 +1,10 @@
 // 인사이트(감상문) 구조화 표시 — 각 항목을 [타이틀 + 내용] 블록으로 보여준다.
 //
 // ⚠️ **순서는 쓴 순서 그대로다.** 쓰기 화면은
-//      ① 이 글에서 무엇을 보셨나요(→ core)
-//      ② 그래서 우리 일엔 어떻게 쓸까요(→ apply)
-//      ③ 질문·토론(→ questions)
+//      ① 우리라면 같은 선택을 할 수 있을까요(→ core)
+//      ② 우리 제품 어디에 먼저 적용해볼까요(→ apply)
+//      ③ 왜 그 방법이면 풀린다고 봤을까요(→ hypothesis)
+//      ④ 나누고 싶은 이야기(→ questions)
 //    이고 밑줄(quote·메모)은 자동으로 붙는다. 그런데 보기 화면이 핵심 → 문장 → 해석 →
 //    접목 순이라, 쓴 사람이 자기 글을 보고 "내가 이 순서로 안 썼는데" 가 됐다.
 //    읽는 순서 = 쓴 순서.
@@ -20,14 +21,18 @@ export interface InsightData {
   apply?: string;
   similar?: string;
   questions?: string[];
-  /** core·apply 를 쓸 때 화면에 떴던 질문 전문(옛 데이터엔 없다). */
+  /** core·apply·hypothesis 를 쓸 때 화면에 떴던 질문 전문(옛 데이터엔 없다). */
   coreQ?: string;
   applyQ?: string;
+  /** ③ 왜 그 방법이면 풀린다고 봤을까 — 남이 세운 가설의 근거를 추론한 답. */
+  hypothesis?: string;
+  hypothesisQ?: string;
 }
 
 const FIELDS: { key: keyof InsightData; label: string; qKey?: keyof InsightData }[] = [
   { key: "core", label: "핵심 인사이트", qKey: "coreQ" }, // ① 질문에 답한 것
   { key: "apply", label: "우리 일엔 이렇게", qKey: "applyQ" }, // ② 질문에 답한 것
+  { key: "hypothesis", label: "이들이 그렇게 본 이유", qKey: "hypothesisQ" }, // ③ 질문에 답한 것
   { key: "quote", label: "인상적인 문장" },
   { key: "interpretation", label: "밑줄에 남긴 메모" },
   { key: "similar", label: "비슷한 사례" },

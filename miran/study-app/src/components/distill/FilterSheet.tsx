@@ -12,24 +12,24 @@
 //   variant="sort" (커뮤니티) — `[정렬 ▾]` 하나만. 자유글엔 기업·주제가 없어서
 //      고를 게 정렬뿐인데, 필터 줄 자체가 없으면 "여긴 왜 아무것도 없지"가 된다.
 import React, { useMemo, useState } from "react";
-import { Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Check, ChevronDown, RotateCcw, X } from "lucide-react-native";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import { LEVEL_META, LEVEL_ORDER, TOPIC_META, TOPIC_ORDER, dtype , PRETENDARD} from "@/theme";
 import type { BlogRow } from "@/types/tables";
+import { SERVICE_KIND_META, SERVICE_KIND_ORDER, type ServiceKind } from "@/lib/serviceKind";
 import type { ArticleLevel, Topic } from "@/types/database";
 import { useArticlesFeedCount, useProfile } from "@/data";
 import { ServiceLogo } from "@/components/distill/ArticleCards";
 
 export type FeedSort = "latest" | "popular";
-type Tab = "blog" | "topic" | "level" | "sort";
+type Tab = "service" | "blog" | "topic" | "level" | "sort";
 
-const W = Dimensions.get("window").width;
-const SHEET_LIST_H = Math.round(Dimensions.get("window").height * 0.46);
 const SORT_LABEL: Record<FeedSort, string> = { latest: "최신순", popular: "인기순" };
 const TAB_LABEL: Record<Tab, string> = {
+  service: "서비스 종류",
   blog: "기업",
   topic: "카테고리",
   level: "난이도",
@@ -38,6 +38,12 @@ const TAB_LABEL: Record<Tab, string> = {
 const ALL_BLOGS = "전체 기업";
 
 export interface FilterValue {
+  /**
+   * 서비스 종류(커머스·금융·포털…) — `serviceKind.ts` 의 표로 묶은 축.
+   * 기업 선택과 **따로 둔다**: "비슷한 서비스는 어떻게 했지"와 "저 회사 글만 보고 싶다"는
+   * 다른 질문이라, 한 칸에 섞으면 무엇으로 좁힌 건지 알 수 없게 된다.
+   */
+  services: Set<ServiceKind>;
   blogIds: Set<string>; // 비어 있으면 전체 기업(다중 선택)
   topics: Set<Topic>;
   /** 개발 지식 난도 — "개발 몰라도 읽히는 글만" 을 골라 볼 수 있어야 한다. */
@@ -47,6 +53,7 @@ export interface FilterValue {
 
 /** 화면 진입 기본값(필터 없음). */
 export const emptyFilter = (): FilterValue => ({
+  services: new Set<ServiceKind>(),
   blogIds: new Set<string>(),
   topics: new Set<Topic>(),
   levels: new Set<ArticleLevel>(),
@@ -77,12 +84,16 @@ export function FilterSheet({
   const { theme } = useTheme();
   const c = theme.colors;
   const insets = useSafeAreaInsets();
+  // 시트 목록 높이·기업명 최대 폭은 **창 크기를 따라간다.**
+  // 모듈 최상위에서 Dimensions 를 한 번 읽으면 웹에서 창을 바꿔도 그대로 남는다.
+  const win = useWindowDimensions();
+  const sheetListH = Math.round(win.height * 0.46);
   const sortOnly = variant === "sort";
   const chipsOnly = variant === "chips" || sortOnly; // 히어로 카드를 안 그린다는 뜻
   const TABS: Tab[] = sortOnly
     ? ["sort"]
     : variant === "chips"
-      ? ["blog", "topic", "level", "sort"]
+      ? ["service", "blog", "topic", "level", "sort"]
       : ["topic", "level", "sort"];
   const [brandOpen, setBrandOpen] = useState(false);
   const [open, setOpen] = useState(false);
@@ -137,6 +148,7 @@ export function FilterSheet({
 
   const openAt = (t: Tab) => {
     setDraft({
+      services: new Set(value.services),
       blogIds: new Set(value.blogIds),
       topics: new Set(value.topics),
       levels: new Set(value.levels),
@@ -148,6 +160,8 @@ export function FilterSheet({
   const apply = () => {
     // chips 변형에선 기업도 이 시트에서 고르므로 draft 를 그대로 반영한다.
     onChange({
+      // 서비스 종류도 기업과 같이 chips 변형에서만 고른다(hero 에는 그 탭이 없다).
+      services: new Set(chipsOnly ? draft.services : value.services),
       blogIds: new Set(chipsOnly ? draft.blogIds : value.blogIds),
       topics: new Set(draft.topics),
       levels: new Set(draft.levels),
@@ -157,6 +171,7 @@ export function FilterSheet({
   };
   const reset = () =>
     setDraft((p) => ({
+      services: chipsOnly ? new Set<ServiceKind>() : p.services,
       blogIds: chipsOnly ? new Set<string>() : p.blogIds,
       topics: new Set<Topic>(),
       levels: new Set<ArticleLevel>(),
@@ -208,7 +223,10 @@ export function FilterSheet({
             <Pressable style={styles.brandSelect} onPress={openBrand} hitSlop={6}>
               <Text style={[styles.eyebrow, { color: c.textMuted }]}>{eyebrow}</Text>
               <View style={styles.brandLine}>
-                <Text style={[styles.brandName, { color: c.textPrimary }]} numberOfLines={1}>
+                <Text
+                  style={[styles.brandName, { color: c.textPrimary, maxWidth: win.width * 0.52 }]}
+                  numberOfLines={1}
+                >
                   {brandName}
                 </Text>
                 <ChevronDown size={26} color={c.textPrimary} />
@@ -257,7 +275,7 @@ export function FilterSheet({
                 <X size={22} color={c.textMuted} />
               </Pressable>
             </View>
-            <ScrollView style={{ maxHeight: SHEET_LIST_H }} showsVerticalScrollIndicator={false}>
+            <ScrollView style={{ maxHeight: sheetListH }} showsVerticalScrollIndicator={false}>
               {/* 아무것도 체크 안 하면 전체 — "전체 기업" 행으로 한 번에 해제 */}
               <PickRow
                 label={ALL_BLOGS}
@@ -351,9 +369,11 @@ export function FilterSheet({
                     ? draft.topics.size
                     : t === "blog"
                       ? draft.blogIds.size
-                      : t === "level"
-                        ? draft.levels.size
-                        : 0;
+                      : t === "service"
+                        ? draft.services.size
+                        : t === "level"
+                          ? draft.levels.size
+                          : 0;
                 return (
                   <Pressable key={t} style={styles.tab} onPress={() => setTab(t)}>
                     <Text style={[styles.tabText, { color: on ? c.textPrimary : c.textMuted }]}>
@@ -401,7 +421,31 @@ export function FilterSheet({
               </ScrollView>
             ) : null}
 
-            <ScrollView style={{ maxHeight: SHEET_LIST_H }} showsVerticalScrollIndicator={false}>
+            <ScrollView style={{ maxHeight: sheetListH }} showsVerticalScrollIndicator={false}>
+              {tab === "service" && (
+                <>
+                  <PickRow
+                    label="전체 서비스"
+                    checked={draft.services.size === 0}
+                    onPress={() => setDraft((p) => ({ ...p, services: new Set<ServiceKind>() }))}
+                  />
+                  {SERVICE_KIND_ORDER.map((k) => (
+                    <PickRow
+                      key={k}
+                      label={SERVICE_KIND_META[k].label}
+                      checked={draft.services.has(k)}
+                      onPress={() =>
+                        setDraft((p) => {
+                          const next = new Set(p.services);
+                          if (next.has(k)) next.delete(k);
+                          else next.add(k);
+                          return { ...p, services: next };
+                        })
+                      }
+                    />
+                  ))}
+                </>
+              )}
               {tab === "blog" && (
                 <>
                   <PickRow
@@ -567,7 +611,7 @@ const styles = StyleSheet.create({
   brandSelect: { flex: 1 },
   eyebrow: { ...dtype.bodyS, marginBottom: 2 },
   brandLine: { flexDirection: "row", alignItems: "center", gap: 4 },
-  brandName: { ...dtype.display, maxWidth: W * 0.52 },
+  brandName: { ...dtype.display },
 
   banner: { borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, gap: 3 },
   bannerTop: { ...dtype.bodyS, fontWeight: "700", fontFamily: PRETENDARD["700"], opacity: 0.9 },
