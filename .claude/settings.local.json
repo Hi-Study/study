@@ -3,7 +3,9 @@
     "allow": [
       "Bash(npx jest *)",
       "Bash(node -e ' *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(git rm *)",
+      "Bash(cp \"C:/Users/hera9/Downloads/techblog-classify-prompt.md\" hyeran/techblog-classify-prompt.md)"
     ]
   }
 }
