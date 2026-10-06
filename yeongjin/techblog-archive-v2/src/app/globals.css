@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --ink: #191f28;
+  --ink-2: #4e5968;
+  --ink-3: #8b95a1;
+  --line: #e5e8eb;
+  --brand: #3b5bfd;
+  --brand-soft: #eef1ff;
+  --problem: #fff3c4;
+  --problem-ink: #8a6100;
+  --tech: #dbeafe;
+  --tech-ink: #1d4ed8;
+  --exp: #d9f7e3;
+  --exp-ink: #137a3d;
+  --before: #f2f4f6;
+  --after: #e8f8ec;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-before: var(--before);
+  --color-after: var(--after);
+  --font-sans: var(--font-pretendard), "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: var(--font-sans);
+}
+
+/* 전체 폰트는 Pretendard — 입력창·버튼·코드 블록까지 */
+html, body, button, input, textarea, select, code, pre, kbd, samp {
+  font-family: var(--font-sans);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── 원문 본문 ── */
+.prose-origin {
+  font-size: 16.5px;
+  line-height: 1.85;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.prose-origin > div { max-width: 100%; overflow-x: auto; }
+.prose-origin iframe, .prose-origin video { max-width: 100%; }
+.prose-origin > * + * { margin-top: 1em; }
+.prose-origin h1, .prose-origin h2 { font-size: 1.35em; font-weight: 700; margin-top: 2em; line-height: 1.4; }
+.prose-origin h3, .prose-origin h4 { font-size: 1.15em; font-weight: 700; margin-top: 1.6em; }
+.prose-origin a { color: var(--brand); text-decoration: underline; text-underline-offset: 2px; }
+.prose-origin img { max-width: 100%; height: auto; border-radius: 10px; margin: 0 auto; }
+.prose-origin figcaption { font-size: 0.85em; color: var(--ink-3); text-align: center; margin-top: 0.4em; }
+.prose-origin ul { list-style: disc; padding-left: 1.4em; }
+.prose-origin ol { list-style: decimal; padding-left: 1.4em; }
+.prose-origin ul + ul, .prose-origin ol + ol { margin-top: 0.25em; }
+.prose-origin blockquote { border-left: 3px solid var(--line); padding-left: 1em; color: var(--ink-2); }
+.prose-origin pre { background: #f2f4f6; padding: 14px; border-radius: 10px; overflow-x: auto; font-size: 0.85em; line-height: 1.6; }
+.prose-origin code { font-size: 0.9em; }
+.prose-origin table { display: block; overflow-x: auto; border-collapse: collapse; font-size: 0.9em; }
+.prose-origin td, .prose-origin th { border: 1px solid var(--line); padding: 6px 10px; }
+.prose-origin .block-flash { animation: flash 1.6s ease-out; border-radius: 6px; }
+@keyframes flash { 0% { background: var(--brand-soft); } 100% { background: transparent; } }
+
+/* ── 관점 하이라이트 ── */
+mark.ann { padding: 1px 0; border-radius: 3px; cursor: pointer; color: inherit; }
+mark.ann-problem { background: var(--problem); box-shadow: 0 2px 0 #f5c400; }
+mark.ann-technology { background: var(--tech); box-shadow: 0 2px 0 #60a5fa; }
+mark.ann-experience { background: var(--exp); box-shadow: 0 2px 0 #34c759; }
+mark.ann.active { outline: 2px solid var(--ink); }
+
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
