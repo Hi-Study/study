@@ -10,7 +10,13 @@ export async function POST(req: Request, ctx: RouteContext<"/api/cron/[job]">) {
     return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
   const { job } = await ctx.params;
-  if (job === "collect") return Response.json(await autoCollect());
-  if (job === "process") return Response.json(await autoProcess());
-  return Response.json({ ok: false, error: "unknown job" }, { status: 404 });
+  try {
+    if (job === "collect") return Response.json(await autoCollect());
+    if (job === "process") return Response.json(await autoProcess());
+    return Response.json({ ok: false, error: "unknown job" }, { status: 404 });
+  } catch (e) {
+    // 비밀값을 아는 호출자에게만 원인을 알려 준다(환경 변수 누락·잘못된 키 등 배포 설정 점검용)
+    console.error(`[cron:${job}]`, e);
+    return Response.json({ ok: false, error: (e as Error).message }, { status: 500 });
+  }
 }

@@ -1,9 +1,10 @@
 # Vercel 로 올리지 않는 것 — 원문이 들어 있는 로컬 DB·백업·로그, 비밀값, 저장해 둔 화면 버전
-data/
-versions/
-.env*
-!.env.local.example
-.next/
-node_modules/
-# 회사 로고는 상표라 올리지 않고, 배포 빌드 때 다시 받는다(package.json vercel-build)
-public/logos/
+# 경로 앞의 / 는 "이 프로젝트 폴더 기준"이라는 뜻 — 같은 저장소의 다른 팀원 폴더(예: miran/…/data)를 건드리지 않는다
+/data/
+/versions/
+/.env*
+!/.env.local.example
+/.next/
+/node_modules/
+# 회사 로고는 상표라 올리지 않고, 배포 빌드 때 다시 받는다(vercel.json buildCommand)
+/public/logos/
