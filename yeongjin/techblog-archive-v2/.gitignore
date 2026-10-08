@@ -44,7 +44,9 @@ next-env.d.ts
 /data/*.db*
 !.env.local.example
 /data/logs/
+/data/backup/
 /versions/*/
 
 # 회사 로고 — 각 회사의 상표라 저장소에 올리지 않는다 (npm run fetch-logos 로 받음)
 /public/logos/
+/versions/*.zip

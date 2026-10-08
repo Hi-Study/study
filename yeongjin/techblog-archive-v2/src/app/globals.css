@@ -48,39 +48,13 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── 원문 본문 ── */
-.prose-origin {
-  font-size: 16.5px;
-  line-height: 1.85;
-  color: var(--ink);
-  overflow-wrap: anywhere;
-  min-width: 0;
-}
-.prose-origin > div { max-width: 100%; overflow-x: auto; }
-.prose-origin iframe, .prose-origin video { max-width: 100%; }
-.prose-origin > * + * { margin-top: 1em; }
-.prose-origin h1, .prose-origin h2 { font-size: 1.35em; font-weight: 700; margin-top: 2em; line-height: 1.4; }
-.prose-origin h3, .prose-origin h4 { font-size: 1.15em; font-weight: 700; margin-top: 1.6em; }
-.prose-origin a { color: var(--brand); text-decoration: underline; text-underline-offset: 2px; }
-.prose-origin img { max-width: 100%; height: auto; border-radius: 10px; margin: 0 auto; }
-.prose-origin figcaption { font-size: 0.85em; color: var(--ink-3); text-align: center; margin-top: 0.4em; }
-.prose-origin ul { list-style: disc; padding-left: 1.4em; }
-.prose-origin ol { list-style: decimal; padding-left: 1.4em; }
-.prose-origin ul + ul, .prose-origin ol + ol { margin-top: 0.25em; }
-.prose-origin blockquote { border-left: 3px solid var(--line); padding-left: 1em; color: var(--ink-2); }
-.prose-origin pre { background: #f2f4f6; padding: 14px; border-radius: 10px; overflow-x: auto; font-size: 0.85em; line-height: 1.6; }
-.prose-origin code { font-size: 0.9em; }
-.prose-origin table { display: block; overflow-x: auto; border-collapse: collapse; font-size: 0.9em; }
-.prose-origin td, .prose-origin th { border: 1px solid var(--line); padding: 6px 10px; }
-.prose-origin .block-flash { animation: flash 1.6s ease-out; border-radius: 6px; }
-@keyframes flash { 0% { background: var(--brand-soft); } 100% { background: transparent; } }
-
-/* ── 관점 하이라이트 ── */
-mark.ann { padding: 1px 0; border-radius: 3px; cursor: pointer; color: inherit; }
-mark.ann-problem { background: var(--problem); box-shadow: 0 2px 0 #f5c400; }
-mark.ann-technology { background: var(--tech); box-shadow: 0 2px 0 #60a5fa; }
-mark.ann-experience { background: var(--exp); box-shadow: 0 2px 0 #34c759; }
-mark.ann.active { outline: 2px solid var(--ink); }
+/* ── 읽은 글 / 안 읽은 글 거르기 (components/common/ReadState.tsx) ──
+ * 카드 안의 ReadBadge 가 읽은 글에만 [data-read=true] 를 단다. 목록을 감싼 [data-read-filter] 값으로 카드를 숨긴다.
+ * 묶음(경험 페이지의 방식별 묶음 등)은 보이는 카드가 하나도 없으면 제목째 숨긴다. */
+[data-read-filter="unread"] [data-card]:has([data-read="true"]) { display: none; }
+[data-read-filter="read"] [data-card]:not(:has([data-read="true"])) { display: none; }
+[data-read-filter="unread"] [data-card-group]:not(:has([data-card]:not(:has([data-read="true"])))) { display: none; }
+[data-read-filter="read"] [data-card-group]:not(:has([data-read="true"])) { display: none; }
 
 .scrollbar-none { scrollbar-width: none; }
 .scrollbar-none::-webkit-scrollbar { display: none; }

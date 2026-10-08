@@ -17,7 +17,7 @@ const companyId =
   process.argv[3] ?? COMPANIES.find((c) => c.blogUrl && new URL(c.blogUrl).host === host)?.id ?? host;
 
 const it = await readArticlePage(url);
-const id = insertArticle({ companyId, title: it.title, url, publishedAt: it.publishedAt, contentHtml: cleanHtml(it.html, url) });
+const id = await insertArticle({ companyId, title: it.title, url, publishedAt: it.publishedAt, contentHtml: cleanHtml(it.html, url) });
 if (!id) {
   log("이미 저장된 URL 이에요.");
   process.exit(0);

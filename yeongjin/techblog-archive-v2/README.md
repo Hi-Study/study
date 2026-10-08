@@ -4,7 +4,7 @@
 이 문서는 **코드를 고치거나 돌리는 사람**을 위한 것이다.
 
 - Next.js 16 (App Router, Turbopack) · React 19 · Tailwind 4 · Pretendard
-- 저장소: Node 내장 `node:sqlite` — `data/app.db` (로그인 없음, 로컬 데모)
+- 저장소: **Supabase**(Postgres) `articles` 테이블 — 서버만 `service_role` 키로 읽고 쓴다(RLS). 배포·자동 수집은 [`docs/05_배포와_자동수집.md`](docs/05_배포와_자동수집.md)
 - AI: Gemini `gemini-flash-lite-latest`
 
 ---
@@ -13,12 +13,12 @@
 
 ```bash
 npm install
-cp .env.local.example .env.local      # GEMINI_API_KEY=… (화면만 볼 거면 비워도 된다)
+cp .env.local.example .env.local      # SUPABASE_URL · SUPABASE_SERVICE_ROLE_KEY (필수) · GEMINI_API_KEY · CRON_SECRET
 npm run fetch-logos                   # 회사 로고 받기 — 상표라 저장소에 없다 (안 받으면 회사 이름 첫 글자로 보인다)
 npm run dev                           # http://localhost:3000
 ```
 
-Node 22.5 이상 (`node:sqlite`). 이 저장소에는 `data/app.db` 가 들어 있지 않다 — 처음이면 `npm run collect` 로 모은다.
+Node 22.5 이상. 글 데이터는 Supabase 에 있어 키만 있으면 바로 화면이 뜬다(원문이 들어 있어 저장소에는 없다). `data/app.db` 는 2026-10-08 Supabase 로 옮기기 전의 로컬 기록이다.
 
 ---
 
@@ -47,7 +47,7 @@ src/core/
 │
 ├─ shared/            공용
 │   ├─ ai.ts             Gemini 연결 — 호출 간격, 재시도, 스키마 도우미
-│   ├─ db.ts             SQLite 읽기·쓰기
+│   ├─ db.ts             Supabase 읽기·쓰기 (+ 자동 실행 잠금)
 │   ├─ types.ts          단계 사이를 오가는 데이터 모양
 │   └─ local-store.ts    브라우저 저장 (북마크·읽은 글·최근 검색어)
 │
@@ -92,7 +92,8 @@ src/components/
 | `npx tsx scripts/check/dump-article.mts <id>` | 글 하나를 블록 번호와 함께 출력 | 2 |
 | **버전** `scripts/version/` | | |
 | `npm run snapshot -- <URL> <이름>` | 실행 중인 서비스를 HTML 로 저장 → `versions/<이름>/` | — |
-| `npm run version -- v01` | 저장한 버전 보기 → http://localhost:4001 | — |
+| `npm run offline -- <이름>` | 저장한 버전을 **서버 없이 더블클릭으로 여는** HTML 묶음으로 → `versions/<이름>-offline/index.html` | — |
+| `npm run version -- v01` | 저장한 버전을 작은 서버로 보기 → http://localhost:4001 | — |
 
 **AI 한도** — 무료 키는 분당 15회 · 하루 500회. 호출 간격을 5초로 벌리고, 하루 한도에 걸리면 그 자리에서 멈춘다(한국 시간 오후 4~5시에 풀림). 멈춘 뒤에는 `--stale` 로 이어서 돌린다.
 
@@ -106,7 +107,9 @@ src/components/
 
 **홈 자리 기준 바꾸기** — `core/3-place/home.ts`(고르고 세기) + `components/home/`(UI) → **`docs/02_홈배치기준.md` 같이 고치기**
 
-**화면 버전 남기기** — `npm run build && npx next start -p 3100` → `npm run snapshot -- http://localhost:3100 v02` → 소스는 `git tag v02`, DB 는 `data/app.v02.db` 로 백업
+**화면 버전 남기기** — `npm run build && npx next start -p 3100` → `npm run snapshot -- http://localhost:3100 v03` → `npm run offline -- v03` (팀 공유용 오프라인 HTML) → 소스는 `git tag v03`, DB 는 `data/app.v03.db` 로 백업
+
+> 오프라인 HTML 에는 수집한 **원문이 들어 있다.** 팀 내부에서만 공유하고 공개 저장소에는 올리지 않는다 (`versions/` 는 git 제외).
 
 > 코드가 정본이고 문서는 그 규칙을 옮긴 것이다. 기준을 바꾸면 같은 커밋에서 문서도 고친다.
 
@@ -116,4 +119,5 @@ src/components/
 
 | 버전 | 소스 | 화면 | 데이터 |
 |---|---|---|---|
-| v01 | `git tag v01` | `versions/v01/` | `data/app.v01.db` |
+| v01 | `git tag v01` | `versions/v01/` (서버로 보기) | `data/app.v01.db` |
+| v02 | `git tag v02` | `versions/v02-offline/index.html` · `versions/관점아카이브_v02_오프라인.zip` (더블클릭으로 보기) | `data/app.v02.db` |

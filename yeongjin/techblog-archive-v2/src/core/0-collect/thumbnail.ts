@@ -1,6 +1,6 @@
 /** 0단계 — 글 썸네일 찾기. 기준 문서: docs/01_분류기준.md 0단계 */
 import * as cheerio from "cheerio";
-import { articlesWithoutThumbnailCheck, db, setThumbnail } from "../shared/db";
+import { articlesWithoutThumbnailCheck, clearSharedThumbnails, setThumbnail } from "../shared/db";
 
 const UA = "Mozilla/5.0 (techblog-perspective local demo)";
 /** 추적 픽셀·아이콘 등 썸네일이 될 수 없는 이미지 */
@@ -37,23 +37,14 @@ export async function findThumbnail(url: string, contentHtml: string): Promise<s
  * 같은 회사 글 여러 개가 똑같은 이미지를 쓰면 사이트 기본 이미지(로고 배너)라서 비운다 — 화면이 회사 로고·색으로 대신한다.
  */
 export async function backfillThumbnails(log: (m: string) => void = () => {}) {
-  const rows = articlesWithoutThumbnailCheck();
+  const rows = await articlesWithoutThumbnailCheck();
   let found = 0;
   for (const r of rows) {
     const t = await findThumbnail(r.url, r.content_html);
-    setThumbnail(r.id, t);
+    await setThumbnail(r.id, t);
     if (t) found++;
   }
   // 사이트 기본 이미지 걸러내기
-  const dup = db()
-    .prepare(
-      `SELECT company_id, thumbnail_url, COUNT(*) n FROM articles
-       WHERE thumbnail_url != '' GROUP BY company_id, thumbnail_url HAVING n >= 3`,
-    )
-    .all() as { company_id: string; thumbnail_url: string; n: number }[];
-  for (const d of dup) {
-    db().prepare("UPDATE articles SET thumbnail_url = '' WHERE company_id = ? AND thumbnail_url = ?").run(d.company_id, d.thumbnail_url);
-    log(`  · ${d.company_id}: 글 ${d.n}개가 같은 이미지를 써서 기본 이미지로 보고 비움`);
-  }
+  for (const d of await clearSharedThumbnails(3)) log(`  · ${d.companyId}: 글 ${d.n}개가 같은 이미지를 써서 기본 이미지로 보고 비움`);
   log(`썸네일 확인 ${rows.length}건 · 찾음 ${found}건`);
 }

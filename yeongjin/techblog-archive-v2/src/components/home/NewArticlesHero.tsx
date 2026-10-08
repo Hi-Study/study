@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ReadBadge, useUnreadFirst } from "@/components/common/ReadState";
 
 export type HeroSlide = {
   id: number;
@@ -63,7 +64,9 @@ function Visual({ s }: { s: HeroSlide }) {
 
 /** 홈 맨 위 — 새로 들어온 글을 최대 4장, 자동으로 넘겨 보는 카드 */
 export function NewArticlesHero({ slides: all }: { slides: HeroSlide[] }) {
-  const slides = all.slice(0, MAX_SLIDES);
+  // "내가 읽은 글" OFF 면 읽은 글을 빼고 안 읽은 최신 글로 4장을 채운다
+  const slides = useUnreadFirst(all, MAX_SLIDES);
+  const slideKey = slides.map((s) => s.id).join(",");
   const track = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -84,6 +87,13 @@ export function NewArticlesHero({ slides: all }: { slides: HeroSlide[] }) {
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
+  // 카드 묶음이 바뀌면(읽은 글 ON/OFF) 첫 장으로
+  useEffect(() => {
+    track.current?.scrollTo({ left: 0 });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIndex(0);
+  }, [slideKey]);
+
   // 자동 롤링 — 마지막 다음은 처음으로. 손을 대고 있거나 동작 줄이기 설정이면 멈춘다
   useEffect(() => {
     if (paused || slides.length < 2) return;
@@ -92,7 +102,13 @@ export function NewArticlesHero({ slides: all }: { slides: HeroSlide[] }) {
     return () => window.clearTimeout(t);
   }, [index, paused, slides.length, go]);
 
-  if (slides.length === 0) return null;
+  if (slides.length === 0)
+    return all.length > 0 ? (
+      <section aria-label="새로 들어온 글" className="rounded-[28px] bg-surface p-8 text-center">
+        <p className="text-[19px] font-bold">새로 들어온 글을 모두 읽었어요</p>
+        <p className="mt-1.5 text-sm text-ink-3">오른쪽 위 &lsquo;내가 읽은 글&rsquo;을 켜면 다시 볼 수 있어요.</p>
+      </section>
+    ) : null;
 
   return (
     <section
@@ -118,7 +134,8 @@ export function NewArticlesHero({ slides: all }: { slides: HeroSlide[] }) {
               <p className="mt-6 flex items-center gap-2 text-sm font-semibold text-brand">
                 <span className="rounded-full bg-brand-soft px-2 py-0.5 text-xs">NEW</span>
                 {s.date}
-                {s.internal && <span className="text-xs text-[#5b3fd1]">🛠 사내 운영·개발</span>}
+                {s.internal && <span className="text-xs text-[#5b3fd1]">사내 운영·개발</span>}
+                <ReadBadge id={s.id} />
               </p>
               <h2 className="mt-2 line-clamp-2 min-h-[2.6em] text-[26px] font-extrabold leading-[1.3] tracking-tight md:text-[30px]">
                 {s.headline}

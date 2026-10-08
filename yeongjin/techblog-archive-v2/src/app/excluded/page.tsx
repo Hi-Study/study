@@ -5,7 +5,7 @@ import { listArticles } from "@/core/shared/db";
 
 export default async function ExcludedPage() {
   await connection();
-  const rows = listArticles("excluded");
+  const rows = await listArticles("excluded");
   return (
     <div>
       <h1 className="text-2xl font-bold tracking-tight">제외된 글</h1>

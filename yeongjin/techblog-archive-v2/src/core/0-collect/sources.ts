@@ -78,24 +78,56 @@ export async function readArticlePage(url: string): Promise<FeedItem> {
   };
 }
 
-/** RSS 가 없는 블로그: 목록 페이지에서 글 링크를 모은다 */
+/** 목록 페이지의 구조화 데이터(JSON-LD)에서 글 주소와 발행일을 뽑는다 — 링크 순서가 최신순이 아닌 블로그용 */
+function datedLinksFromJsonLd($: cheerio.CheerioAPI, base: string, re: RegExp): { url: string; date: string }[] {
+  const out = new Map<string, string>();
+  const walk = (o: unknown) => {
+    if (Array.isArray(o)) return o.forEach(walk);
+    if (!o || typeof o !== "object") return;
+    const r = o as Record<string, unknown>;
+    const href = typeof r.url === "string" ? r.url : typeof r["@id"] === "string" ? (r["@id"] as string) : "";
+    if (typeof r.datePublished === "string" && href) {
+      const u = new URL(href, base);
+      if (re.test(u.pathname)) out.set(u.toString(), r.datePublished);
+    }
+    Object.values(r).forEach(walk);
+  };
+  $('script[type="application/ld+json"]').each((_, el) => {
+    try {
+      walk(JSON.parse($(el).text()));
+    } catch {
+      /* 깨진 블록은 건너뛴다 */
+    }
+  });
+  return [...out].map(([url, date]) => ({ url, date })).sort((a, b) => b.date.localeCompare(a.date));
+}
+
+/** RSS 가 없는 블로그: 목록 페이지에서 글 링크를 모은다 (발행일을 알 수 있으면 최신순) */
 export async function readListPage(c: Company, limit: number): Promise<FeedItem[]> {
   if (!c.listPage) return [];
-  const $ = cheerio.load(await fetchText(c.listPage.url));
+  const base = c.listPage.url;
+  const $ = cheerio.load(await fetchText(base));
   const re = new RegExp(c.listPage.linkPattern);
-  const urls = [
-    ...new Set(
-      $("a[href]")
-        .map((_, el) => $(el).attr("href") ?? "")
-        .get()
-        .filter((h) => re.test(h) || re.test(new URL(h, c.listPage!.url).pathname))
-        .map((h) => new URL(h, c.listPage!.url).toString()),
-    ),
-  ].slice(0, limit);
+  const dated = datedLinksFromJsonLd($, base, re);
+  const urls = dated.length
+    ? dated.map((d) => d.url)
+    : [
+        ...new Set(
+          $("a[href]")
+            .map((_, el) => $(el).attr("href") ?? "")
+            .get()
+            .filter((h) => re.test(h) || re.test(new URL(h, base).pathname))
+            .map((h) => new URL(h, base).toString()),
+        ),
+      ];
+  const dateOf = new Map(dated.map((d) => [d.url, d.date]));
   const out: FeedItem[] = [];
-  for (const u of urls) {
+  for (const u of urls.slice(0, limit)) {
     try {
-      out.push(await readArticlePage(u));
+      const item = await readArticlePage(u);
+      const d = dateOf.get(u);
+      if (d) item.publishedAt = new Date(d).toISOString();
+      out.push(item);
     } catch {
       /* 개별 글 실패는 건너뛴다 */
     }
@@ -115,16 +147,16 @@ export async function ensureFullContent(url: string, html: string): Promise<stri
   return cleanHtml(html, url);
 }
 
-export async function collectFeeds(perCompany: number, log: (m: string) => void) {
+export async function collectFeeds(perCompany: number, log: (m: string) => void, only?: string[]) {
   let added = 0;
-  for (const c of COMPANIES) {
+  for (const c of COMPANIES.filter((x) => !only?.length || only.includes(x.id))) {
     try {
       const items = c.feedUrl ? (await readFeed(c)).slice(0, perCompany) : await readListPage(c, perCompany);
       let n = 0;
       for (const it of items) {
         if (!it.url || !it.title) continue;
         const html = await ensureFullContent(it.url, it.html);
-        const id = insertArticle({ companyId: c.id, title: it.title, url: it.url, publishedAt: it.publishedAt, contentHtml: html });
+        const id = await insertArticle({ companyId: c.id, title: it.title, url: it.url, publishedAt: it.publishedAt, contentHtml: html });
         if (id) n++;
       }
       added += n;

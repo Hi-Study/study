@@ -32,7 +32,8 @@ export const BURDEN_TO_EXPERIENCE: Record<Burden, ExperienceKey> = {
 };
 
 /**
- * short/benefit — 홈 경험 카드용 짧은 변화 문구 (주어 "사용자가" 없이, 변화만)
+ * when/short/benefit — 홈 경험 카드 문구. 읽는 기획자가 "우리 사용자도 이런가?" → "이런 경험을 줘야 하는데" → "다른 서비스는 어떻게 했지?" 로 이어지게
+ *   when: 우리 서비스에 비춰 보는 질문 · short: 전달할 경험 · benefit: 다른 서비스 사례로 이끄는 질문
  * question/how — 경험 페이지 머리말
  */
 export const EXPERIENCE_META: Record<
@@ -40,7 +41,6 @@ export const EXPERIENCE_META: Record<
   {
     label: string;
     slug: string;
-    emoji: string;
     /** 홈 카드 맨 위 상황 문구 — "~했다면" */
     when: string;
     short: string;
@@ -51,78 +51,71 @@ export const EXPERIENCE_META: Record<
   }
 > = {
   WAIT_LESS: {
-    when: "결과를 기다리느라 지쳤다면",
-    short: "기다림 없이",
-    benefit: "결과가 바로 나와요",
+    when: "사용자가 결과를 한참 기다리나요?",
+    short: "기다림 없는 경험",
+    benefit: "기다림을 어떻게 줄였을까요?",
     label: "기다리지 않아도 되는 경험",
     slug: "wait-less",
-    emoji: "⏱",
     question: "사용자를 기다리지 않게 하려면?",
     how: "결과를 기다리는 시간을 줄이는 방법",
     burden: "결과가 나올 때까지 기다림",
   },
   SEARCH_LESS: {
-    when: "원하는 걸 찾아 헤맸다면",
-    short: "헤매지 않고",
-    benefit: "찾던 게 먼저 보여요",
+    when: "사용자가 원하는 걸 찾아 헤매나요?",
+    short: "찾지 않아도 보이는 경험",
+    benefit: "어떻게 먼저 보여줄까요?",
     label: "찾지 않아도 되는 경험",
     slug: "search-less",
-    emoji: "🔍",
     question: "사용자가 직접 찾지 않게 하려면?",
     how: "탐색 없이 원하는 걸 바로 보여주는 방법",
     burden: "원하는 걸 찾아 헤맴",
   },
   COMPARE_LESS: {
-    when: "선택지 앞에서 고민이 길었다면",
-    short: "고민은 덜고",
-    benefit: "맞는 선택지만 남겨줘요",
+    when: "사용자가 고르느라 고민하나요?",
+    short: "고민을 덜어 주는 경험",
+    benefit: "선택지를 어떻게 줄였을까요?",
     label: "비교하지 않아도 되는 경험",
     slug: "compare-less",
-    emoji: "⚖",
     question: "사용자가 직접 비교하지 않게 하려면?",
     how: "적합한 선택지를 먼저 좁혀주는 방법",
     burden: "여러 선택지를 비교하며 고민함",
   },
   INPUT_LESS: {
-    when: "같은 정보를 또 입력하고 있다면",
-    short: "입력은 덜고",
-    benefit: "알아서 채워줘요",
+    when: "사용자가 같은 정보를 또 입력하나요?",
+    short: "다시 입력하지 않는 경험",
+    benefit: "입력을 어떻게 줄였을까요?",
     label: "입력하지 않아도 되는 경험",
     slug: "input-less",
-    emoji: "⌨",
     question: "사용자가 직접 입력하지 않게 하려면?",
     how: "정보를 대신 가져오거나 채워주는 방법",
     burden: "같은 정보를 반복해서 입력함",
   },
   REPEAT_LESS: {
-    when: "같은 설명을 반복하고 있다면",
-    short: "다시 말하지 않아도",
-    benefit: "이전 이야기를 기억해요",
+    when: "사용자가 매번 처음부터 다시 시작하나요?",
+    short: "나를 기억해 주는 경험",
+    benefit: "지난 이용을 어떻게 이어 줄까요?",
     label: "다시 설명하지 않아도 되는 경험",
     slug: "repeat-less",
-    emoji: "💬",
     question: "사용자가 다시 설명하지 않게 하려면?",
     how: "이전 맥락과 상황을 이어가는 방법",
     burden: "같은 상황을 처음부터 다시 설명함",
   },
   DO_LESS: {
-    when: "여러 단계를 손으로 처리하고 있다면",
-    short: "손대지 않아도",
-    benefit: "알아서 처리돼요",
+    when: "사용자가 여러 단계를 손수 처리하나요?",
+    short: "알아서 처리되는 경험",
+    benefit: "무엇을 대신 해 줄까요?",
     label: "직접 처리하지 않아도 되는 경험",
     slug: "do-less",
-    emoji: "🤖",
     question: "사용자가 직접 처리하지 않게 하려면?",
     how: "여러 단계를 대신 수행하는 방법",
     burden: "여러 단계를 손으로 직접 처리함",
   },
   CHECK_LESS: {
-    when: "잘 됐는지 계속 확인하고 있다면",
-    short: "확인하지 않아도",
-    benefit: "먼저 알려줘요",
+    when: "사용자가 잘 됐는지 계속 확인하나요?",
+    short: "확인하지 않아도 안심되는 경험",
+    benefit: "어떻게 먼저 알려 줄까요?",
     label: "확인하지 않아도 되는 경험",
     slug: "check-less",
-    emoji: "✅",
     question: "사용자가 계속 확인하지 않게 하려면?",
     how: "상태를 대신 지켜보고 알려주는 방법",
     burden: "잘 됐는지 계속 들여다보며 확인함",
@@ -206,6 +199,13 @@ export const TECH_CATEGORIES = [
   "APP_ARCHITECTURE",
 ] as const;
 export type TechKey = (typeof TECH_CATEGORIES)[number];
+
+/**
+ * 기술 이름이 아니라 넓은 바구니인 분류 — 홈 "요즘 자주 나오는 기술" 키워드에서는 뺀다.
+ * (워크숍 후기·웰컴키트까지 "앱·웹 화면 구조"로 들어가는 등 서로 다른 글이 한 칸에 섞였다)
+ * 분류 데이터에는 남기고 기술 페이지 주소로는 들어갈 수 있다. 진짜 기술 키워드 목록(v4 후보)으로 대체 예정.
+ */
+export const BUCKET_TECHS: readonly TechKey[] = ["DATA_PLATFORM", "INFRA_PERFORMANCE", "APP_ARCHITECTURE"];
 export const TECH_LABEL: Record<TechKey, string> = {
   LLM: "생성형 AI",
   AI_AGENT: "AI 에이전트",

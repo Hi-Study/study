@@ -1,0 +1,9 @@
+# Vercel 로 올리지 않는 것 — 원문이 들어 있는 로컬 DB·백업·로그, 비밀값, 저장해 둔 화면 버전
+data/
+versions/
+.env*
+!.env.local.example
+.next/
+node_modules/
+# 회사 로고는 상표라 올리지 않고, 배포 빌드 때 다시 받는다(package.json vercel-build)
+public/logos/

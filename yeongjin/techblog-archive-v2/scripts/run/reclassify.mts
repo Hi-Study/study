@@ -18,7 +18,7 @@ const full = process.argv.includes("--full");
 const missing = process.argv.includes("--missing");
 
 if (full) {
-  for (const a of [...listArticles("included"), ...listArticles("excluded"), ...listArticles("pending")]) {
+  for (const a of [...(await listArticles("included")), ...(await listArticles("excluded")), ...(await listArticles("pending"))]) {
     try {
       await classify(a.id, log);
     } catch (e) {
@@ -28,7 +28,7 @@ if (full) {
 } else {
   const ids = process.argv.find((x) => x.startsWith("--ids="))?.slice(6).split(",").map(Number);
   const stale = process.argv.includes("--stale");
-  const rows = listArticles("included").filter(
+  const rows = (await listArticles("included")).filter(
     (a) =>
       (!missing || !a.learning?.classification) &&
       (!stale || (a.learning?.classification?.version ?? 0) < CLASSIFY_VERSION) &&

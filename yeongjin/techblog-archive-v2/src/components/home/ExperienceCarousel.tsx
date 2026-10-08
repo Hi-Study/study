@@ -9,15 +9,13 @@ export type ExperienceSlide = {
   short: string;
   benefit: string;
   total: number;
-  companies: number;
-  pattern: string | null;
   recent: number;
   example: { id: number; headline: string; company: string } | null;
 };
 
 /**
- * "어떤 변화가 궁금한가요?" — 경험 하나 = 카드 한 장
- * 상황(~했다면) → 결과(굵은 두 줄) → 대표 사례 → 근거 행 → 새 소식 배지 → 버튼
+ * "우리 사용자에게 어떤 경험을 주고 싶나요?" — 경험 하나 = 카드 한 장
+ * 우리 서비스에 비춰 보는 질문 → 전달할 경험 → 다른 서비스 사례로 이끄는 질문 → 대표 사례 → 새 소식 → 버튼(사례 수)
  */
 export function ExperienceCarousel({ slides }: { slides: ExperienceSlide[] }) {
   const track = useRef<HTMLDivElement>(null);
@@ -59,14 +57,11 @@ export function ExperienceCarousel({ slides }: { slides: ExperienceSlide[] }) {
             key={s.slug}
             className="flex w-[calc(100%-8px)] shrink-0 snap-start flex-col rounded-[28px] bg-surface p-6 md:w-[calc(50%-6px)]"
           >
-            {/* 상황 → 결과 */}
+            {/* 우리 서비스에 비춰 보는 질문 → 전달할 경험 → 다른 서비스 사례로 이끄는 질문 */}
             <div>
               <p className="text-[15px] text-ink-3">{s.when}</p>
-              <p className="mt-1 text-[24px] font-extrabold leading-[1.3] tracking-tight">
-                {s.short}
-                <br />
-                <span className="text-brand">{s.benefit}</span>
-              </p>
+              <p className="mt-1.5 text-[24px] font-extrabold leading-[1.3] tracking-tight">{s.short}</p>
+              <p className="mt-1 text-[18px] font-bold leading-snug text-brand">{s.benefit}</p>
             </div>
 
             {/* 대표 사례 */}
@@ -76,46 +71,22 @@ export function ExperienceCarousel({ slides }: { slides: ExperienceSlide[] }) {
                 className="group mt-5 flex items-center gap-3 rounded-2xl bg-bg px-4 py-3.5"
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block text-xs text-ink-3">{s.example.company} 사례</span>
+                  <span className="block text-xs text-ink-3">
+                    <b className="font-semibold text-brand">대표 사례</b> · {s.example.company}
+                  </span>
                   <span className="mt-0.5 line-clamp-2 block text-[15px] font-semibold leading-snug">{s.example.headline}</span>
                 </span>
                 <span className="shrink-0 text-sm font-semibold text-ink-2 group-hover:text-brand">보기 ›</span>
               </Link>
             )}
 
-            {/* 근거 행 */}
-            <dl className="mt-3 space-y-2.5 rounded-2xl bg-bg px-4 py-3.5 text-[15px]">
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-ink-2">
-                  관련 글
-                </dt>
-                <dd className="font-bold">{s.total}건</dd>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-ink-2">
-                  참여 회사
-                </dt>
-                <dd className="font-bold">{s.companies}곳</dd>
-              </div>
-              {s.pattern && (
-                <div className="flex items-start justify-between gap-3">
-                  <dt className="text-ink-2">
-                    주로 쓴 방식
-                  </dt>
-                  <dd className="text-right font-bold">{s.pattern}</dd>
-                </div>
-              )}
-            </dl>
-
             {/* 새 소식 배지 */}
             <p className="mt-auto flex items-center justify-center gap-2 pt-4 text-sm font-semibold">
-              {s.recent > 0 ? (
+              {s.recent > 0 && (
                 <>
                   <span className="rounded-full bg-brand px-2 py-0.5 text-[11px] font-bold text-white">NEW</span>
                   최근 30일 새 사례 <span className="text-brand">{s.recent}건</span>
                 </>
-              ) : (
-                <span className="text-ink-3">{s.companies}개 회사의 사례를 모았어요</span>
               )}
             </p>
 
@@ -123,7 +94,7 @@ export function ExperienceCarousel({ slides }: { slides: ExperienceSlide[] }) {
               href={`/experiences/${s.slug}`}
               className="mt-3 flex h-[52px] items-center justify-center rounded-2xl bg-brand-soft text-[16px] font-bold text-brand transition hover:brightness-95"
             >
-              ‘{s.short}’ 사례 보기
+              다른 서비스 사례 {s.total}건 보기
             </Link>
           </article>
         ))}

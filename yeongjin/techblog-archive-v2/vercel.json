@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "regions": ["icn1"],
+  "buildCommand": "(npm run fetch-logos || echo '로고 받기 실패 — 회사 이름 첫 글자로 보여요') && npm run build"
+}

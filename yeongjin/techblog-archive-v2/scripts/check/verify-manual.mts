@@ -2,18 +2,19 @@ import "../_env.mts";
 import fs from "node:fs";
 import { annotateHtml, collectAnnotations } from "../../src/core/1-analyze/annotate";
 import { splitBlocks } from "../../src/core/0-collect/content";
-import { db, getArticle } from "../../src/core/shared/db";
+import { getArticle, getArticleIdByUrl } from "../../src/core/shared/db";
 import { gateGuide } from "../../src/core/1-analyze/guide-gate";
 import { EXPERIENCE_PATTERNS } from "../../src/core/2-classify/taxonomy";
 
 // 사용: npx tsx scripts/verify-manual.mts data/manual/<file>.json
 const m = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-const row = db().prepare("SELECT id FROM articles WHERE url = ?").get(m.url) as { id: number } | undefined;
+const rowId = await getArticleIdByUrl(m.url);
+const row = rowId ? { id: rowId } : undefined;
 if (!row) {
   console.log("✗ DB 에 없는 URL");
   process.exit(1);
 }
-const a = getArticle(row.id)!;
+const a = (await getArticle(row.id))!;
 let ok = true;
 if (m.learning) {
   const l = m.learning;

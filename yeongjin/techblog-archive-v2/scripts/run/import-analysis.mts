@@ -2,7 +2,7 @@ import { log } from "../_env.mts";
 import fs from "node:fs";
 import path from "node:path";
 import { splitBlocks } from "../../src/core/0-collect/content";
-import { db, getArticle, markExcluded, markIncluded, saveGuide } from "../../src/core/shared/db";
+import { getArticle, getArticleIdByUrl, markExcluded, markIncluded, saveGuide } from "../../src/core/shared/db";
 import { gateGuide } from "../../src/core/1-analyze/guide-gate";
 import type { Learning, ReadingGuide } from "../../src/core/shared/types";
 
@@ -18,21 +18,22 @@ const dir = path.join(process.cwd(), "data", "manual");
 const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith(".json")) : [];
 for (const f of files) {
   const m = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")) as Manual;
-  const row = db().prepare("SELECT id FROM articles WHERE url = ?").get(m.url) as { id: number } | undefined;
+  const rowId = await getArticleIdByUrl(m.url);
+  const row = rowId ? { id: rowId } : undefined;
   if (!row) {
     log(`✗ ${f}: DB 에 없는 URL — 먼저 collect/add-url 하세요`);
     continue;
   }
   if (m.exclude) {
-    markExcluded(row.id, m.exclude);
+    await markExcluded(row.id, m.exclude);
     log(`− ${f}: 제외`);
     continue;
   }
-  if (m.learning) markIncluded(row.id, m.learning);
+  if (m.learning) await markIncluded(row.id, m.learning);
   if (m.guide) {
-    const a = getArticle(row.id)!;
+    const a = (await getArticle(row.id))!;
     const r = gateGuide(m.guide, splitBlocks(a.contentHtml));
-    saveGuide(row.id, r.ok ? r.guide : null);
+    await saveGuide(row.id, r.ok ? r.guide : null);
     log(r.ok ? `+ ${f}: 포함 · 가이드 ${r.guide.sections.length}칸` : `+ ${f}: 포함 · 가이드 게이트 탈락(${r.reason})`);
   } else log(`+ ${f}: 포함`);
 }

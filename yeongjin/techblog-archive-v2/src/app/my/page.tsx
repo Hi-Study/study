@@ -6,7 +6,7 @@ import { headlineOf } from "@/core/3-place/home";
 export default async function MyPage() {
   await connection();
   // 북마크·읽은 글 id 는 브라우저에만 있으니, 목록 렌더에 필요한 최소 정보만 넘긴다
-  const items = listArticles("included").map((a) => ({
+  const items = (await listArticles("included")).map((a) => ({
     id: a.id,
     companyId: a.companyId,
     title: a.title,

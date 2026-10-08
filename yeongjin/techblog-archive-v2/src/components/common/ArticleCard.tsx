@@ -3,6 +3,7 @@ import { companyById } from "@/core/0-collect/companies";
 import { cls, headlineOf } from "@/core/3-place/home";
 import { BENEFICIARY_LABEL, EXPERIENCE_META, INTERNAL_TAG, isInternal } from "@/core/2-classify/taxonomy";
 import type { ArticleRow } from "@/core/shared/types";
+import { ReadBadge } from "./ReadState";
 
 export function CompanyBadge({ id, size = "sm" }: { id: string; size?: "sm" | "md" }) {
   const c = companyById(id);
@@ -21,7 +22,7 @@ export function InternalTag({ who }: { who?: keyof typeof BENEFICIARY_LABEL }) {
       className="inline-flex items-center gap-1 rounded-md bg-[#f1ecff] px-2 py-0.5 text-xs font-semibold text-[#5b3fd1]"
       title={who ? `${BENEFICIARY_LABEL[who]}의 부담을 덜어준 사례예요` : undefined}
     >
-      🛠 {INTERNAL_TAG}
+      {INTERNAL_TAG}
     </span>
   );
 }
@@ -38,11 +39,15 @@ export function ArticleCard({ a, showExperience = true }: { a: ArticleRow; showE
   return (
     <Link
       href={`/articles/${a.id}`}
-      className="group block rounded-2xl border border-line bg-surface p-5 transition hover:-translate-y-0.5 hover:shadow-[0_6px_24px_rgba(0,0,0,0.06)]"
+      data-card
+      className="group block rounded-2xl border border-line bg-surface p-5 transition hover:-translate-y-0.5 hover:shadow-[0_6px_24px_rgba(0,0,0,0.06)] has-[[data-read=true]]:opacity-60 has-[[data-read=true]]:hover:opacity-100"
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <CompanyBadge id={a.companyId} />
-        <span className="text-xs text-ink-3">{formatDate(a.publishedAt)}</span>
+        <span className="flex items-center gap-1.5 text-xs text-ink-3">
+          <ReadBadge id={a.id} />
+          {formatDate(a.publishedAt)}
+        </span>
       </div>
       <p className="text-[17px] font-bold leading-snug text-ink group-hover:text-brand">{headline}</p>
       {headline !== a.title && <p className="mt-1.5 line-clamp-1 text-sm text-ink-3">{a.title}</p>}
@@ -51,7 +56,7 @@ export function ArticleCard({ a, showExperience = true }: { a: ArticleRow; showE
           {c && isInternal(c.beneficiary) && <InternalTag who={c.beneficiary} />}
           {showExperience && c?.experience && c.fit !== "NONE" && (
             <span className="rounded-md bg-brand-soft px-2 py-0.5 text-xs font-medium text-brand">
-              {EXPERIENCE_META[c.experience].emoji} {EXPERIENCE_META[c.experience].label.replace(" 경험", "")}
+              {EXPERIENCE_META[c.experience].short}
             </span>
           )}
           {c?.articleType && <span className="rounded-md bg-bg px-2 py-0.5 text-xs text-ink-2">{c.articleType}</span>}

@@ -5,7 +5,7 @@ import { cls, headlineOf } from "../../src/core/3-place/home";
 import { BURDENS, EXPERIENCE_META, EXPERIENCES, isInternal, type ExperienceKey } from "../../src/core/2-classify/taxonomy";
 
 // 사용: npm run audit — 경험 분류가 어떻게 나뉘었는지 점검
-const rows = listArticles("included");
+const rows = await listArticles("included");
 const line = (a: (typeof rows)[number]) => {
   const c = cls(a)!;
   return (

@@ -3,23 +3,11 @@
 import { useState } from "react";
 import type { ReadingGuide } from "@/core/shared/types";
 
-type QuoteBlock = { n: number; text: string; heading: boolean };
-
-/** 소제목 블록이거나 25자 미만이면 펼쳐도 볼 게 없어 인용하지 않는다 */
-function quoteAt(blocks: QuoteBlock[], n: number): QuoteBlock | null {
-  const b = blocks[n - 1];
-  if (!b || b.heading || b.text.length < 25) return null;
-  return b;
-}
-
-function goToBlock(n: number) {
-  const el = document.getElementById(`b-${n}`);
-  if (!el) return;
-  el.scrollIntoView({ behavior: "smooth", block: "center" });
-  el.classList.remove("block-flash");
-  void el.offsetWidth;
-  el.classList.add("block-flash");
-}
+/**
+ * 칸마다 근거 문장 — 원문 문단 전체가 아니라 앞부분 짧은 발췌(서버에서 120자 안으로 잘라 넘긴다).
+ * 원문 전체는 서비스에 싣지 않고 원래 블로그로 보낸다(저작권 — docs/00 "원문을 얼마나 보여 주나").
+ */
+export type SectionQuotes = string[][];
 
 const LEAD_LABEL: [keyof ReadingGuide["lead"], string][] = [
   ["what", "무엇을 했대요?"],
@@ -29,7 +17,7 @@ const LEAD_LABEL: [keyof ReadingGuide["lead"], string][] = [
 ];
 
 /** "더 들어가 볼까요?" — 한눈에(lead) · 기획 포인트 · 질문형 소제목 칸 */
-export function ReadingDigest({ guide, blocks }: { guide: ReadingGuide; blocks: QuoteBlock[] }) {
+export function ReadingDigest({ guide, quotes: sectionQuotes, sourceUrl }: { guide: ReadingGuide; quotes: SectionQuotes; sourceUrl: string }) {
   const [open, setOpen] = useState<number | null>(0);
   const [quotes, setQuotes] = useState<Record<number, boolean>>({});
   const terms = new Map(guide.terms.map((t) => [t.term, t.plain]));
@@ -66,7 +54,7 @@ export function ReadingDigest({ guide, blocks }: { guide: ReadingGuide; blocks: 
       <div className="mt-4 space-y-2.5">
         {guide.sections.map((s, i) => {
           const isOpen = open === i;
-          const qs = s.blocks.map((n) => quoteAt(blocks, n)).filter((b): b is QuoteBlock => !!b);
+          const qs = sectionQuotes[i] ?? [];
           return (
             <div key={i} className={`rounded-2xl border transition ${isOpen ? "border-ink/20 shadow-sm" : "border-line"}`}>
               <button
@@ -125,18 +113,23 @@ export function ReadingDigest({ guide, blocks }: { guide: ReadingGuide; blocks: 
                         onClick={() => setQuotes((q) => ({ ...q, [i]: !q[i] }))}
                         className="text-sm font-semibold text-ink-2 underline underline-offset-4"
                       >
-                        {quotes[i] ? "근거 원문 접기" : `근거 원문 ${qs.length}곳 펼치기`}
+                        {quotes[i] ? "근거 문장 접기" : `근거 문장 ${qs.length}곳 보기`}
                       </button>
                       {quotes[i] && (
                         <div className="mt-2 space-y-2">
-                          {qs.map((b) => (
-                            <blockquote key={b.n} className="border-l-2 border-ink/20 pl-3 text-sm leading-relaxed text-ink-2">
-                              {b.text}
-                              <button onClick={() => goToBlock(b.n)} className="ml-2 whitespace-nowrap text-xs font-semibold text-brand">
-                                본문에서 보기 ↓
-                              </button>
+                          {qs.map((q) => (
+                            <blockquote key={q} className="border-l-2 border-ink/20 pl-3 text-sm leading-relaxed text-ink-2">
+                              {q}
                             </blockquote>
                           ))}
+                          <a
+                            href={sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block text-xs font-semibold text-brand"
+                          >
+                            원문에서 이어 읽기 ↗
+                          </a>
                         </div>
                       )}
                     </div>

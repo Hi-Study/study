@@ -44,31 +44,7 @@ export function PerspectiveSheet({ l }: { l: Learning }) {
         </div>
 
         <div className="space-y-10 px-6 pb-10 pt-6">
-          <section>
-            <h3 className="text-lg font-bold">핵심 변화</h3>
-            <div className="mt-3 rounded-2xl bg-before p-4">
-              <p className="text-xs font-bold tracking-wide text-ink-3">BEFORE</p>
-              <p className="mt-1 leading-relaxed">{l.before}</p>
-            </div>
-            <div className="my-1 text-center text-ink-3">↓</div>
-            <div className="rounded-2xl bg-after p-4">
-              <p className="text-xs font-bold tracking-wide text-[var(--exp-ink)]">AFTER</p>
-              <p className="mt-1 leading-relaxed">{l.after}</p>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {l.experiencePattern && (
-                <span className="rounded-full bg-brand-soft px-3 py-1 text-sm font-semibold text-brand">
-                  {l.experiencePattern}
-                </span>
-              )}
-              {l.productPatterns.map((p) => (
-                <span key={p} className="rounded-full border border-line px-3 py-1 text-sm text-ink-2">
-                  {p}
-                </span>
-              ))}
-            </div>
-          </section>
-
+          {/* 핵심 변화(BEFORE → AFTER)는 상세 본문 "결론부터 말하면"으로 옮겼다 */}
           <section>
             <h3 className="text-lg font-bold">적용 관점</h3>
             <p className="mt-1 text-sm text-ink-3">정답이 아니라, 질문이에요</p>

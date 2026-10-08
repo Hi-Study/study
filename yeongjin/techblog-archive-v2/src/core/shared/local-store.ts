@@ -30,11 +30,16 @@ const EMPTY: never[] = [];
 export function useLocalList<T>(key: Key): T[] {
   return useSyncExternalStore(
     (cb) => {
+      // 다른 탭에서 바뀐 경우(storage) 캐시를 비워야 새 값이 보인다
+      const onStorage = () => {
+        cache.delete(key);
+        cb();
+      };
       window.addEventListener(EVENT, cb);
-      window.addEventListener("storage", cb);
+      window.addEventListener("storage", onStorage);
       return () => {
         window.removeEventListener(EVENT, cb);
-        window.removeEventListener("storage", cb);
+        window.removeEventListener("storage", onStorage);
       };
     },
     () => {

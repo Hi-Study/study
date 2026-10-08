@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { ReadBadge, useUnreadFirst } from "@/components/common/ReadState";
 
 export type TechItem = {
   slug: string;
@@ -14,6 +15,8 @@ export type TechItem = {
 export function TechExplorer({ items }: { items: TechItem[] }) {
   const [sel, setSel] = useState(0);
   const t = items[sel];
+  // "내가 읽은 글" OFF 면 읽은 글을 빼고 안 읽은 최신 글로 4개를 채운다
+  const articles = useUnreadFirst(t?.articles ?? [], 4);
   if (!t) return null;
 
   return (
@@ -37,8 +40,11 @@ export function TechExplorer({ items }: { items: TechItem[] }) {
       </div>
 
       <div id="tech-panel" role="tabpanel" className="mt-4 rounded-3xl bg-surface px-6 py-2 md:px-8">
+        {articles.length === 0 && (
+          <p className="py-6 text-center text-sm text-ink-3">이 기술의 최근 글을 모두 읽었어요.</p>
+        )}
         <ul className="divide-y divide-line">
-          {t.articles.map((a) => (
+          {articles.map((a) => (
             <li key={a.id}>
               <Link href={`/articles/${a.id}`} className="group flex items-center gap-4 py-4">
                 {/* 썸네일 자리 — 회사 로고 */}
@@ -53,8 +59,9 @@ export function TechExplorer({ items }: { items: TechItem[] }) {
                   )}
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-xs text-ink-3">
+                  <span className="flex items-center gap-1.5 text-xs text-ink-3">
                     {a.company} · {a.date}
+                    <ReadBadge id={a.id} />
                   </span>
                   <span className="mt-1 block font-semibold leading-snug group-hover:text-brand">{a.headline}</span>
                 </span>

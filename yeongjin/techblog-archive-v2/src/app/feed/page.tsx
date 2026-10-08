@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { ArticleCard } from "@/components/common/ArticleCard";
+import { ReadFilter } from "@/components/common/ReadState";
 import { companyById } from "@/core/0-collect/companies";
 import { listArticles } from "@/core/shared/db";
 import { allTags } from "@/core/3-place/home";
 
-const AUDIENCES = ["PM", "기획자", "디자이너", "데이터분석가", "프로덕트오너"];
-
-type Filter = { company?: string; tag?: string; audience?: string };
+type Filter = { company?: string; tag?: string };
 
 function href(cur: Filter, key: keyof Filter, value: string) {
   const next = { ...cur, [key]: cur[key] === value ? undefined : value };
@@ -35,16 +34,14 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
   const f: Filter = {
     company: typeof sp.company === "string" ? sp.company : undefined,
     tag: typeof sp.tag === "string" ? sp.tag : undefined,
-    audience: typeof sp.audience === "string" ? sp.audience : undefined,
   };
-  const all = listArticles("included");
+  const all = await listArticles("included");
   const companies = [...new Set(all.map((a) => a.companyId))];
   const tags = allTags(all, 24);
   const rows = all.filter(
     (a) =>
       (!f.company || a.companyId === f.company) &&
-      (!f.tag || a.learning?.tags.includes(f.tag)) &&
-      (!f.audience || a.learning?.audience === f.audience),
+      (!f.tag || a.learning?.tags.includes(f.tag)),
   );
 
   return (
@@ -62,14 +59,6 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
           ))}
         </div>
         <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 scrollbar-none">
-          <span className="w-10 shrink-0 self-center text-xs font-bold text-ink-3">직무</span>
-          {AUDIENCES.map((a) => (
-            <Chip key={a} on={f.audience === a} to={href(f, "audience", a)}>
-              {a}
-            </Chip>
-          ))}
-        </div>
-        <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 scrollbar-none">
           <span className="w-10 shrink-0 self-center text-xs font-bold text-ink-3">태그</span>
           {tags.map((t) => (
             <Chip key={t.label} on={f.tag === t.label} to={href(f, "tag", t.label)}>
@@ -81,16 +70,20 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
 
       <p className="mt-6 text-sm text-ink-3">
         {rows.length}건
-        {(f.company || f.tag || f.audience) && (
+        {(f.company || f.tag) && (
           <Link href="/feed" className="ml-2 font-semibold text-brand">
             필터 초기화
           </Link>
         )}
       </p>
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
-        {rows.map((a) => (
-          <ArticleCard key={a.id} a={a} />
-        ))}
+      <div className="mt-3">
+        <ReadFilter ids={rows.map((a) => a.id)}>
+          <div className="grid gap-3 md:grid-cols-2">
+            {rows.map((a) => (
+              <ArticleCard key={a.id} a={a} />
+            ))}
+          </div>
+        </ReadFilter>
       </div>
     </div>
   );

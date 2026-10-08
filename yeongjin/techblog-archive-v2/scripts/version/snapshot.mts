@@ -14,7 +14,16 @@ const out = path.join(process.cwd(), "versions", name);
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(path.join(out, "pages"), { recursive: true });
 
-const FOLLOW = [/^\/$/, /^\/feed$/, /^\/search$/, /^\/my$/, /^\/excluded$/, /^\/articles\/\d+$/];
+const FOLLOW = [
+  /^\/$/,
+  /^\/feed$/,
+  /^\/search$/,
+  /^\/my$/,
+  /^\/excluded$/,
+  /^\/articles\/\d+$/,
+  /^\/experiences\/[a-z-]+$/,
+  /^\/tech\/[a-z-]+$/,
+];
 const manifest: Record<string, string> = {};
 const seenPages = new Set<string>();
 const seenAssets = new Set<string>();

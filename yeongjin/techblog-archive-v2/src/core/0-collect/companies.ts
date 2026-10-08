@@ -22,7 +22,15 @@ export const COMPANIES: Company[] = [
     listPage: { url: "https://www.bucketplace.com/culture/Tech/", linkPattern: "^/post/" },
   },
   { id: "kurly", name: "컬리", color: "#5F0080", blogUrl: "https://helloworld.kurly.com", feedUrl: "https://helloworld.kurly.com/rss.xml" },
-  { id: "gangnamunni", name: "강남언니", color: "#FF5A5F", blogUrl: "https://blog.gangnamunni.com", feedUrl: "https://blog.gangnamunni.com/feed.xml" },
+  {
+    id: "gangnamunni",
+    name: "강남언니",
+    color: "#FF5A5F",
+    blogUrl: "https://blog.gangnamunni.com",
+    // /feed.xml 은 2019년 글 5개에서 멈춰 있다(2026-10-08 확인) — 목록 페이지의 발행일(JSON-LD)로 최신 글을 고른다
+    feedUrl: null,
+    listPage: { url: "https://blog.gangnamunni.com/", linkPattern: "^/post/" },
+  },
   { id: "hwahae", name: "화해", color: "#14C38E", blogUrl: "https://blog.hwahae.co.kr", feedUrl: "https://blog.hwahae.co.kr/rss.xml" },
   { id: "oliveyoung", name: "올리브영", color: "#9ACD32", blogUrl: "https://oliveyoung.tech", feedUrl: "https://oliveyoung.tech/rss.xml" },
   { id: "hyperconnect", name: "하이퍼커넥트", color: "#FF3E6C", blogUrl: "https://hyperconnect.github.io", feedUrl: "https://hyperconnect.github.io/feed.xml" },

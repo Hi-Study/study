@@ -14,12 +14,12 @@ import type { Learning, ReadingGuide } from "./shared/types";
 
 /** 1차 게이트 → 2차 상세 분석 → "더 들어가 볼까요?" → 가이드 칸 기준 경험 분류 */
 export async function classify(id: number, log: (m: string) => void) {
-  const a = getArticle(id);
+  const a = await getArticle(id);
   if (!a) return;
   const text = htmlToText(a.contentHtml);
   const gate = await gateArticle(a.title, text);
   if (!gate.include) {
-    markExcluded(id, gate.reason);
+    await markExcluded(id, gate.reason);
     log(`  − 제외: ${a.title} — ${gate.reason}`);
     return;
   }
@@ -28,8 +28,8 @@ export async function classify(id: number, log: (m: string) => void) {
   const guide = await buildReadingGuide(a.title, a.contentHtml, log);
   log(guide ? `    가이드 ${guide.sections.length}칸` : "    가이드 저장 안 함(게이트 탈락)");
   await attachClassification(learning, a.title, text, a.contentHtml, guide, log);
-  markIncluded(id, learning);
-  saveGuide(id, guide);
+  await markIncluded(id, learning);
+  await saveGuide(id, guide);
 }
 
 /** 가이드가 있으면 칸 기준(v3), 없으면 원문 기준(v2)으로 경험을 분류한다 */
@@ -61,11 +61,36 @@ async function attachClassification(
 
 /** 이미 포함된 글의 경험 분류만 다시 한다 (분석·가이드는 그대로) */
 export async function reclassifyExperience(id: number, log: (m: string) => void) {
-  const a = getArticle(id);
+  const a = await getArticle(id);
   if (!a?.learning) return;
   log(`  ↻ ${a.title}`);
   await attachClassification(a.learning, a.title, htmlToText(a.contentHtml), a.contentHtml, a.guide, log);
-  markIncluded(id, a.learning);
+  await markIncluded(id, a.learning);
+}
+
+/**
+ * 포함된 글 다시 만들기 — 필요한 단계만 다시 돌린다.
+ * reanalyze: 상세 분석(핵심 카피·결론·BEFORE/AFTER)을 원문 전체로 다시 · reguide: "더 들어가 볼까요?"를 원문 끝까지 읽고 다시.
+ * 분류는 항상 다시 한다. 새 가이드가 게이트에서 떨어지면 예전 가이드를 지키고 그것으로 분류한다.
+ */
+export async function rebuildIncluded(
+  id: number,
+  opts: { reanalyze: boolean; reguide: boolean },
+  log: (m: string) => void,
+) {
+  const a = await getArticle(id);
+  if (!a) return;
+  const text = htmlToText(a.contentHtml);
+  const learning = opts.reanalyze || !a.learning ? await analyzeArticle(a.title, text) : a.learning;
+  let guide = a.guide;
+  if (opts.reguide || !guide) {
+    const fresh = await buildReadingGuide(a.title, a.contentHtml, log);
+    if (fresh) guide = fresh;
+    log(fresh ? `    가이드 새로 ${fresh.sections.length}칸` : `    새 가이드 탈락 → ${guide ? "예전 가이드 유지" : "가이드 없음"}`);
+  }
+  await attachClassification(learning, a.title, text, a.contentHtml, guide, log);
+  await markIncluded(id, learning);
+  await saveGuide(id, guide);
 }
 
 export async function classifyPending(log: (m: string) => void) {
@@ -73,7 +98,7 @@ export async function classifyPending(log: (m: string) => void) {
     log("ℹ GEMINI_API_KEY 가 없어 분석은 건너뜁니다. 수집된 글은 '분석 대기' 상태로 남아요.");
     return;
   }
-  const pending = listArticles("pending");
+  const pending = await listArticles("pending");
   log(`분석 대기 ${pending.length}건 처리`);
   for (const a of pending) {
     try {

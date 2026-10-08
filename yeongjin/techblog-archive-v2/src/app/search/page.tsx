@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { ArticleCard } from "@/components/common/ArticleCard";
+import { ReadFilter } from "@/components/common/ReadState";
 import { SearchBox } from "@/components/common/SearchBox";
 import { listArticles, searchArticles } from "@/core/shared/db";
 import { allTags } from "@/core/3-place/home";
@@ -17,8 +18,8 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
   await connection();
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
-  const results = q ? searchArticles(q) : [];
-  const tags = q ? [] : allTags(listArticles("included"), 16);
+  const results = q ? await searchArticles(q) : [];
+  const tags = q ? [] : allTags(await listArticles("included"), 16);
 
   return (
     <div>
@@ -72,10 +73,14 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
               맞는 글이 없어요. 기술 이름 대신 사용자가 겪는 문제로 검색해 보세요.
             </p>
           ) : (
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              {results.map((a) => (
-                <ArticleCard key={a.id} a={a} />
-              ))}
+            <div className="mt-3">
+              <ReadFilter ids={results.map((a) => a.id)}>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {results.map((a) => (
+                    <ArticleCard key={a.id} a={a} />
+                  ))}
+                </div>
+              </ReadFilter>
             </div>
           )}
         </section>

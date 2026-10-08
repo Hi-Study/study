@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ReadBadge } from "@/components/common/ReadState";
 
 /** 밝은 대표 색(노랑·연두 등)이면 글자를 어둡게 — 흰 글자는 읽히지 않는다 */
 function isLight(hex: string): boolean {
@@ -32,6 +33,7 @@ export function ProblemCard({
   return (
     <Link
       href={`/articles/${id}`}
+      data-card
       className={`flex w-[288px] shrink-0 snap-start flex-col rounded-3xl p-5 transition hover:brightness-105 ${light ? "text-ink" : "text-white"}`}
       style={{ background: bg }}
     >
@@ -47,6 +49,9 @@ export function ProblemCard({
           )}
         </span>
         <span className={`text-sm font-bold ${light ? "text-ink/80" : "text-white/90"}`}>{company}</span>
+        <span className="ml-auto">
+          <ReadBadge id={id} />
+        </span>
       </span>
 
       <p className="mt-3 text-[19px] font-extrabold leading-[1.35] tracking-tight">{title}</p>

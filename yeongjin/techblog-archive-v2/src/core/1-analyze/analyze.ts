@@ -12,13 +12,28 @@ import { gateGuide } from "./guide-gate";
 
 const GATE_SYS = `너는 기술 블로그 큐레이터다. 이 글이 기획자·PM·디자이너에게 읽을 가치가 있는지 판단한다.
 - include=true: 사용자 문제, 제품 맥락, 경험 변화, 의사결정, 운영 효율 등 "왜/누구를 위해"가 담긴 글.
-- include=false: 순수 기술 구현 디테일(라이브러리 사용법, 설정, 성능 튜닝 수치만, 코드 리뷰, 행사 공지/채용)만 다루는 글.
+  **누군가(고객·운영자·개발자)의 일이나 경험이 실제로 바뀐 이야기**가 글의 중심에 있어야 한다.
+  ✔ **실제 운영 중에 겪은 문제를 기술로 푼 기록은 포함한다.** 서비스·데이터·배포를 운영하는 팀이
+    장애·지연·작업 실패·데이터 오류·반복 수작업 같은 문제를 실제로 겪었고, 그것을 어떻게 풀었는지가 있으면 된다.
+    사용자 경험뿐 아니라 운영 과정의 경험을 어떻게 기술로 해결했는지도 기획자가 볼 가치가 있다.
+    기술 설명이 길어도, "운영에서 이런 문제가 있었다 → 이렇게 풀었다"가 글의 뼈대면 포함이다.
+- include=false:
+  · 순수 기술 구현 디테일 — 라이브러리·프레임워크 사용법, 설정·환경 구축 방법, 성능 튜닝 수치만, 코드 리뷰
+  · 기술 개념·내부 동작 설명 — 런타임·언어 기능·도구의 원리를 풀어 주는 글(개발자의 이해를 돕는 것만으로는 부족하다)
+  · 프레임워크 체험기·토이 프로젝트 후기 — 실제 서비스·운영에서 겪은 문제가 아니다
+  · 행사·컨퍼런스 참관기·후기·회고 — 다녀와서 배운 점·인사이트를 정리한 글도 제외(우리 제품·운영에서 바뀐 것이 아니다)
+  · 조직 문화·팀 소개·인터뷰·입사/인턴 후기·워크샵 — 개인이나 팀이 일하는 방식을 돌아본 글도 제외
+  · 브랜딩·마케팅 캠페인 소개 — 단, 그 과정에서 **제품 화면·기능이 실제로 바뀐 이야기**가 중심이면 포함
+  · 행사·밋업·컨퍼런스 공지와 신청 안내, 세션 소개, 채용 공고 — **주제가 제품 이야기여도** 글의 목적이 홍보·모집이면 제외
+글 전체를 읽고 판단한다. 단, 긴 글 어딘가에 "의사결정", "운영" 같은 말이 나온다는 이유만으로 통과시키지 마라 —
+글이 **주로** 무엇을 다루는지가 기준이다.
 reason 은 한국어 한 문장으로, 판단 근거를 글 내용에 기대어 쓴다.`;
 
+// 본문 전체를 넣는다 — 예전엔 앞 3,000자만 봐서 84%의 글을 앞부분만 보고 판정했다
 export async function gateArticle(title: string, text: string): Promise<{ include: boolean; reason: string }> {
   return json(
     GATE_SYS,
-    `제목: ${title}\n\n본문(앞부분):\n${text.slice(0, 3000)}`,
+    `제목: ${title}\n\n본문:\n${text}`,
     obj({ include: { type: Type.BOOLEAN }, reason: str(10) }),
     512,
   );
@@ -80,7 +95,7 @@ const LEARNING_SCHEMA: Schema = obj({
 });
 
 export async function analyzeArticle(title: string, text: string): Promise<Learning> {
-  return json<Learning>(ANALYZE_SYS, `제목: ${title}\n\n원문:\n${text.slice(0, 14000)}`, LEARNING_SCHEMA, 8192);
+  return json<Learning>(ANALYZE_SYS, `제목: ${title}\n\n원문:\n${text}`, LEARNING_SCHEMA, 8192);
 }
 
 /* ───────────── "더 들어가 볼까요?" 1단계 ───────────── */
@@ -139,15 +154,17 @@ const GUIDE_SCHEMA: Schema = obj({
   },
 });
 
+/**
+ * 1단계 입력 — 글 끝까지 모든 블록을 넣는다(블록당 앞 300자).
+ * 예전엔 블록당 140자 · 전체 5,000자에서 끊어 80건 중 51건이 뒤쪽 블록을 못 봤다.
+ * 소제목은 짧아도 글의 뼈대라 넣고, 그 밖에 15자 미만(이미지 캡션 조각·"감사합니다" 등)은 뺀다.
+ */
+export const GUIDE_BLOCK_CHARS = 300;
+export function guideInputBlocks(blocks: Block[]): Block[] {
+  return blocks.filter((b) => b.heading ? b.text.length > 0 : b.text.length >= 15);
+}
 function numberedHeads(title: string, blocks: Block[]): string {
-  let budget = 5000;
-  const lines: string[] = [];
-  for (const b of blocks) {
-    const line = `[${b.n}] ${b.text.slice(0, 140)}`;
-    if (budget - line.length < 0) break;
-    budget -= line.length;
-    lines.push(line);
-  }
+  const lines = guideInputBlocks(blocks).map((b) => `[${b.n}] ${b.heading ? "## " : ""}${b.text.slice(0, GUIDE_BLOCK_CHARS)}`);
   return `제목: ${title}\n\n${lines.join("\n")}`;
 }
 

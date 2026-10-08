@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { ArticleCard } from "@/components/common/ArticleCard";
+import { ReadFilter } from "@/components/common/ReadState";
 import { listArticles } from "@/core/shared/db";
 import { articlesForTech, cls, techKeywords, techNames } from "@/core/3-place/home";
 import { EXPERIENCE_META, EXPERIENCES, TECH_DESC, TECH_LABEL, techBySlug, techSlug } from "@/core/2-classify/taxonomy";
@@ -14,7 +15,7 @@ export default async function TechPage({ params, searchParams }: PageProps<"/tec
   const sp = await searchParams;
   const name = typeof sp.k === "string" ? sp.k : null;
 
-  const all = listArticles("included");
+  const all = await listArticles("included");
   const mapped = articlesForTech(all, tech);
   const names = techNames(mapped);
   const rows = name ? mapped.filter((a) => a.learning?.technology.some((t) => t.name.trim() === name)) : mapped;
@@ -47,7 +48,7 @@ export default async function TechPage({ params, searchParams }: PageProps<"/tec
                   href={`/experiences/${EXPERIENCE_META[e.key].slug}`}
                   className="rounded-full bg-brand-soft px-3 py-1 text-sm font-medium text-brand hover:brightness-95"
                 >
-                  {EXPERIENCE_META[e.key].emoji} {EXPERIENCE_META[e.key].label} {e.count}
+                  {EXPERIENCE_META[e.key].short} {e.count}
                 </Link>
               ))}
             </div>
@@ -85,11 +86,17 @@ export default async function TechPage({ params, searchParams }: PageProps<"/tec
         </div>
       )}
 
-      <div className="mt-5 grid gap-3 md:grid-cols-2">
-        {rows.map((a) => (
-          <ArticleCard key={a.id} a={a} />
-        ))}
-      </div>
+      {rows.length > 0 && (
+        <div className="mt-5">
+          <ReadFilter ids={rows.map((a) => a.id)}>
+            <div className="grid gap-3 md:grid-cols-2">
+              {rows.map((a) => (
+                <ArticleCard key={a.id} a={a} />
+              ))}
+            </div>
+          </ReadFilter>
+        </div>
+      )}
       {rows.length === 0 && (
         <p className="mt-6 rounded-2xl border border-dashed border-line bg-surface p-8 text-center text-ink-3">
           이 키워드로 묶인 글이 아직 없어요.

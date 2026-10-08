@@ -23,8 +23,11 @@ import type { Classification, ReadingGuide, SectionMapping } from "../shared/typ
  * v1: 첫 분류
  * v2: 변경 전 행동 먼저, execution_burden 은 마지막 선택지, 사내·사용자 동일 취급
  * v3: "더 들어가 볼까요?" 칸(problem·paras·outcome)을 근거로 칸별 매핑 → 코드가 대표·보조 경험과 적합도를 정한다
+ * v4: 칸을 보기 전에 글 단위로 "제품이나 업무 도구가 실제로 바뀌었나"를 먼저 묻는다.
+ *     v3 프롬프트에서 v2 의 "억지로 고르지 마라" 규칙이 빠져 문화·마케팅·행사 글이 경험으로 묶였다(회귀) — 그 규칙을 되살린다.
+ *     가이드도 원문 끝까지 읽고 다시 만든다(입력 제한 제거).
  */
-export const CLASSIFY_VERSION = 3;
+export const CLASSIFY_VERSION = 4;
 
 /* ───────────── 프롬프트 ───────────── */
 
@@ -192,7 +195,7 @@ export async function classifyExperience(
   html: string,
   log: (m: string) => void = () => {},
 ): Promise<{ classification: Classification; cardHeadline: string | null }> {
-  const input = `제목: ${title}\n\n원문:\n${text.slice(0, 12000)}`;
+  const input = `제목: ${title}\n\n원문:\n${text}`;
   let raw = await json<Raw>(CLASSIFY_SYS, input, CLASSIFY_SCHEMA, 3000);
   let problem = headlineProblem(raw.cardHeadline ?? "", text);
   if (problem) {
@@ -219,6 +222,17 @@ const SECTION_SYS = `너는 테크 블로그 글을 "사람이 덜게 된 부담
 입력은 이 글을 이미 정리한 "읽기 가이드"다 — 리드와, 글이 다룬 국면마다 하나씩인 칸(질문·문제·해결·결말).
 원문 대신 이 칸들을 근거로 판단한다. 반드시 JSON 하나만 출력한다.
 
+0) 칸을 보기 전에 **글 전체**에 대해 먼저 정한다.
+   - change: 이 글에서 **실제로 바뀐 제품·서비스·업무 도구**를 한 문장으로. 무엇이 바뀌어 누가 무엇을 덜 하게 됐는지.
+     그런 변화가 없으면 빈 문자열.
+   - hasChange: change 가 있으면 true. ⚠️ 억지로 true 로 만들지 마라. 아래 글은 false 다:
+     · 조직 문화·채용·온보딩·팀 운영 방식·행사 후기·회고·컨퍼런스 참관기
+     · 마케팅·브랜딩·캠페인 소개, 기술 소식 모음, 기술 개념 설명
+     · 코드 구조 개선·리팩터링·용량 줄이기·성능 튜닝처럼 **사람이 무엇을 덜 하게 됐는지** 글에 없는 글
+     · "서버가 빨라졌다"는 있지만 그 빨라짐으로 **누가 기다리지 않게 됐는지** 글에 없는 글
+     사내 개발자·운영자가 쓰는 도구가 바뀌어 그들의 일이 줄었다면 그것도 변화다(true).
+   hasChange 가 false 면 1)의 모든 칸 burden 을 null 로 두고, 6) articleType 을 반드시 고른다.
+
 1) sections — **칸마다 하나씩**, 준 칸을 전부. 각 칸을 아래 **경험 사슬** 세 고리로 읽는다.
    ① subject + difficulty: **누가**(사람·팀, 또는 기술적 문제 자체) **어떤 어려움**을 겪었나.
       기술 내부 문제도 어려움이다. 예) subject "장애 알림 시스템", difficulty "하나의 장애가 수십 개 알림으로 쪼개져 도착함"
@@ -232,6 +246,7 @@ ${burdenGuide}
      판단 순서: ③의 "자동화했다·도구를 만들었다"는 해결 방식이다. 고르는 기준은 ②(해결 **전의** 부담)다.
      time / search / decision / input / context / monitoring 중 맞는 게 있으면 그걸 고르고,
      execution_burden 은 여섯이 모두 안 맞고 사람이 하던 **여러 단계의 작업 절차**가 통째로 사라졌을 때만.
+     ⚠️ 억지로 고르지 마라. 그 칸이 기술 개념 설명·배경 소개·회고·소감이면 null 이다.
 2) beneficiary — 이 글에서 부담을 덜게 된 주된 사람. 최종 사용자가 겪는 변화가 나오면 END_USER 를 먼저.
    END_USER(고객·사용자·입점 사장님·판매자 등 회사 바깥) / OPERATOR(개발자가 아닌 회사 안 사람) / DEVELOPER(개발자·QA·SRE)
 3) technology — 이 글에서 쓴 기술을 한 문장으로.
@@ -252,7 +267,10 @@ ${ppGuide}
    첫 문장 = 무엇이 문제였나, 둘째 문장 = 어떻게 풀었고 무엇이 달라졌나. 같은 규칙(쉬운 말, 개발 용어 금지, 숫자는 가이드에 있는 것만).
    좋은 예: "매장 위치를 주소로만 잡아서 고객이 실제 줄 서는 곳과 달랐어요. 매장이 접수 위치를 직접 정하게 바꿔 헛걸음을 줄였어요."`;
 
+// 키 순서 = 생성 순서. 글 단위 판단(change → hasChange)을 칸 매핑보다 먼저 쓰게 한다
 const SECTION_SCHEMA: Schema = obj({
+  change: { type: Type.STRING },
+  hasChange: { type: Type.BOOLEAN },
   sections: {
     type: Type.ARRAY,
     minItems: "1",
@@ -276,6 +294,8 @@ const SECTION_SCHEMA: Schema = obj({
 });
 
 type SectionRaw = {
+  change: string;
+  hasChange: boolean;
   problemTitle: string;
   problemSummary: string;
   sections: Omit<SectionMapping, "result">[];
@@ -325,6 +345,9 @@ export function gateFromSections(
   const notes: string[] = [];
   const review: string[] = [];
   const byN = new Map(raw.sections.map((s) => [s.n, s]));
+  // v4 글 단위 확인 — 제품·업무 도구 변화가 없는 글은 칸에서 부담을 골랐어도 경험으로 묶지 않는다
+  const noChange = raw.hasChange === false;
+  if (noChange) notes.push("제품·업무 도구 변화 없음 → 해당 없음");
 
   const sourceText = blocks.map((b) => b.text).join("\n");
   const sections: SectionMapping[] = guide.sections.map((g, i) => {
@@ -336,7 +359,7 @@ export function gateFromSections(
     const improvement = (r?.improvement ?? "").trim();
     // 경험 사슬 ①②③ 이 모두 있어야 경험이다
     const chain = !!(subject && difficulty && burdenText && improvement);
-    const burden = chain && BURDENS.includes(r?.burden as Burden) ? (r!.burden as Burden) : null;
+    const burden = !noChange && chain && BURDENS.includes(r?.burden as Burden) ? (r!.burden as Burden) : null;
     const result = isRealResult(g.outcome, sourceText);
     if (burden) {
       const hits = BURDENS.filter((b) => BURDEN_WORDS[b].test(`${g.problem} ${burdenText}`));
@@ -383,7 +406,7 @@ export function gateFromSections(
       version: CLASSIFY_VERSION,
       facts: {
         problem: guide.lead.why || guide.lead.what,
-        change: guide.lead.how || guide.lead.what,
+        change: raw.change?.trim() || guide.lead.how || guide.lead.what,
         technology: raw.technology,
         result: guide.lead.soWhat || "원문에 없음",
       },
