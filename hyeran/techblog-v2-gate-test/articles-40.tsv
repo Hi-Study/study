@@ -1,0 +1,41 @@
+id	group	title	url	site_gemini_flash_lite	sonnet_current	haiku_current	haiku_structured	haiku_q1	haiku_q2
+2	both_included	키워봐요 적금 다람쥐 캐릭터	https://toss.tech/article/chipmunk	1	1	1	1	product	customer
+8	both_included	전자계약서 화면 개편 AI 활용	https://techblog.woowahan.com/27604/	1	1	0	0	tech	developer
+9	disputed	React.lazy 실패 캐시 문제	https://techblog.woowahan.com/27330/	1	0	1	0	tech	developer
+10	disputed	사내 AI 전환 코치 구조	https://techblog.woowahan.com/27640/	1	0	0	0	culture	staff
+11	disputed	데이터 분석 에이전트 컨텍스트 설계	https://tech.kakao.com/posts/838	1	0	0	0	concept	none
+20	disputed	Python 멀티프로세싱과 Airflow	https://d2.naver.com/helloworld/4452165	1	0	0	0	concept	none
+21	disputed	동네걷기 오버레이 순서 제어	https://medium.com/daangn/%EB%8B%B9%EA%B7%BC-%EB%8F%99%EB%84%A4%EA%B1%B7%EA%B8%B0-%EC%9C%84%EC%97%90%EC%84%9C-%EB%8F%99%EC%8B%9C%EC%97%90-%EC%8F%9F%EC%95%84%EC%A7%80%EB%8A%94-%EC%98%A4%EB%B2%84%EB%A0%88%EC%9D%B4%EB%93%A4%EC%9D%84-%EC%9A%B0%EC%95%84%ED%95%98%EA%B2%8C-%EC%A0%9C%EC%96%B4%ED%95%98%EA%B8%B0-097551289b2a	1	0	1	0	tech	developer
+30	disputed	LLM Wiki 코드 기반 SSOT	https://techblog.lycorp.co.jp/ko/llm-wiki-code-driven-knowledge-ssot	1	0	1	0	tech	developer
+32	disputed	뱅크샐러드 낙관적 락 정합성	https://blog.banksalad.com/tech/banksalad-optimistic-lock/	1	0	1	0	tech	customer
+33	disputed	React+Lottie 캐릭터 커스터마이징	https://blog.banksalad.com/tech/banksalad-react-lottie/	1	0	0	0	tech	developer
+37	disputed	LLM Judge 설계 팁	https://hyperconnect.github.io/2026/04/22/llm-as-a-judge-for-explanation-quality.html	1	0	0	0	tech	staff
+38	disputed	온디바이스 얼굴식별 성능 최적화	https://hyperconnect.github.io/2026/01/23/On-device-Face-Verification-Pipeline-Optimization.html	1	0	0	0	tech	none
+39	both_included	비즈니스 문제를 AI 문제로 완화	https://hyperconnect.github.io/2026/01/12/how-to-relax-a-business-problem.html	1	1	1	0	product	none
+43	both_included	Retail Platform QA 자동화	https://techblog.musinsa.com/retail-platform-qa-%EC%9E%90%EB%8F%99%ED%99%94-%EC%97%AC%EC%A0%95-027ceba7fd6d	1	1	1	1	work	developer
+45	disputed	AI 에이전트용 시맨틱 레이어	https://techblog.musinsa.com/ai-native-%EC%A1%B0%EC%A7%81%EC%9D%80-%EB%8F%84%EB%A9%94%EC%9D%B8-%EC%A7%80%EC%8B%9D%EC%9D%84-%EC%96%B4%EB%96%BB%EA%B2%8C-%EA%B3%B5%EC%9C%A0%ED%95%98%EB%8A%94%EA%B0%80-f2e3de607df3	1	0	0	0	tech	none
+49	disputed	항공 프론트엔드 구축기 10/10	https://techblog.gccompany.co.kr/%ED%95%AD%EA%B3%B5-%ED%94%84%EB%A1%A0%ED%8A%B8%EC%97%94%EB%93%9C-%EA%B5%AC%EC%B6%95%EA%B8%B0-10-10-%ED%8F%B4%EB%8D%94-%EC%9D%B4%EB%A6%84-%EC%95%9E%EC%9D%98-%EA%B8%B0%ED%98%B8-%ED%95%98%EB%82%98-c74c85a0e3e0	1	0	0	0	tech	developer
+50	disputed	항공 FE 구축기 9편 상태관리	https://techblog.gccompany.co.kr/%ED%95%AD%EA%B3%B5-%ED%94%84%EB%A1%A0%ED%8A%B8%EC%97%94%EB%93%9C-%EA%B5%AC%EC%B6%95%EA%B8%B0-9-10-%EC%93%B0%EC%9E%90%EA%B3%A0-%ED%95%B4-%EB%86%93%EA%B3%A0-%EC%95%88-%EC%8D%BC%EC%8A%B5%EB%8B%88%EB%8B%A4-9cbddcc2d1b2	1	0	0	0	tech	developer
+51	disputed	iOS 광고 트래킹 요청 검증	https://dev.gmarket.com/119	1	0	0	0	tech	developer
+54	disputed	상품 상세 실시간 조회자 수 DB 비교	https://dev.gmarket.com/116	1	0	0	0	tech	none
+55	disputed	여행 플랫폼 API 연동 노하우	https://dev.gmarket.com/115	1	0	1	0	tech	none
+146	both_included	모두의주차장 parking-brain 지식그래프	https://tech.socar.kr/dev/2026/07/27/parking-brain-1	1	1	1	0	tech	developer
+149	disputed	쏘카프레임 2.0 컴포넌트·패키지·LLM	https://tech.socar.kr/fe/2026/02/25/socar-frame2-web-part2	1	0	0	0	tech	developer
+150	both_included	쏘카프레임 2.0 디자인시스템 설계·운영	https://tech.socar.kr/fe/2026/02/24/socar-frame2-web	1	1	1	1	work	staff
+160	disputed	오늘의집 Serving Platform 디버깅 UI(HTMX)	https://www.bucketplace.com/post/2026-01-23-%EC%98%A4%EB%8A%98%EC%9D%98%EC%A7%91-serving-platform%EC%9D%84-%ED%86%B5%ED%95%B4-%EB%B9%84%ED%9A%A8%EC%9C%A8%EC%84%B1-%ED%95%B4%EC%86%8C%ED%95%98%EA%B8%B0-2-%EB%A1%9C%EC%A7%81%EC%9D%98-%EC%8B%9C%EA%B0%81%ED%99%94/	1	0	0	0	tech	developer
+161	disputed	컬리 LLM Wiki+RAG 도메인 AI	https://helloworld.kurly.com/blog/2026-delivery-domain-rag/	1	0	0	0	tech	developer
+163	disputed	컬리 개발팀장 클로드코드 하루 재설계	https://helloworld.kurly.com/blog/claude-code-redesign-my-day/	1	0	0	1	work	developer
+164	disputed	컬리 AI 오케스트레이션 2편	https://helloworld.kurly.com/blog/ai-orchestration-2/	1	0	0	0	tech	developer
+165	disputed	컬리 AI 오케스트레이션 1편	https://helloworld.kurly.com/blog/ai-orchestration-1/	1	0	0	1	work	developer
+171	disputed	화해 Vertex AI Matching Engine	https://blog.hwahae.co.kr/all/tech/12607	1	0	0	0	tech	developer
+172	disputed	화해 코드리뷰 문화 만들기	https://blog.hwahae.co.kr/all/tech/12534	1	0	0	1	work	developer
+175	disputed	화해 메이크업 밴드 디자이너 이야기	https://blog.hwahae.co.kr/all/tech/12368	1	0	1	1	work	staff
+180	both_included	올리브영 LA 매장 재고조사 PDA	https://oliveyoung.tech/2026-09-14/global-store-new-way-of-working/	1	1	1	1	work	staff
+221	both_included	Python GC와 멀티프로세싱 메모리 문제	https://d2.naver.com/helloworld/4149925	1	1	0	0	tech	developer
+13	both_excluded	if(kakao)26 네트워킹 안내	https://tech.kakao.com/posts/836	0	0	0	0	event	none
+14	both_excluded	if(kakao)26 둘째 날 세션 소개	https://tech.kakao.com/posts/835	0	0	0	0	event	none
+15	both_excluded	if(kakao)26 첫째 날 세션 소개	https://tech.kakao.com/posts/833	0	0	0	0	event	none
+18	both_excluded	FE News 9월호	https://d2.naver.com/news/7360495	0	0	0	0	concept	none
+19	both_excluded	네이버 개발자경험팀 인터뷰	https://d2.naver.com/news/3092933	0	0	0	0	culture	none
+152	both_excluded	ML 엔지니어 밋업 신청 안내	https://tech.channel.io/kr/articles/2e5b1191	0	0	0	0	event	none
+203	both_excluded	리브랜딩 비하인드 5편 별책부록	https://blog.gangnamunni.com/post/rebranding-2026-5-behind	0	0	0	0	culture	staff
