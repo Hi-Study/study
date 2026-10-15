@@ -49,7 +49,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
   return (
     <article className="mx-auto max-w-[720px]">
       <MarkRead id={a.id} />
-      {/* 읽는 순서: 어느 회사 글인지 → 원제목 → 핵심 카피 → AI 정리 안내 → 읽기 전에 알아두면 좋은 개념 → 한눈에 보기 · 기획 포인트 → 원문에서 보기 */}
+      {/* 읽는 순서: 어느 회사 글인지 → 원제목 → 핵심 카피 → AI 정리 안내 → 한눈에 보기 · 기획 포인트 → 읽기 전에 알아두면 좋은 개념 → 원문에서 보기 */}
       <div className="flex items-center justify-between gap-3">
         <a href={c.blogUrl || a.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-2.5">
           <span
@@ -95,6 +95,13 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
             <span className="text-brand">✦</span> AI가 원문을 분석해서 정리했어요 · {l.readingTime}분
           </p>
         </>
+      )}
+
+      {/* 한눈에 보기 · 기획 포인트는 늘 보이고, 그 아래 "더 들어가 볼까요?" 칸만 SHOW_ANALYSIS 를 따른다 */}
+      {a.guide && (
+        <div className="mt-8">
+          <ReadingDigest guide={a.guide} quotes={guideQuotes} sourceUrl={a.url} showSections={SHOW_ANALYSIS} />
+        </div>
       )}
 
       {/* "원문에서 짚어 볼 문장"과 같은 카드 형식 — 칩(개념 이름) → 이게 뭐야? → 이 글에서 왜 나와? */}
@@ -165,12 +172,6 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
         </>
       )}
 
-      {/* 한눈에 보기 · 기획 포인트는 늘 보이고, 그 아래 "더 들어가 볼까요?" 칸만 SHOW_ANALYSIS 를 따른다 */}
-      {a.guide && (
-        <div className="mt-8">
-          <ReadingDigest guide={a.guide} quotes={guideQuotes} sourceUrl={a.url} showSections={SHOW_ANALYSIS} />
-        </div>
-      )}
 
       {keyLines.length > 0 && (
         <section className="mt-10">
@@ -194,16 +195,17 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
         </section>
       )}
 
-      {/* 원문에서 보기 CTA — 홈 "읽으러 가기"와 같은 규격. 스크롤하는 동안 하단 탭바 위에 붙어 있다가 글 끝에서 제자리에 놓인다 */}
-      <div className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-20 mt-6 bg-linear-to-t from-bg from-75% to-bg/0 pb-3 pt-10">
-        <p className="text-center text-xs text-ink-3">전체 글은 {c.name} 기술 블로그에서 읽어요</p>
+      {/* 원문에서 보기 CTA — 스크롤하는 동안 하단 탭바(약 57px) 바로 위에 붙어 있다가 글 끝에서 제자리에 놓인다.
+          탭바 높이가 기기마다 조금 달라도 사이로 본문이 비치지 않게 아래 12px 를 배경색 그림자로 채운다(아래 링크의 mt-3 만큼) */}
+      <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 mt-6 bg-linear-to-t from-bg from-60% to-bg/0 pb-2 pt-6 shadow-[0_12px_0_0_var(--bg)]">
         <a
           href={a.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-2 flex h-14 w-full items-center justify-center rounded-full bg-brand text-[17px] font-bold text-white transition hover:brightness-110"
+          className="flex flex-col items-center justify-center gap-0.5 rounded-2xl bg-ink py-4 text-white transition hover:brightness-125"
         >
-          원문에서 보기 ↗
+          <span className="font-bold">원문에서 보기 ↗</span>
+          <span className="text-xs text-white/70">전체 글은 {c.name} 기술 블로그에서 읽어요</span>
         </a>
       </div>
       <Link href="/feed" className="mt-3 block text-center text-sm text-ink-3">
