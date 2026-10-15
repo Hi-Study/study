@@ -15,6 +15,12 @@ import { cls } from "@/core/3-place/home";
 import { splitBlocks } from "@/core/0-collect/content";
 import { getArticle } from "@/core/shared/db";
 
+/**
+ * 2026-10-15 상세 화면 정리 — 핵심 내용 · 결론부터 말하면 · 기획자 관점 보기 · 더 들어가 볼까요? · 원문에서 짚어 볼 문장은
+ * 화면에서 숨겨 둔다. 코드와 데이터는 그대로라 true 로 바꾸면 다시 보인다.
+ */
+const SHOW_ANALYSIS = false;
+
 export default async function ArticlePage({ params }: PageProps<"/articles/[id]">) {
   await connection();
   const { id } = await params;
@@ -28,21 +34,22 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
   const experience = k?.experience && k.fit !== "NONE" ? EXPERIENCE_META[k.experience].short : null;
 
   // 원문 전체는 싣지 않는다(저작권) — 서버에서 짧은 발췌만 만들어 화면으로 보낸다. 원문은 "원문에서 보기"로 원래 블로그에서 읽는다.
-  const anns = l ? collectAnnotations(l) : [];
+  const anns = l && SHOW_ANALYSIS ? collectAnnotations(l) : [];
   // AI 가 고른 핵심 문장 중 원문에 실제로 있는 것만 인용으로 보여 준다(없는 문장은 인용 부호 없이 설명만)
   const keyLines = anns.map((x) => ({ ...x, quoted: !!x.excerpt && excerptExists(a.contentHtml, x.excerpt) }));
-  const blocks = splitBlocks(a.contentHtml);
+  const blocks = SHOW_ANALYSIS ? splitBlocks(a.contentHtml) : [];
   const guideQuotes = (a.guide?.sections ?? []).map((s) =>
     s.blocks
       .map((n) => blocks[n - 1])
       .filter((b) => b && !b.heading && b.text.length >= 25)
       .map((b) => shortQuote(b.text)),
   );
+  const concepts = l?.concepts ?? [];
 
   return (
     <article className="mx-auto max-w-[720px]">
       <MarkRead id={a.id} />
-      {/* 읽는 순서: 어느 회사 글인지 → 핵심 카피 → 원제목 → AI 정리 안내 → 핵심 내용 → 결론(BEFORE → AFTER) */}
+      {/* 읽는 순서: 어느 회사 글인지 → 원제목 → 핵심 카피 → AI 정리 안내 → 읽기 전에 알아두면 좋은 개념 → 원문에서 보기 */}
       <div className="flex items-center justify-between gap-3">
         <a href={c.blogUrl || a.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-2.5">
           <span
@@ -87,7 +94,36 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
           <p className="mt-4 flex items-center gap-1.5 text-sm text-ink-3">
             <span className="text-brand">✦</span> AI가 원문을 분석해서 정리했어요 · {l.readingTime}분
           </p>
+        </>
+      )}
 
+      {/* "원문에서 짚어 볼 문장"과 같은 카드 형식 — 칩(개념 이름) → 이게 뭐야? → 이 글에서 왜 나와? */}
+      {concepts.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-xl font-bold">읽기 전에 알아두면 좋은 개념</h2>
+          <p className="mt-1 text-sm text-ink-3">이 글을 따라가는 데 꼭 필요한 개념만 골랐어요.</p>
+          <ul className="mt-4 space-y-3">
+            {concepts.map((x) => (
+              <li key={x.term} className="rounded-2xl border border-line bg-surface p-4">
+                <span className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${KIND_LABEL.technology.chip}`}>{x.term}</span>
+                <dl className="mt-3 space-y-2.5">
+                  <div>
+                    <dt className="text-xs font-bold text-ink-3">이게 뭐야?</dt>
+                    <dd className="mt-0.5 text-[15px] leading-relaxed text-ink">{x.what}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-bold text-ink-3">이 글에서 왜 나와?</dt>
+                    <dd className="mt-0.5 text-sm leading-relaxed text-ink-2">{x.why}</dd>
+                  </div>
+                </dl>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {l && SHOW_ANALYSIS && (
+        <>
           <section className="mt-7 border-t border-line pt-6">
             <h2 className="text-sm font-bold text-ink-3">핵심 내용</h2>
             <ul className="mt-2.5 space-y-1.5">
@@ -129,7 +165,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
         </>
       )}
 
-      {a.guide && (
+      {a.guide && SHOW_ANALYSIS && (
         <div className="mt-8">
           <ReadingDigest guide={a.guide} quotes={guideQuotes} sourceUrl={a.url} />
         </div>
@@ -157,15 +193,18 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
         </section>
       )}
 
-      <a
-        href={a.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-10 flex flex-col items-center justify-center gap-0.5 rounded-2xl bg-ink py-4 text-white transition hover:brightness-125"
-      >
-        <span className="font-bold">원문에서 보기 ↗</span>
-        <span className="text-xs text-white/70">전체 글은 {c.name} 기술 블로그에서 읽어요</span>
-      </a>
+      {/* 원문에서 보기 CTA — 홈 "읽으러 가기"와 같은 규격. 스크롤하는 동안 하단 탭바 위에 붙어 있다가 글 끝에서 제자리에 놓인다 */}
+      <div className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-20 mt-6 bg-linear-to-t from-bg from-75% to-bg/0 pb-3 pt-10">
+        <p className="text-center text-xs text-ink-3">전체 글은 {c.name} 기술 블로그에서 읽어요</p>
+        <a
+          href={a.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 flex h-14 w-full items-center justify-center rounded-full bg-brand text-[17px] font-bold text-white transition hover:brightness-110"
+        >
+          원문에서 보기 ↗
+        </a>
+      </div>
       <Link href="/feed" className="mt-3 block text-center text-sm text-ink-3">
         ← 피드로 돌아가기
       </Link>

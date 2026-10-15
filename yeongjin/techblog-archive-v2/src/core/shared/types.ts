@@ -96,6 +96,17 @@ export interface Learning {
     originalExcerpt: string;
   }[];
   discussionQuestions: { question: string; options: string[] }[];
+  /** "읽기 전에 알아두면 좋은 개념" — 따로 만든다(없는 글은 npm run backfill-concepts) */
+  concepts?: Concept[];
+}
+
+/** 글을 이해하는 데 실제로 필요한 개념 하나 — 사전식 정의가 아니라 이 글 안에서의 쓰임 */
+export interface Concept {
+  term: string;
+  /** 이게 뭐야? — 비전문가가 이해할 수 있는 말 */
+  what: string;
+  /** 이 글에서 왜 나와? — 이 글에서 맡은 역할 */
+  why: string;
 }
 
 /** "더 들어가 볼까요?" — articles.reading_guide_json */

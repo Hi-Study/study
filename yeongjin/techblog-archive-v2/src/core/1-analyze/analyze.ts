@@ -1,11 +1,11 @@
 /**
- * 1단계(배제 판정) · 상세 분석 · 2단계("더 들어가 볼까요?" 칸 만들기) 프롬프트.
+ * 1단계(배제 판정) · 상세 분석 · 읽기 전 개념 · 2단계("더 들어가 볼까요?" 칸 만들기) 프롬프트.
  * 기준 문서: docs/01_분류기준.md 1~2단계, docs/참고/더-들어가-볼까요-기준.md
  */
 import { Type, type Schema } from "@google/genai";
 import { json, obj, str, strArr } from "../shared/ai";
 import { splitBlocks, type Block } from "../0-collect/content";
-import type { Learning, ReadingGuide } from "../shared/types";
+import type { Concept, Learning, ReadingGuide } from "../shared/types";
 import { gateGuide } from "./guide-gate";
 
 /* ───────────── 1차 게이트 (저비용) ───────────── */
@@ -96,6 +96,40 @@ const LEARNING_SCHEMA: Schema = obj({
 
 export async function analyzeArticle(title: string, text: string): Promise<Learning> {
   return json<Learning>(ANALYZE_SYS, `제목: ${title}\n\n원문:\n${text}`, LEARNING_SCHEMA, 8192);
+}
+
+/* ───────────── 읽기 전에 알아두면 좋은 개념 ───────────── */
+
+const CONCEPTS_SYS = `너는 기술 블로그 글을 **개발을 전혀 모르는 사람**(기획자·디자이너·마케터)이 읽기 전에
+꼭 알아야 할 개념을 골라 풀어 주는 한국어 편집자다. 모든 문장은 존댓말(~해요).
+- concepts: **이 글을 이해하는 데 실제로 필요한 개념만** 2~4개. 글의 뼈대가 되는 순서로 놓는다.
+  · 기준은 하나다 — **"이걸 모르면 이 글의 이야기를 따라갈 수 없는가?"**
+    글에 한 번 스쳐 가는 단어, 몰라도 문맥으로 읽히는 단어, 회사·팀·서비스 이름은 고르지 마라.
+    직무 이름(PO·DA 등)이나 사내 모임 이름도 그게 없으면 이야기가 안 이어질 때만 고른다.
+  · term: 글에 나온 이름 그대로(영어면 영어 그대로). 짧게.
+  · what: **"이게 뭐야?"** — 비전문가가 바로 알아듣는 말로 1~2문장.
+    ⚠️ 사전식 정의를 쓰지 마라. "~하는 기술이에요", "~를 관리하는 시스템이에요"처럼 다른 전문 용어로
+    다시 정의하면 읽는 사람은 그 단어에서 또 막힌다. **일상에서 아는 것에 빗대거나, 그게 실제로 무슨 일을 하는지**로 쓴다.
+    예) "Blue-Green 배포" — ✗ "두 개의 환경을 두고 트래픽을 전환하는 배포 전략이에요."
+        ✓ "새 버전을 옆에 따로 다 차려 놓고, 준비가 끝나면 손님 안내만 한 번에 새 쪽으로 돌리는 방식이에요."
+    ⚠️ **뜻을 지어내지 마라.** 원문이 뜻을 풀어 주지 않는 **약어**(CoS 같은 대문자 줄임말)는 고르지 마라 —
+    문맥으로 짐작한 뜻은 틀리기 쉽다. 원문이 뜻을 풀어 주지 않는 제품·기능 이름은
+    원문에 나온 쓰임만으로 설명한다("~라는 이름의 기능이에요. ~할 때 쓰여요"). 쓰임도 알 수 없으면 고르지 마라.
+  · why: **"이 글에서 왜 나와?"** — 이 개념이 **이 글에서** 어떤 역할을 하는지 1~2문장.
+    글이 겪은 문제의 원인인지, 고른 해결책인지, 비교한 대안인지를 이 글의 이야기로 쓴다.
+    ⚠️ what 을 다시 풀어 쓰지 마라. 어느 글에나 붙일 수 있는 일반론("많은 회사가 써요", "중요한 역할을 해요")도 쓰지 마라.
+    ⚠️ "이 글에서"로 시작하지 마라 — 화면 제목이 이미 "이 글에서 왜 나와?"다. 역할부터 바로 쓴다.
+숫자·고유명사는 원문에 있는 것만 쓴다.`;
+
+const CONCEPTS_SCHEMA: Schema = obj({
+  concepts: { type: Type.ARRAY, minItems: "1", maxItems: "4", items: obj({ term: str(1), what: str(10), why: str(10) }) },
+});
+
+export async function buildConcepts(title: string, text: string): Promise<Concept[]> {
+  const r = await json<{ concepts: Concept[] }>(CONCEPTS_SYS, `제목: ${title}\n\n원문:\n${text}`, CONCEPTS_SCHEMA, 2048);
+  return (r.concepts ?? [])
+    .map((c) => ({ ...c, why: c.why?.replace(/^이\s*글에서(?:는)?\s*/, "") ?? "" })) // 화면 제목과 겹치는 앞머리
+    .filter((c) => c.term?.trim() && c.what?.trim() && c.why?.trim());
 }
 
 /* ───────────── "더 들어가 볼까요?" 1단계 ───────────── */

@@ -34,7 +34,7 @@ src/core/
 │   └─ thumbnail.ts      og:image → 본문 첫 이미지, 사이트 기본 이미지 걸러내기
 │
 ├─ 1-analyze/         ② 읽기            docs/01 · 1~2단계
-│   ├─ analyze.ts        배제 판정 · 상세 분석 · "더 들어가 볼까요?" 프롬프트
+│   ├─ analyze.ts        배제 판정 · 상세 분석 · 읽기 전 개념 · "더 들어가 볼까요?" 프롬프트
 │   ├─ guide-gate.ts     칸 코드 게이트 (질문형, 숫자 대조, 말투 …)
 │   └─ annotate.ts       상세 화면 원문 하이라이트
 │
@@ -61,7 +61,7 @@ src/app/              ⑤ 화면 — 주소가 곧 폴더
 │   tech/[slug]          기술 페이지      feed · search · my · excluded
 src/components/
 │   home/                홈 자리별 UI — 새 글 카드 롤링, 경험 카드, 문제 카드, 기술 키워드 탭
-│   article/             글 상세 UI — 원문·하이라이트, 기획자 관점 바텀시트, "더 들어가 볼까요?"
+│   article/             글 상세 UI — 기획자 관점 바텀시트, "더 들어가 볼까요?" (둘 다 지금은 숨김 — 상세 page.tsx 의 SHOW_ANALYSIS)
 │   common/              여러 화면이 같이 쓰는 것 — 글 카드, 탭바, 검색창, 마이 목록
 ```
 
@@ -84,6 +84,7 @@ src/components/
 | `npm run add-url -- <URL>` | RSS 에 없는 글 1건 추가 | 0~8 |
 | `npm run backfill-content` | 본문이 너무 짧게 저장된 글 다시 받기 | 0 |
 | `npm run backfill-thumbnails` | 썸네일 아직 안 찾은 글 | 0 |
+| `npm run backfill-concepts` | "읽기 전에 알아두면 좋은 개념"이 없는 포함 글 (`--ids=29,41` 다시 만들기 · `--dry` 저장 안 함) | 1 |
 | `npm run fetch-logos` | 회사 로고 받기 → `public/logos/` (상표라 저장소에 없음 — 처음 받으면 한 번 실행) | 0 |
 | **점검** `scripts/check/` | | |
 | `npm run report` | 회사별 수집·포함·제외·대기 + 제외 이유 (01 문서 "수집 결과" 표의 원본) | 0~1 |

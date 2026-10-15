@@ -5,7 +5,7 @@
  * 홈 배치(3-place)는 저장된 결과를 화면이 읽을 때 계산한다.
  */
 import { htmlToText } from "./0-collect/content";
-import { analyzeArticle, buildReadingGuide, gateArticle } from "./1-analyze/analyze";
+import { analyzeArticle, buildConcepts, buildReadingGuide, gateArticle } from "./1-analyze/analyze";
 import { classifyExperience, classifyFromGuide } from "./2-classify/classify";
 import { EXPERIENCE_META } from "./2-classify/taxonomy";
 import { hasGeminiKey } from "./shared/ai";
@@ -25,11 +25,22 @@ export async function classify(id: number, log: (m: string) => void) {
   }
   const learning = await analyzeArticle(a.title, text);
   log(`  + 포함: ${a.title}`);
+  await attachConcepts(learning, a.title, text, log);
   const guide = await buildReadingGuide(a.title, a.contentHtml, log);
   log(guide ? `    가이드 ${guide.sections.length}칸` : "    가이드 저장 안 함(게이트 탈락)");
   await attachClassification(learning, a.title, text, a.contentHtml, guide, log);
   await markIncluded(id, learning);
   await saveGuide(id, guide);
+}
+
+/** 읽기 전에 알아두면 좋은 개념 — 실패해도 글은 그대로 저장한다(화면에서 그 칸만 빠진다) */
+export async function attachConcepts(l: Learning, title: string, text: string, log: (m: string) => void) {
+  try {
+    l.concepts = await buildConcepts(title, text);
+    log(`    개념 ${l.concepts.length}개: ${l.concepts.map((c) => c.term).join(", ")}`);
+  } catch (e) {
+    log(`    · 개념 만들기 실패: ${(e as Error).message.slice(0, 200)}`);
+  }
 }
 
 /** 가이드가 있으면 칸 기준(v3), 없으면 원문 기준(v2)으로 경험을 분류한다 */
@@ -82,6 +93,7 @@ export async function rebuildIncluded(
   if (!a) return;
   const text = htmlToText(a.contentHtml);
   const learning = opts.reanalyze || !a.learning ? await analyzeArticle(a.title, text) : a.learning;
+  if (!learning.concepts?.length) await attachConcepts(learning, a.title, text, log);
   let guide = a.guide;
   if (opts.reguide || !guide) {
     const fresh = await buildReadingGuide(a.title, a.contentHtml, log);
