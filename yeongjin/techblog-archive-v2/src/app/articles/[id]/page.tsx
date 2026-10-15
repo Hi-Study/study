@@ -49,7 +49,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
   return (
     <article className="mx-auto max-w-[720px]">
       <MarkRead id={a.id} />
-      {/* 읽는 순서: 어느 회사 글인지 → 원제목 → 핵심 카피 → AI 정리 안내 → 한눈에 보기 · 기획 포인트 → 읽기 전에 알아두면 좋은 개념 → 원문에서 보기 */}
+      {/* 읽는 순서: 어느 회사 글인지 → 원제목 → 핵심 카피 → AI 정리 안내 → 경험 태그 → 한눈에 보기 · 기획 포인트 → 읽기 전에 알아두면 좋은 개념 → 원문에서 보기 */}
       <div className="flex items-center justify-between gap-3">
         <a href={c.blogUrl || a.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-2.5">
           <span
@@ -94,6 +94,12 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
           <p className="mt-4 flex items-center gap-1.5 text-sm text-ink-3">
             <span className="text-brand">✦</span> AI가 원문을 분석해서 정리했어요 · {l.readingTime}분
           </p>
+          {/* 경험 태그는 결론 영역을 숨겨도 늘 보이게 — 원래 BEFORE → AFTER 아래에 있던 칩 */}
+          {experience && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              <span className="rounded-full bg-brand-soft px-3 py-1 text-sm font-semibold text-brand">{experience}</span>
+            </div>
+          )}
         </>
       )}
 
@@ -159,11 +165,6 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
               <p className="text-xs font-bold tracking-wide text-[var(--exp-ink)]">AFTER</p>
               <p className="mt-1 leading-relaxed">{l.after}</p>
             </div>
-            {experience && (
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                <span className="rounded-full bg-brand-soft px-3 py-1 text-sm font-semibold text-brand">{experience}</span>
-              </div>
-            )}
           </section>
 
           <div className="mt-6">
@@ -202,11 +203,11 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
           href={a.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex flex-col items-center justify-center gap-0.5 rounded-2xl bg-ink py-4 text-white transition hover:brightness-125"
+          className="flex items-center justify-center rounded-2xl bg-ink py-4 font-bold text-white transition hover:brightness-125"
         >
-          <span className="font-bold">원문에서 보기 ↗</span>
-          <span className="text-xs text-white/70">전체 글은 {c.name} 기술 블로그에서 읽어요</span>
+          원문에서 보기 ↗
         </a>
+        <p className="mt-2 text-center text-xs text-ink-3">전체 글은 {c.name} 기술 블로그에서 읽어요</p>
       </div>
       <Link href="/feed" className="mt-3 block text-center text-sm text-ink-3">
         ← 피드로 돌아가기
