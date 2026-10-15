@@ -16,8 +16,18 @@ const LEAD_LABEL: [keyof ReadingGuide["lead"], string][] = [
   ["soWhat", "그래서 어떻게 됐대요?"],
 ];
 
-/** "더 들어가 볼까요?" — 한눈에(lead) · 기획 포인트 · 질문형 소제목 칸 */
-export function ReadingDigest({ guide, quotes: sectionQuotes, sourceUrl }: { guide: ReadingGuide; quotes: SectionQuotes; sourceUrl: string }) {
+/** "더 들어가 볼까요?" — 한눈에(lead) · 기획 포인트 · 질문형 소제목 칸. showSections=false 면 질문형 칸만 숨긴다 */
+export function ReadingDigest({
+  guide,
+  quotes: sectionQuotes,
+  sourceUrl,
+  showSections = true,
+}: {
+  guide: ReadingGuide;
+  quotes: SectionQuotes;
+  sourceUrl: string;
+  showSections?: boolean;
+}) {
   const [open, setOpen] = useState<number | null>(0);
   const [quotes, setQuotes] = useState<Record<number, boolean>>({});
   const terms = new Map(guide.terms.map((t) => [t.term, t.plain]));
@@ -49,6 +59,8 @@ export function ReadingDigest({ guide, quotes: sectionQuotes, sourceUrl }: { gui
         </div>
       )}
 
+      {showSections && (
+      <>
       <h2 className="mt-9 text-xl font-bold">더 들어가 볼까요?</h2>
       <p className="mt-1 text-sm text-ink-3">글이 이야기한 순서대로, 질문 하나에 국면 하나씩</p>
       <div className="mt-4 space-y-2.5">
@@ -140,6 +152,8 @@ export function ReadingDigest({ guide, quotes: sectionQuotes, sourceUrl }: { gui
           );
         })}
       </div>
+      </>
+      )}
     </section>
   );
 }

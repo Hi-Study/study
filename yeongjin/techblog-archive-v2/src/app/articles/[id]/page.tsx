@@ -17,7 +17,7 @@ import { getArticle } from "@/core/shared/db";
 
 /**
  * 2026-10-15 상세 화면 정리 — 핵심 내용 · 결론부터 말하면 · 기획자 관점 보기 · 더 들어가 볼까요? · 원문에서 짚어 볼 문장은
- * 화면에서 숨겨 둔다. 코드와 데이터는 그대로라 true 로 바꾸면 다시 보인다.
+ * 화면에서 숨겨 둔다(한눈에 보기 · 기획 포인트는 그대로 보인다). 코드와 데이터는 그대로라 true 로 바꾸면 다시 보인다.
  */
 const SHOW_ANALYSIS = false;
 
@@ -49,7 +49,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
   return (
     <article className="mx-auto max-w-[720px]">
       <MarkRead id={a.id} />
-      {/* 읽는 순서: 어느 회사 글인지 → 원제목 → 핵심 카피 → AI 정리 안내 → 읽기 전에 알아두면 좋은 개념 → 원문에서 보기 */}
+      {/* 읽는 순서: 어느 회사 글인지 → 원제목 → 핵심 카피 → AI 정리 안내 → 읽기 전에 알아두면 좋은 개념 → 한눈에 보기 · 기획 포인트 → 원문에서 보기 */}
       <div className="flex items-center justify-between gap-3">
         <a href={c.blogUrl || a.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-2.5">
           <span
@@ -165,9 +165,10 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
         </>
       )}
 
-      {a.guide && SHOW_ANALYSIS && (
+      {/* 한눈에 보기 · 기획 포인트는 늘 보이고, 그 아래 "더 들어가 볼까요?" 칸만 SHOW_ANALYSIS 를 따른다 */}
+      {a.guide && (
         <div className="mt-8">
-          <ReadingDigest guide={a.guide} quotes={guideQuotes} sourceUrl={a.url} />
+          <ReadingDigest guide={a.guide} quotes={guideQuotes} sourceUrl={a.url} showSections={SHOW_ANALYSIS} />
         </div>
       )}
 
