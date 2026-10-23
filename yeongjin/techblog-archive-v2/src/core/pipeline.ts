@@ -5,12 +5,13 @@
  * 홈 배치(3-place)는 저장된 결과를 화면이 읽을 때 계산한다.
  */
 import { htmlToText } from "./0-collect/content";
-import { analyzeArticle, buildConcepts, buildReadingGuide, gateArticle } from "./1-analyze/analyze";
+import { companyById } from "./0-collect/companies";
+import { analyzeArticle, buildDetail, buildReadingGuide, gateArticle } from "./1-analyze/analyze";
 import { classifyExperience, classifyFromGuide } from "./2-classify/classify";
 import { EXPERIENCE_META } from "./2-classify/taxonomy";
 import { hasGeminiKey } from "./shared/ai";
 import { getArticle, listArticles, markExcluded, markIncluded, saveGuide } from "./shared/db";
-import type { Learning, ReadingGuide } from "./shared/types";
+import type { ArticleRow, Learning, ReadingGuide } from "./shared/types";
 
 /** 1차 게이트 → 2차 상세 분석 → "더 들어가 볼까요?" → 가이드 칸 기준 경험 분류 */
 export async function classify(id: number, log: (m: string) => void) {
@@ -25,7 +26,7 @@ export async function classify(id: number, log: (m: string) => void) {
   }
   const learning = await analyzeArticle(a.title, text);
   log(`  + 포함: ${a.title}`);
-  await attachConcepts(learning, a.title, text, log);
+  await attachDetail(learning, a, text, log);
   const guide = await buildReadingGuide(a.title, a.contentHtml, log);
   log(guide ? `    가이드 ${guide.sections.length}칸` : "    가이드 저장 안 함(게이트 탈락)");
   await attachClassification(learning, a.title, text, a.contentHtml, guide, log);
@@ -33,13 +34,32 @@ export async function classify(id: number, log: (m: string) => void) {
   await saveGuide(id, guide);
 }
 
-/** 읽기 전에 알아두면 좋은 개념 — 실패해도 글은 그대로 저장한다(화면에서 그 칸만 빠진다) */
-export async function attachConcepts(l: Learning, title: string, text: string, log: (m: string) => void) {
+/**
+ * 글 상세 요약(한눈에 보기) · 읽기 전에 알아두면 좋은 개념 — hyeran/techblog-article-detail-prompt.md 기준.
+ * 실패하거나 게이트에서 두 번 떨어지면 예전 값을 그대로 둔다(화면은 가이드의 lead·points 로 대신한다).
+ * 하루 한도(PerDay)여도 글 처리는 막지 않는다 — "daily" 를 돌려주고, 멈출지는 부르는 쪽(백필 스크립트)이 정한다.
+ */
+export async function attachDetail(
+  l: Learning,
+  a: Pick<ArticleRow, "title" | "url" | "companyId">,
+  text: string,
+  log: (m: string) => void,
+): Promise<"ok" | "kept" | "daily"> {
   try {
-    l.concepts = await buildConcepts(title, text);
-    log(`    개념 ${l.concepts.length}개: ${l.concepts.map((c) => c.term).join(", ")}`);
+    const d = await buildDetail({ title: a.title, company: companyById(a.companyId).name, url: a.url, text }, log);
+    if (!d) {
+      log("    · 상세 요약 저장 안 함(게이트 두 번 탈락) → 예전 값 유지");
+      return "kept";
+    }
+    l.overview = d.overview;
+    l.concepts = d.concepts;
+    log(`    상세 요약 · 개념 ${d.concepts.length}개: ${d.concepts.map((c) => c.term).join(", ")}`);
+    return "ok";
   } catch (e) {
-    log(`    · 개념 만들기 실패: ${(e as Error).message.slice(0, 200)}`);
+    const msg = (e as Error).message;
+    const daily = /PerDay/.test(msg);
+    log(`    · 상세 요약 만들기 실패${daily ? "(하루 한도)" : ""}: ${msg.slice(0, 200)}`);
+    return daily ? "daily" : "kept";
   }
 }
 
@@ -93,7 +113,7 @@ export async function rebuildIncluded(
   if (!a) return;
   const text = htmlToText(a.contentHtml);
   const learning = opts.reanalyze || !a.learning ? await analyzeArticle(a.title, text) : a.learning;
-  if (!learning.concepts?.length) await attachConcepts(learning, a.title, text, log);
+  if (!learning.overview) await attachDetail(learning, a, text, log);
   let guide = a.guide;
   if (opts.reguide || !guide) {
     const fresh = await buildReadingGuide(a.title, a.contentHtml, log);

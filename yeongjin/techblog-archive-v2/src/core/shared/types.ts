@@ -96,8 +96,24 @@ export interface Learning {
     originalExcerpt: string;
   }[];
   discussionQuestions: { question: string; options: string[] }[];
-  /** "읽기 전에 알아두면 좋은 개념" — 따로 만든다(없는 글은 npm run backfill-concepts) */
+  /** 글 상세 "한눈에 보기" 요약 — 따로 만든다(없는 글은 npm run backfill-detail). 없으면 화면은 가이드의 lead·points 를 쓴다 */
+  overview?: Overview;
+  /** "읽기 전에 알아두면 좋은 개념" — overview 와 한 번에 만든다 */
   concepts?: Concept[];
+}
+
+/** 글 상세 요약 — hyeran/techblog-article-detail-prompt.md 의 summary */
+export interface Overview {
+  /** 무슨 이야기야? */
+  what: string;
+  /** 왜 했어? */
+  why: string;
+  /** 어떻게 했어? */
+  actions: string;
+  /** 어떤 결과가 있었어? */
+  results: string;
+  /** 그래서 뭘 배울 수 있어? — 최대 3개 */
+  takeaways: string[];
 }
 
 /** 글을 이해하는 데 실제로 필요한 개념 하나 — 사전식 정의가 아니라 이 글 안에서의 쓰임 */

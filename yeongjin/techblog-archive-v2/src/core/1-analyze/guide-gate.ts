@@ -40,7 +40,7 @@ export function overlap(a: string, b: string): number {
   return hit / Math.min(A.size, B.size);
 }
 
-function numbersIn(s: string): string[] {
+export function numbersIn(s: string): string[] {
   return s.match(/\d+(?:[.,]\d+)*/g) ?? [];
 }
 
@@ -48,7 +48,7 @@ function numbersOk(s: string, source: string): boolean {
   return numbersIn(s).every((n) => source.includes(n));
 }
 
-function sentences(s: string): string[] {
+export function sentences(s: string): string[] {
   return s.split(/(?<=[.!?요])\s+/).filter(Boolean);
 }
 

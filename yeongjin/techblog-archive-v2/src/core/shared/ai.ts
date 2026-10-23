@@ -5,6 +5,8 @@
 import { GoogleGenAI, Type, type Schema } from "@google/genai";
 
 export const MODEL = process.env.GEMINI_MODEL || "gemini-flash-lite-latest";
+/** 글 상세 요약·개념만 한 단계 위 모델 — lite 는 제품 이름을 용어처럼 설명하고 풀이가 어려웠다(2026-10-21 비교) */
+export const DETAIL_MODEL = process.env.GEMINI_DETAIL_MODEL || "gemini-flash-latest";
 
 let client: GoogleGenAI | null = null;
 export function hasGeminiKey(): boolean {
@@ -39,12 +41,12 @@ function retryDelayMs(e: unknown, attempt: number): number | null {
   return null;
 }
 
-export async function json<T>(system: string, user: string, schema?: Schema, maxOutputTokens = 8192): Promise<T> {
+export async function json<T>(system: string, user: string, schema?: Schema, maxOutputTokens = 8192, model = MODEL): Promise<T> {
   for (let attempt = 0; ; attempt++) {
     await throttle();
     try {
       const res = await ai().models.generateContent({
-        model: MODEL,
+        model,
         contents: user,
         config: {
           systemInstruction: system,

@@ -45,8 +45,8 @@ export function autoProcess(budgetMs = 200_000) {
   return withLock("process", 290, async (log) => {
     if (!hasGeminiKey()) return { processed: 0, skipped: "GEMINI_API_KEY 없음" };
     const start = Date.now();
-    // 글 1건 판정·분석·분류에 보통 40~60초 — 남은 시간이 그보다 적으면 다음 실행으로 넘긴다
-    const PER_ARTICLE_MS = 60_000;
+    // 글 1건 판정·분석·상세 요약·분류에 보통 50~80초 — 남은 시간이 그보다 적으면 다음 실행으로 넘긴다
+    const PER_ARTICLE_MS = 80_000;
     let processed = 0;
     for (const p of await pendingForAuto(10)) {
       if (Date.now() - start + PER_ARTICLE_MS > budgetMs) break;

@@ -14,7 +14,7 @@
     "add-url": "tsx scripts/run/add-url.mts",
     "backfill-content": "tsx scripts/run/backfill-content.mts",
     "backfill-thumbnails": "tsx scripts/run/backfill-thumbnails.mts",
-    "backfill-concepts": "tsx scripts/run/backfill-concepts.mts",
+    "backfill-detail": "tsx scripts/run/backfill-detail.mts",
     "fetch-logos": "tsx scripts/run/fetch-logos.mts",
     "import-analysis": "tsx scripts/run/import-analysis.mts",
     "audit": "tsx scripts/check/audit.mts",

@@ -14,6 +14,7 @@ import { EXPERIENCE_META } from "@/core/2-classify/taxonomy";
 import { cls } from "@/core/3-place/home";
 import { splitBlocks } from "@/core/0-collect/content";
 import { getArticle } from "@/core/shared/db";
+import type { ReadingGuide } from "@/core/shared/types";
 
 /**
  * 2026-10-15 상세 화면 정리 — 핵심 내용 · 결론부터 말하면 · 기획자 관점 보기 · 더 들어가 볼까요? · 원문에서 짚어 볼 문장은
@@ -45,6 +46,16 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
       .map((b) => shortQuote(b.text)),
   );
   const concepts = l?.concepts ?? [];
+  // 한눈에 보기 · 기획 포인트 — 글 상세 요약(overview)이 있으면 그것으로, 없으면 가이드의 lead·points 로
+  const o = l?.overview;
+  const digest: ReadingGuide | null = o
+    ? {
+        lead: { what: o.what, why: o.why, how: o.actions, soWhat: o.results },
+        points: o.takeaways,
+        sections: a.guide?.sections ?? [],
+        terms: a.guide?.terms ?? [],
+      }
+    : a.guide;
 
   return (
     <article className="mx-auto max-w-[720px]">
@@ -104,9 +115,9 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
       )}
 
       {/* 한눈에 보기 · 기획 포인트는 늘 보이고, 그 아래 "더 들어가 볼까요?" 칸만 SHOW_ANALYSIS 를 따른다 */}
-      {a.guide && (
+      {digest && (
         <div className="mt-8">
-          <ReadingDigest guide={a.guide} quotes={guideQuotes} sourceUrl={a.url} showSections={SHOW_ANALYSIS} />
+          <ReadingDigest guide={digest} quotes={guideQuotes} sourceUrl={a.url} showSections={SHOW_ANALYSIS} />
         </div>
       )}
 

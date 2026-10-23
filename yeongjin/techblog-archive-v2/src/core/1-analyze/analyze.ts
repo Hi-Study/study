@@ -1,12 +1,12 @@
 /**
- * 1단계(배제 판정) · 상세 분석 · 읽기 전 개념 · 2단계("더 들어가 볼까요?" 칸 만들기) 프롬프트.
+ * 1단계(배제 판정) · 상세 분석 · 글 상세 요약·개념 · 2단계("더 들어가 볼까요?" 칸 만들기) 프롬프트.
  * 기준 문서: docs/01_분류기준.md 1~2단계, docs/참고/더-들어가-볼까요-기준.md
  */
 import { Type, type Schema } from "@google/genai";
-import { json, obj, str, strArr } from "../shared/ai";
+import { DETAIL_MODEL, json, obj, str, strArr } from "../shared/ai";
 import { splitBlocks, type Block } from "../0-collect/content";
-import type { Concept, Learning, ReadingGuide } from "../shared/types";
-import { gateGuide } from "./guide-gate";
+import type { Concept, Learning, Overview, ReadingGuide } from "../shared/types";
+import { gateGuide, numbersIn, sentences } from "./guide-gate";
 
 /* ───────────── 1차 게이트 (저비용) ───────────── */
 
@@ -98,38 +98,142 @@ export async function analyzeArticle(title: string, text: string): Promise<Learn
   return json<Learning>(ANALYZE_SYS, `제목: ${title}\n\n원문:\n${text}`, LEARNING_SCHEMA, 8192);
 }
 
-/* ───────────── 읽기 전에 알아두면 좋은 개념 ───────────── */
+/* ───────────── 글 상세 요약 · 읽기 전에 알아두면 좋은 개념 ───────────── */
 
-const CONCEPTS_SYS = `너는 기술 블로그 글을 **개발을 전혀 모르는 사람**(기획자·디자이너·마케터)이 읽기 전에
-꼭 알아야 할 개념을 골라 풀어 주는 한국어 편집자다. 모든 문장은 존댓말(~해요).
-- concepts: **이 글을 이해하는 데 실제로 필요한 개념만** 2~4개. 글의 뼈대가 되는 순서로 놓는다.
-  · 기준은 하나다 — **"이걸 모르면 이 글의 이야기를 따라갈 수 없는가?"**
-    글에 한 번 스쳐 가는 단어, 몰라도 문맥으로 읽히는 단어, 회사·팀·서비스 이름은 고르지 마라.
-    직무 이름(PO·DA 등)이나 사내 모임 이름도 그게 없으면 이야기가 안 이어질 때만 고른다.
-  · term: 글에 나온 이름 그대로(영어면 영어 그대로). 짧게.
-  · what: **"이게 뭐야?"** — 비전문가가 바로 알아듣는 말로 1~2문장.
-    ⚠️ 사전식 정의를 쓰지 마라. "~하는 기술이에요", "~를 관리하는 시스템이에요"처럼 다른 전문 용어로
-    다시 정의하면 읽는 사람은 그 단어에서 또 막힌다. **일상에서 아는 것에 빗대거나, 그게 실제로 무슨 일을 하는지**로 쓴다.
-    예) "Blue-Green 배포" — ✗ "두 개의 환경을 두고 트래픽을 전환하는 배포 전략이에요."
-        ✓ "새 버전을 옆에 따로 다 차려 놓고, 준비가 끝나면 손님 안내만 한 번에 새 쪽으로 돌리는 방식이에요."
-    ⚠️ **뜻을 지어내지 마라.** 원문이 뜻을 풀어 주지 않는 **약어**(CoS 같은 대문자 줄임말)는 고르지 마라 —
-    문맥으로 짐작한 뜻은 틀리기 쉽다. 원문이 뜻을 풀어 주지 않는 제품·기능 이름은
-    원문에 나온 쓰임만으로 설명한다("~라는 이름의 기능이에요. ~할 때 쓰여요"). 쓰임도 알 수 없으면 고르지 마라.
-  · why: **"이 글에서 왜 나와?"** — 이 개념이 **이 글에서** 어떤 역할을 하는지 1~2문장.
-    글이 겪은 문제의 원인인지, 고른 해결책인지, 비교한 대안인지를 이 글의 이야기로 쓴다.
-    ⚠️ what 을 다시 풀어 쓰지 마라. 어느 글에나 붙일 수 있는 일반론("많은 회사가 써요", "중요한 역할을 해요")도 쓰지 마라.
-    ⚠️ "이 글에서"로 시작하지 마라 — 화면 제목이 이미 "이 글에서 왜 나와?"다. 역할부터 바로 쓴다.
-숫자·고유명사는 원문에 있는 것만 쓴다.`;
+/**
+ * 혜란 님 "글 상세 요약 생성 프롬프트"(hyeran/techblog-article-detail-prompt.md)를 그대로 옮겼다.
+ * 문서가 권하는 대로 예시 1개를 user 메시지 앞에 넣고, 원문에 없는 수치·문장 길이는 코드로 한 번 더 거른다.
+ */
+const DETAIL_SYS = `당신은 한국 테크기업 블로그 글을 비개발자(PM/PO/기획자, 마케터, 디자이너, 바이브 코더, AI·기술 트렌드에 관심 있는 사람)를 위해 쉽게 설명하는 큐레이터입니다.
+주어진 글을 읽고, 독자가 원문을 읽을지 판단하고 읽을 준비를 할 수 있도록 요약과 개념 설명을 만듭니다.
 
-const CONCEPTS_SCHEMA: Schema = obj({
-  concepts: { type: Type.ARRAY, minItems: "1", maxItems: "4", items: obj({ term: str(1), what: str(10), why: str(10) }) },
+## summary
+
+- what (무슨 이야기야?): 1~2문장으로 글 전체를 쉽게 설명
+- why (왜 했어?): 1~2문장으로 글이 다루는 문제와 배경 설명
+- actions (어떻게 했어?): 1~2문장으로 어떻게 적용했는지 설명
+- results (어떤 결과가 있었어?): 1~2문장으로 어떤 결과나 변화가 있었는지 설명
+- takeaways (그래서 뭘 배울 수 있어?): 기획적으로 얻어갈 수 있는 포인트 간략히 소개. 최대 3개, 이 글에만 해당하지 않고 범용적으로 적용할 수 있게 표현
+
+## concepts (용어)
+
+이 글을 이해하기 위해 알아야 할 기술적 용어를 간략하게 설명합니다. 최대 5개. SQL, LLM, 토큰, MCP와 같이 이미 알려진 표현은 제외합니다.
+
+- name: 용어 이름. 약어가 있다면 괄호로 풀네임 표시
+- description (이게 뭐야?): 용어의 사전적 정의를 비전문가가 이해할 수 있게 쉽게 풀어서 설명
+- context (이 글에서 왜 나와?): 좀 더 이해하기 쉽게 이 글에서 무슨 역할을 하는지 1~2문장으로 설명
+- 업계에서 실제로 통용되는 용어만 고릅니다. 글쓴이 회사가 붙인 제품·기능·조직 이름(예: ChatGamesight, CoS, ALF)은 용어로 고르지 마세요. 원문이 뜻을 풀어 주지 않는 약어의 뜻을 짐작해 쓰지 마세요.
+- description 에 다른 전문 용어(런타임, 인터페이스, 프로토콜 등)를 또 쓰지 마세요. 그 용어를 모르는 사람도 읽히도록 무엇을 해 주는지로 풀어 씁니다.
+
+## 작성 원칙
+
+- 원문이 영어여도 한국어로 씁니다. 친근하지만 과장 없는 존댓말(~습니다/~요)
+- 요약은 원문을 대체하지 않습니다. 원문을 읽고 싶게 만드는 Soft Landing입니다.
+- 글에 없는 내용, 수치를 지어내지 마세요. 원문에 있는 수치만 사용하세요.
+
+## 출력
+
+다음 JSON 객체 하나만 출력합니다.
+{ "summary": { "what": "...", "why": "...", "actions": "...", "results": "...", "takeaways": ["..."] }, "concepts": [{ "name": "...", "description": "...", "context": "..." }] }`;
+
+const DETAIL_EXAMPLE = `[예시]
+입력: LINE 기술 블로그 「LLM이 만든 SQL을 믿고 실행하기까지: A2A 기반의 대화형 BI 애플리케이션 개발기」
+출력:
+${JSON.stringify({
+  summary: {
+    what: "LINE Game Platform실이 질문을 하면 SQL로 바꿔 실행하고 결과를 보여주는 대화형 BI 서비스(ChatGamesight)를 만들며, 운영 중에도 믿고 쓸 수 있도록 설계한 구조와 안전장치를 소개합니다.",
+    why: "지표 정의와 맥락이 여러 곳에 흩어져 있어 비데이터 직군은 답을 얻기 어렵고, 데이터 담당자는 반복 문의에 시달렸습니다. LLM을 붙여 보니 실행은 되지만 틀린 ‘그럴듯한 오답’과 권한·개인정보를 침해할 수 있는 위험한 쿼리가 서비스 전체의 신뢰를 흔들었습니다.",
+    actions: "판단을 하나의 에이전트에 몰지 않고 역할별 에이전트로 나눈 뒤, 지표 정의와 데이터 간 관계를 정리한 지식 기반을 먼저 찾아보고 답하게 했습니다. 생성된 SQL은 실행 직전에 별도 검증 장치가 권한과 민감 정보 노출을 검사해 막고, 무엇이 문제이고 어떻게 고치면 되는지 함께 알려주도록 했습니다.",
+    results: "정식 릴리스 후 반복 문의와 수작업 리포팅 부담이 일부 줄었고, 쿼리를 숨기지 않고 보여주며 사람이 확인·수정할 수 있게 한 점이 사용자 신뢰를 높였습니다. 다만 2~3단계 떨어진 간접 관계에서는 답변 정확도가 불안정해, 이 경험을 이후 Graph DB 설계의 기준으로 삼을 예정입니다.",
+    takeaways: [
+      "틀린 답을 자신 있게 내놓는 것이 에러보다 신뢰를 더 크게 떨어뜨릴 수 있습니다.",
+      "사용자가 빠뜨린 조건을 시스템이 알아서 채워 주면 묻고 답하는 수고가 줄어듭니다.",
+      "막을 때는 이유와 고칠 방법을, 답할 때는 근거를 함께 보여주면 사용자가 결과를 더 믿습니다.",
+    ],
+  },
+  concepts: [
+    {
+      name: "BI (Business Intelligence)",
+      description: "회사에 쌓인 데이터를 지표, 대시보드, 리포트로 정리해 지금 무슨 일이 벌어지는지 빠르게 판단하도록 돕는 체계입니다.",
+      context: "이 글의 ChatGamesight는 대시보드를 뒤지는 대신 채팅하듯 질문하면 답을 주는 ‘대화형 BI’입니다.",
+    },
+    {
+      name: "A2A (Agent-to-Agent)",
+      description: "여러 AI 에이전트가 서로 일을 주고받을 때 무엇을 받고 무엇을 돌려줄지 정해 둔 공개 통신 규약입니다.",
+      context: "역할별로 나눈 에이전트들의 입출력과 실패 유형을 A2A로 ‘계약’처럼 정해, 한 에이전트를 고쳐도 전체가 흔들리지 않게 했습니다.",
+    },
+    {
+      name: "RAG (Retrieval-Augmented Generation)",
+      description: "AI가 답하기 전에 관련 자료를 먼저 찾아보고, 그 내용을 근거로 답하게 하는 방식입니다.",
+      context: "지표 정의, 이벤트 문서, 대시보드 설명 등을 찾아 질문에 빠진 조건을 채우고 수치와 배경 설명을 함께 답하는 데 쓰였습니다.",
+    },
+    {
+      name: "온톨로지 (Ontology)",
+      description: "어떤 분야의 개념들과 그 사이의 관계를 정해진 구조로 정리해 둔 지식 체계입니다.",
+      context: "지표, 이벤트, 게임, 대시보드가 서로 어떻게 연결되는지 정리해 두고, 에이전트들이 같은 기준으로 판단하는 공통 지식 기반으로 썼습니다.",
+    },
+    {
+      name: "Vector DB (벡터 데이터베이스)",
+      description: "글이나 이미지를 의미를 담은 숫자 묶음(벡터)으로 바꿔 저장하고, 의미가 비슷한 것을 빠르게 찾아주는 데이터베이스입니다.",
+      context: "관계 표현에 더 이상적인 Graph DB 대신 빠르게 시작할 수 있는 Vector DB로 지식 기반을 먼저 만들었지만, 간접 관계를 다룰 때 한계가 드러났습니다.",
+    },
+  ],
+})}
+[예시 끝 — 아래 글로 같은 형식의 JSON 을 만드세요]`;
+
+const DETAIL_SCHEMA: Schema = obj({
+  summary: obj({ what: str(10), why: str(10), actions: str(10), results: str(10), takeaways: strArr(1, 3) }),
+  concepts: {
+    type: Type.ARRAY,
+    minItems: "1",
+    maxItems: "5",
+    items: obj({ name: str(1), description: str(10), context: str(10) }),
+  },
 });
 
-export async function buildConcepts(title: string, text: string): Promise<Concept[]> {
-  const r = await json<{ concepts: Concept[] }>(CONCEPTS_SYS, `제목: ${title}\n\n원문:\n${text}`, CONCEPTS_SCHEMA, 2048);
-  return (r.concepts ?? [])
-    .map((c) => ({ ...c, why: c.why?.replace(/^이\s*글에서(?:는)?\s*/, "") ?? "" })) // 화면 제목과 겹치는 앞머리
-    .filter((c) => c.term?.trim() && c.what?.trim() && c.why?.trim());
+type DetailRaw = {
+  summary: { what: string; why: string; actions: string; results: string; takeaways: string[] };
+  concepts: { name: string; description: string; context: string }[];
+};
+
+/** 문서가 "이미 알려진 표현"으로 꼽은 용어 — 괄호 앞 이름으로 비교한다 */
+const KNOWN_TERMS = new Set(["SQL", "LLM", "토큰", "MCP"]);
+
+/** 문서 "검증 방법"의 코드 판정 — 원문에 없는 수치 · 1~2문장을 넘는 요약 칸 */
+function detailProblem(d: DetailRaw, source: string): string | null {
+  const s = d.summary;
+  const texts = [s.what, s.why, s.actions, s.results, ...s.takeaways, ...d.concepts.flatMap((c) => [c.description, c.context])];
+  const badNum = texts.flatMap(numbersIn).find((n) => !source.includes(n));
+  if (badNum) return `원문에 없는 수치 "${badNum}"`;
+  const long = (["what", "why", "actions", "results"] as const).find((k) => sentences(s[k]).length > 2);
+  if (long) return `${long} 가 2문장을 넘음`;
+  return null;
+}
+
+export async function buildDetail(
+  a: { title: string; company: string; url: string; text: string },
+  log: (m: string) => void = () => {},
+): Promise<{ overview: Overview; concepts: Concept[] } | null> {
+  const input = `${DETAIL_EXAMPLE}\n\n제목: ${a.title}\n회사: ${a.company}\nURL: ${a.url}\n\n본문:\n${a.text}`;
+  let feedback = "";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const d = await json<DetailRaw>(DETAIL_SYS, input + feedback, DETAIL_SCHEMA, 8192, DETAIL_MODEL);
+    const problem = detailProblem(d, a.text);
+    if (problem) {
+      log(`    · 상세 요약 게이트 탈락: ${problem}`);
+      feedback = `\n\n[지난 답이 규칙에 걸렸습니다: ${problem}. 규칙을 지켜 다시 쓰세요.]`;
+      continue;
+    }
+    const s = d.summary;
+    return {
+      overview: { what: s.what, why: s.why, actions: s.actions, results: s.results, takeaways: s.takeaways.slice(0, 3) },
+      concepts: d.concepts
+        .filter((c) => !KNOWN_TERMS.has(c.name.replace(/\s*\(.*$/, "").trim()))
+        .map((c) => ({ term: c.name, what: c.description, why: c.context.replace(/^(?:이\s*)?글에서(?:는)?\s*/, "") }))
+        .filter((c) => c.term.trim() && c.what.trim() && c.why.trim()),
+    };
+  }
+  return null;
 }
 
 /* ───────────── "더 들어가 볼까요?" 1단계 ───────────── */
