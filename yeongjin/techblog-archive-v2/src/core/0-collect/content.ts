@@ -65,7 +65,20 @@ export function extractMainHtml(pageHtml: string): string {
       best = $(el).html() ?? "";
     }
   });
-  return best;
+  if (bestLen >= 500) return best;
+  // 본문 문단이 여러 칸에 나뉜 페이지(예: 채널톡) — 전체 문단 글자의 80% 이상을 품은 가장 작은 div 를 본문으로 본다
+  const pLen = (el: Parameters<typeof $>[0]) => $(el).find("p, li").text().length;
+  const total = $("p, li").text().length;
+  let tight = "";
+  let tightLen = Infinity;
+  $("div").each((_, el) => {
+    const all = $(el).text().length;
+    if (pLen(el) >= total * 0.8 && all < tightLen) {
+      tightLen = all;
+      tight = $(el).html() ?? "";
+    }
+  });
+  return tight && htmlToText(tight).length > htmlToText(best).length ? tight : best;
 }
 
 export type Block = { n: number; tag: string; html: string; text: string; heading: boolean };

@@ -135,11 +135,22 @@ export async function readListPage(c: Company, limit: number): Promise<FeedItem[
   return out;
 }
 
+/**
+ * 카카오 기술 블로그는 페이지를 받은 뒤 본문을 API 로 따로 불러온다(첫 HTML 에는 본문이 없고 RSS 는 258자 요약뿐).
+ * tech.kakao.com/posts/{id} → tech.kakao.com/api/v1/posts/{id} 의 content
+ */
+async function kakaoBody(url: string): Promise<string | null> {
+  const id = url.match(/^https:\/\/tech\.kakao\.com\/posts\/(\d+)/)?.[1];
+  if (!id) return null;
+  const j = JSON.parse(await fetchText(`https://tech.kakao.com/api/v1/posts/${id}`)) as { content?: string };
+  return j.content ?? null;
+}
+
 /** RSS 본문이 티저뿐이면 원문 페이지에서 다시 가져온다 */
 export async function ensureFullContent(url: string, html: string): Promise<string> {
   if (htmlToText(html).length >= MIN_CONTENT) return cleanHtml(html, url);
   try {
-    const main = extractMainHtml(await fetchText(url));
+    const main = (await kakaoBody(url)) ?? extractMainHtml(await fetchText(url));
     if (htmlToText(main).length > htmlToText(html).length) return cleanHtml(main, url);
   } catch {
     /* 원문 페이지 실패 → RSS 본문 유지 */
