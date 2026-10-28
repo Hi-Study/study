@@ -46,6 +46,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
       .map((b) => shortQuote(b.text)),
   );
   const concepts = l?.concepts ?? [];
+  const tools = l?.tools ?? [];
   // 한눈에 보기 · 기획 포인트 — 글 상세 요약(overview)이 있으면 그것으로, 없으면 가이드의 lead·points 로
   const o = l?.overview;
   const digest: ReadingGuide | null = o
@@ -60,7 +61,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
   return (
     <article className="mx-auto max-w-[720px]">
       <MarkRead id={a.id} />
-      {/* 읽는 순서: 어느 회사 글인지 → 원제목 → 핵심 카피 → AI 정리 안내 → 경험 태그 → 한눈에 보기 · 기획 포인트 → 읽기 전에 알아두면 좋은 개념 → 원문에서 보기 */}
+      {/* 읽는 순서: 어느 회사 글인지 → 원제목 → 핵심 카피 → AI 정리 안내 → 경험 태그 → 한눈에 보기 · 기획 포인트 → 읽기 전에 알아두면 좋은 개념 → 글에 나온 사내 도구 → 원문에서 보기 */}
       <div className="flex items-center justify-between gap-3">
         <a href={c.blogUrl || a.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-2.5">
           <span
@@ -140,6 +141,20 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
                     <dd className="mt-0.5 text-sm leading-relaxed text-ink-2">{x.why}</dd>
                   </div>
                 </dl>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* 사내 도구 — 외부 서비스인지 사내 전용인지 헷갈릴 이름만. 개념 카드보다 가볍게, 각주처럼 한 줄씩 */}
+      {tools.length > 0 && (
+        <section className="mt-8 border-t border-line pt-5">
+          <h2 className="text-sm font-bold text-ink-3">글에 나온 사내 도구</h2>
+          <ul className="mt-2 space-y-1.5">
+            {tools.map((t) => (
+              <li key={t.name} className="text-sm leading-relaxed text-ink-2">
+                <b className="font-semibold text-ink">{t.name}</b> — {t.description}
               </li>
             ))}
           </ul>

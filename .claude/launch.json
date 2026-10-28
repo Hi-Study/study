@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "hyeran/insight-app", "run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "techblog-archive-v2",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "yeongjin/techblog-archive-v2", "run", "dev", "--", "--port", "3100"],
+      "port": 3100
     }
   ]
 }

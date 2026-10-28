@@ -36,7 +36,7 @@ export function ReadingDigest({
     <section className="rounded-3xl border border-line bg-surface p-5 md:p-7">
       <p className="text-xs font-bold tracking-wide text-brand">READING GUIDE</p>
       <h2 className="mt-1 text-xl font-bold">한눈에 보기</h2>
-      <dl className="mt-4 grid gap-3 md:grid-cols-2">
+      <dl className="mt-4 grid gap-3">
         {LEAD_LABEL.filter(([k]) => guide.lead[k]).map(([k, label]) => (
           <div key={k} className="rounded-2xl bg-bg p-4">
             <dt className="text-xs font-bold text-ink-3">{label}</dt>
