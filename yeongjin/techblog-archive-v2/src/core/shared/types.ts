@@ -100,6 +100,10 @@ export interface Learning {
   overview?: Overview;
   /** "읽기 전에 알아두면 좋은 개념" — overview 와 한 번에 만든다 */
   concepts?: Concept[];
+  /** 글에 나온 그 회사의 자체 도구·프로그램 — v2 부터. 없으면 화면에서 숨긴다 */
+  tools?: ArticleTool[];
+  /** overview·concepts·tools 를 만든 프롬프트 버전 — 없으면 v1(hyeran/techblog-article-detail-prompt.md) */
+  detailPromptVersion?: 2;
 }
 
 /** 글 상세 요약 — hyeran/techblog-article-detail-prompt.md 의 summary */
@@ -123,6 +127,13 @@ export interface Concept {
   what: string;
   /** 이 글에서 왜 나와? — 이 글에서 맡은 역할 */
   why: string;
+}
+
+/** 그 회사가 직접 만든 도구·프로그램 — 개념 카드가 아니라 각주처럼 짧게 보여 준다 */
+export interface ArticleTool {
+  name: string;
+  /** 누가 무엇을 위해 만들었는지 한 문장 */
+  description: string;
 }
 
 /** "더 들어가 볼까요?" — articles.reading_guide_json */

@@ -50,3 +50,6 @@ next-env.d.ts
 # 회사 로고 — 각 회사의 상표라 저장소에 올리지 않는다 (npm run fetch-logos 로 받음)
 /public/logos/
 /versions/*.zip
+
+# 글 상세 v2 백필 — 원문 전체·생성 결과·백업이 들어 있어 저장소에 올리지 않는다
+/data/detail-v2/
