@@ -6,7 +6,10 @@
 import { Type, type Schema } from "@google/genai";
 import { obj, str, strArr } from "../shared/ai";
 import type { Learning } from "../shared/types";
-import { numbersIn, sentences } from "./guide-gate";
+import { numbersIn } from "./guide-gate";
+
+/** 문장 수 — 마침표·물음표·느낌표 뒤 띄어쓰기로만 나눈다("키워봐요 적금"처럼 '요' 뒤 띄어쓰기는 문장 끝이 아니다) */
+const sentenceCount = (s: string) => s.trim().split(/(?<=[.!?])\s+/).filter(Boolean).length;
 
 /**
  * hyeran/techblog-article-detail-prompt-v2.md 의 System prompt 를 글자 그대로 옮겼다 — 고치면 문서도 같이 고친다.
@@ -133,7 +136,7 @@ export function validateDetailV2(raw: unknown, source: string, allowNumbers: str
   const lead = d.lead ?? ({} as DetailV2["lead"]);
   for (const k of ["what", "why", "how", "soWhat"] as const) {
     if (blank(lead[k])) errs.push(`lead.${k} 비어 있음`);
-    else if (sentences(lead[k]).length > 2) errs.push(`lead.${k} 가 2문장을 넘음`);
+    else if (sentenceCount(lead[k]) > 2) errs.push(`lead.${k} 가 2문장을 넘음`);
   }
 
   if (!Array.isArray(d.points) || d.points.length < 2 || d.points.length > 3) errs.push("points 는 2~3개여야 함");
