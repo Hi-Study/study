@@ -2,7 +2,7 @@
  * Gemini 연결 — 모든 단계가 AI 를 부를 때 쓰는 공용 통로.
  * 무료 키 한도(분당 15회 · 하루 500회)에 맞춘 호출 간격·재시도, JSON 스키마 도우미.
  */
-import { GoogleGenAI, Type, type Schema } from "@google/genai";
+import { GoogleGenAI, Type, type Schema, type ThinkingLevel } from "@google/genai";
 
 export const MODEL = process.env.GEMINI_MODEL || "gemini-flash-lite-latest";
 /** 글 상세 요약·개념만 한 단계 위 모델 — lite 는 제품 이름을 용어처럼 설명하고 풀이가 어려웠다(2026-10-21 비교) */
@@ -36,12 +36,20 @@ function retryDelayMs(e: unknown, attempt: number): number | null {
     const s = msg.match(/retry in ([\d.]+)s/i) ?? msg.match(/"retryDelay":"(\d+)s"/);
     return (s ? Number(s[1]) + 2 : 30) * 1000;
   }
-  if (/fetch failed|ECONNRESET|ETIMEDOUT|503|500|UNAVAILABLE|overloaded/i.test(msg)) return 5000 * 2 ** attempt;
+  if (/fetch failed|ECONNRESET|ETIMEDOUT|timed? ?out|aborted|503|500|UNAVAILABLE|overloaded/i.test(msg)) return 5000 * 2 ** attempt;
   if (e instanceof SyntaxError) return 1000; // JSON 이 잘려 온 경우 한 번 더
   return null;
 }
 
-export async function json<T>(system: string, user: string, schema?: Schema, maxOutputTokens = 8192, model = MODEL): Promise<T> {
+/** opts.thinkingLevel: 생각 단계를 쓰는 모델에서만. opts.timeoutMs: 요청 하나의 제한시간 */
+export async function json<T>(
+  system: string,
+  user: string,
+  schema?: Schema,
+  maxOutputTokens = 8192,
+  model = MODEL,
+  opts: { thinkingLevel?: ThinkingLevel; timeoutMs?: number } = {},
+): Promise<T> {
   for (let attempt = 0; ; attempt++) {
     await throttle();
     try {
@@ -54,6 +62,8 @@ export async function json<T>(system: string, user: string, schema?: Schema, max
           responseSchema: schema,
           temperature: 0.3,
           maxOutputTokens,
+          ...(opts.thinkingLevel ? { thinkingConfig: { thinkingLevel: opts.thinkingLevel } } : {}),
+          ...(opts.timeoutMs ? { httpOptions: { timeout: opts.timeoutMs } } : {}),
         },
       });
       const text = (res.text ?? "").trim().replace(/^```(?:json)?\s*|\s*```$/g, "");

@@ -7,6 +7,7 @@
 import { htmlToText } from "./0-collect/content";
 import { companyById } from "./0-collect/companies";
 import { analyzeArticle, buildDetail, buildReadingGuide, gateArticle } from "./1-analyze/analyze";
+import { mergeDetailV2 } from "./1-analyze/detail-v2";
 import { classifyExperience, classifyFromGuide } from "./2-classify/classify";
 import { EXPERIENCE_META } from "./2-classify/taxonomy";
 import { hasGeminiKey } from "./shared/ai";
@@ -35,7 +36,7 @@ export async function classify(id: number, log: (m: string) => void) {
 }
 
 /**
- * 글 상세 요약(한눈에 보기) · 읽기 전에 알아두면 좋은 개념 — hyeran/techblog-article-detail-prompt.md 기준.
+ * 글 상세 요약(한눈에 보기) · 읽기 전에 알아두면 좋은 개념 · 사내 도구 — hyeran/techblog-article-detail-prompt-v2.md 기준.
  * 실패하거나 게이트에서 두 번 떨어지면 예전 값을 그대로 둔다(화면은 가이드의 lead·points 로 대신한다).
  * 하루 한도(PerDay)여도 글 처리는 막지 않는다 — "daily" 를 돌려주고, 멈출지는 부르는 쪽(백필 스크립트)이 정한다.
  */
@@ -48,12 +49,15 @@ export async function attachDetail(
   try {
     const d = await buildDetail({ title: a.title, company: companyById(a.companyId).name, url: a.url, text }, log);
     if (!d) {
-      log("    · 상세 요약 저장 안 함(게이트 두 번 탈락) → 예전 값 유지");
+      log("    · 상세 요약 저장 안 함(검사 두 번 탈락) → 예전 값 유지");
       return "kept";
     }
-    l.overview = d.overview;
-    l.concepts = d.concepts;
-    log(`    상세 요약 · 개념 ${d.concepts.length}개: ${d.concepts.map((c) => c.term).join(", ")}`);
+    // overview·concepts·tools·detailPromptVersion 네 칸을 한 번에 — 나머지 learning 은 그대로
+    Object.assign(l, mergeDetailV2(l, d));
+    log(
+      `    상세 요약 v2 · 개념 ${d.concepts.length}개: ${d.concepts.map((c) => c.term).join(", ") || "없음"}` +
+        ` · 도구 ${d.tools.map((t) => t.name).join(", ") || "없음"}`,
+    );
     return "ok";
   } catch (e) {
     const msg = (e as Error).message;
@@ -113,7 +117,7 @@ export async function rebuildIncluded(
   if (!a) return;
   const text = htmlToText(a.contentHtml);
   const learning = opts.reanalyze || !a.learning ? await analyzeArticle(a.title, text) : a.learning;
-  if (!learning.overview) await attachDetail(learning, a, text, log);
+  if (learning.detailPromptVersion !== 2) await attachDetail(learning, a, text, log);
   let guide = a.guide;
   if (opts.reguide || !guide) {
     const fresh = await buildReadingGuide(a.title, a.contentHtml, log);
