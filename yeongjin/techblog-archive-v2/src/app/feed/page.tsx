@@ -36,7 +36,8 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
     tag: typeof sp.tag === "string" ? sp.tag : undefined,
   };
   const all = await listArticles("included");
-  const companies = [...new Set(all.map((a) => a.companyId))];
+  // 고른 회사는 맨 앞에 — 글 상세의 회사 로고로 들어와도 가로 스크롤 밖에 숨지 않고 "켜져 있음"이 바로 보이게
+  const companies = [...new Set(all.map((a) => a.companyId))].sort((x, y) => Number(y === f.company) - Number(x === f.company));
   const tags = allTags(all, 24);
   const rows = all.filter(
     (a) =>

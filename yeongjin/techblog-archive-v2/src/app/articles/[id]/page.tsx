@@ -63,7 +63,8 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
       <MarkRead id={a.id} />
       {/* 읽는 순서: 어느 회사 글인지 → 원제목 → 핵심 카피 → AI 정리 안내 → 경험 태그 → 한눈에 보기 · 기획 포인트 → 읽기 전에 알아두면 좋은 개념 → 글에 나온 사내 도구 → 원문에서 보기 */}
       <div className="flex items-center justify-between gap-3">
-        <a href={c.blogUrl || a.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 items-center gap-2.5">
+        {/* 회사 로고·이름 → 피드에서 이 회사 글만(회사 필터가 켜진 채로). 원래 블로그는 아래 "원문에서 보기"로 간다 */}
+        <Link href={`/feed?company=${a.companyId}`} className="flex min-w-0 items-center gap-2.5">
           <span
             className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl border border-line bg-white text-sm font-bold"
             style={{ color: c.color }}
@@ -79,7 +80,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
             <span className="block truncate text-sm font-bold">{c.name} 기술 블로그</span>
             <span className="block text-xs text-ink-3">{formatDate(a.publishedAt)} 발행</span>
           </span>
-        </a>
+        </Link>
         <span className="flex shrink-0 items-center gap-1.5">
           <ReadToggle id={a.id} />
           <BookmarkButton id={a.id} />
