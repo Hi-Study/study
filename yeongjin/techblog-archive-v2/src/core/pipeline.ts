@@ -10,7 +10,7 @@ import { analyzeArticle, buildDetail, buildReadingGuide, gateArticle } from "./1
 import { mergeDetailV2 } from "./1-analyze/detail-v2";
 import { classifyExperience, classifyFromGuide } from "./2-classify/classify";
 import { EXPERIENCE_META } from "./2-classify/taxonomy";
-import { hasGeminiKey } from "./shared/ai";
+import { hasGeminiKey, isQuota } from "./shared/ai";
 import { getArticle, listArticles, markExcluded, markIncluded, missingDetail, saveGuide } from "./shared/db";
 import type { ArticleRow, Learning, ReadingGuide } from "./shared/types";
 
@@ -39,7 +39,8 @@ export async function classify(id: number, log: (m: string) => void) {
  * 글 상세 요약(한눈에 보기) · 읽기 전에 알아두면 좋은 개념 · 사내 도구 — hyeran/techblog-article-detail-prompt-v2.md 기준.
  * 실패하면 예전 값을 그대로 두고(화면은 가이드의 lead·points 로 대신한다) 이유를 l.detailError 에 남긴다.
  * 저장은 부르는 쪽이 한다 — 그래야 이유가 DB 에 남고, 자동 처리(retryMissingDetail)가 나중에 다시 한다.
- * 하루 한도(PerDay)여도 글 처리는 막지 않는다 — "daily" 를 돌려주고, 멈출지는 부르는 쪽이 정한다.
+ * 한도 초과(429)여도 글 처리는 막지 않는다 — "daily" 를 돌려주고, 멈출지는 부르는 쪽이 정한다.
+ * 한도 초과는 글 탓이 아니라 기다리면 풀리므로 실패 횟수(attempts)에 넣지 않는다.
  */
 export async function attachDetail(
   l: Learning,
@@ -47,9 +48,10 @@ export async function attachDetail(
   text: string,
   log: (m: string) => void,
 ): Promise<"ok" | "kept" | "daily"> {
-  const failed = (reason: string) => {
-    l.detailError = { reason, at: new Date().toISOString(), attempts: (l.detailError?.attempts ?? 0) + 1 };
-    log(`    · 상세 요약 저장 안 함(${reason}) → 예전 값 유지, ${l.detailError.attempts}번째 실패`);
+  const failed = (reason: string, count = true) => {
+    const attempts = (l.detailError?.attempts ?? 0) + (count ? 1 : 0);
+    l.detailError = { reason, at: new Date().toISOString(), attempts };
+    log(`    · 상세 요약 저장 안 함(${reason}) → 예전 값 유지${count ? `, ${attempts}번째 실패` : ", 횟수는 세지 않음"}`);
   };
   try {
     const r = await buildDetail({ title: a.title, company: companyById(a.companyId).name, url: a.url, text }, log);
@@ -68,15 +70,25 @@ export async function attachDetail(
     return "ok";
   } catch (e) {
     const msg = (e as Error).message;
-    const daily = /PerDay/.test(msg);
-    failed(daily ? "하루 한도" : `오류: ${msg.slice(0, 160)}`);
-    return daily ? "daily" : "kept";
+    // 문구가 PerDay 가 아닌 429("You exceeded your current quota …")도 한도다 — 같은 날 다시 해 봐야 또 걸린다
+    if (isQuota(e)) {
+      failed(QUOTA_REASON, false);
+      return "daily";
+    }
+    failed(`오류: ${msg.slice(0, 160)}`);
+    return "kept";
   }
 }
+
+const QUOTA_REASON = "한도 초과";
+
+/** Gemini 무료 한도는 미국 서부 시간 자정(한국 오후 4~5시)에 풀린다 — 그 기준의 날짜 */
+const quotaDay = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(d);
 
 /**
  * 상세 요약이 빈 포함 글을 다시 만든다 — 자동 처리가 대기 글을 다 하고 시간이 남을 때 부른다.
  * 최신 글부터, 3번 실패한 글은 건너뛴다. 결과(성공·실패 이유)는 바로 저장한다.
+ * 한도가 풀린 뒤(미국 서부 자정) 한도 초과가 한 번이라도 기록됐으면 다음 초기화까지 아무것도 하지 않는다.
  */
 export async function retryMissingDetail(
   log: (m: string) => void,
@@ -84,7 +96,17 @@ export async function retryMissingDetail(
 ): Promise<{ retried: number; filled: number; daily: boolean }> {
   let retried = 0;
   let filled = 0;
-  for (const a of await missingDetail(5)) {
+  const missing = await missingDetail(20);
+  const today = quotaDay(new Date());
+  const hit = missing.find((a) => {
+    const e = a.learning!.detailError;
+    return e?.reason === QUOTA_REASON && quotaDay(new Date(e.at)) === today;
+  });
+  if (hit) {
+    log(`  · 상세 요약 다시: 오늘 한도 초과(#${hit.id}, ${hit.learning!.detailError!.at.slice(11, 16)} UTC) — 다음 초기화까지 기다려요`);
+    return { retried, filled, daily: true };
+  }
+  for (const a of missing.slice(0, 5)) {
     if (!hasTime()) break;
     const l = a.learning!;
     log(`  ↻ 상세 요약 다시 #${a.id} (${l.detailError ? `${l.detailError.attempts}번 실패: ${l.detailError.reason}` : "이유 기록 없음"})`);

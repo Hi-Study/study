@@ -14,7 +14,9 @@ if (notV2.length) log(`  v2 아닌 ID: ${notV2.sort((a, b) => a - b).join(",")}`
 // 실패 이유 — 자동 처리가 남긴 learning.detailError. 3번 실패한 글은 자동으로 다시 하지 않는다
 for (const a of rows.filter((x) => x.learning?.detailPromptVersion !== 2).sort((x, y) => x.id - y.id)) {
   const e = a.learning?.detailError;
-  log(`    #${a.id} ${e ? `${e.attempts}번 실패${e.attempts >= 3 ? "(자동 재시도 끝)" : ""} · ${e.at.slice(0, 16)} · ${e.reason}` : "이유 기록 없음(기록 기능 이전 실패)"}`);
+  // 한도 초과는 횟수에 넣지 않는다 — 0번이어도 마지막 실패 이유는 남아 있다
+  const count = e ? (e.attempts >= 3 ? "3번 실패(자동 재시도 끝)" : `실패 ${e.attempts}번(한도 초과 제외)`) : "";
+  log(`    #${a.id} ${e ? `${count} · 마지막 ${e.at.slice(0, 16)} ${e.reason}` : "이유 기록 없음(기록 기능 이전 실패)"}`);
 }
 log(`  요약 없는 v2: ${noOverview.join(",") || "없음"}`);
 log(`  분류·태그·카드 문구가 빠진 v2: ${lostMeta.join(",") || "없음"}`);

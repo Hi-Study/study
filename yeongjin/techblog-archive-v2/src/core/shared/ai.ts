@@ -41,6 +41,11 @@ function retryDelayMs(e: unknown, attempt: number): number | null {
   return null;
 }
 
+/** 한도 초과(429) — 분당·하루 한도 모두. 문구가 PerDay 가 아닌 것("You exceeded your current quota …")도 있다 */
+export function isQuota(e: unknown): boolean {
+  return /\b429\b|RESOURCE_EXHAUSTED|exceeded your current quota/i.test(String((e as Error)?.message ?? e));
+}
+
 /**
  * 다시 하면 될 수 있는 오류 — 연결 끊김, 서버 과부하(503), 서버 시간 초과(504 DEADLINE_EXCEEDED), 우리 쪽 제한시간 초과.
  * 같은 글이 한 번은 504(174초), 바로 다음엔 28초에 성공했다(2026-11-04 #2151) — 글이 아니라 서버 상태 탓이다.
