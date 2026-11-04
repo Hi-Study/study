@@ -36,20 +36,34 @@ function retryDelayMs(e: unknown, attempt: number): number | null {
     const s = msg.match(/retry in ([\d.]+)s/i) ?? msg.match(/"retryDelay":"(\d+)s"/);
     return (s ? Number(s[1]) + 2 : 30) * 1000;
   }
-  if (/fetch failed|ECONNRESET|ETIMEDOUT|timed? ?out|aborted|503|500|UNAVAILABLE|overloaded/i.test(msg)) return 5000 * 2 ** attempt;
+  if (isTransient(e)) return 5000 * 2 ** attempt;
   if (e instanceof SyntaxError) return 1000; // JSON 이 잘려 온 경우 한 번 더
   return null;
 }
 
-/** opts.thinkingLevel: 생각 단계를 쓰는 모델에서만. opts.timeoutMs: 요청 하나의 제한시간 */
+/**
+ * 다시 하면 될 수 있는 오류 — 연결 끊김, 서버 과부하(503), 서버 시간 초과(504 DEADLINE_EXCEEDED), 우리 쪽 제한시간 초과.
+ * 같은 글이 한 번은 504(174초), 바로 다음엔 28초에 성공했다(2026-11-04 #2151) — 글이 아니라 서버 상태 탓이다.
+ */
+export function isTransient(e: unknown): boolean {
+  const msg = String((e as Error)?.message ?? e);
+  return /fetch failed|ECONNRESET|ETIMEDOUT|timed? ?out|abort|503|500|504|UNAVAILABLE|DEADLINE_EXCEEDED|overloaded/i.test(msg);
+}
+
+/**
+ * opts.thinkingLevel: 생각 단계를 쓰는 모델에서만.
+ * opts.timeoutMs: 요청 하나의 제한시간 — 넘으면 끊는다(서버가 붙잡고 있어도 기다리지 않는다).
+ * opts.maxRetries: 이 함수 안에서 다시 시도할 횟수(기본 4). 부르는 쪽이 따로 다시 시도하면 0.
+ */
 export async function json<T>(
   system: string,
   user: string,
   schema?: Schema,
   maxOutputTokens = 8192,
   model = MODEL,
-  opts: { thinkingLevel?: ThinkingLevel; timeoutMs?: number } = {},
+  opts: { thinkingLevel?: ThinkingLevel; timeoutMs?: number; maxRetries?: number } = {},
 ): Promise<T> {
+  const maxRetries = opts.maxRetries ?? 4;
   for (let attempt = 0; ; attempt++) {
     await throttle();
     try {
@@ -63,14 +77,16 @@ export async function json<T>(
           temperature: 0.3,
           maxOutputTokens,
           ...(opts.thinkingLevel ? { thinkingConfig: { thinkingLevel: opts.thinkingLevel } } : {}),
-          ...(opts.timeoutMs ? { httpOptions: { timeout: opts.timeoutMs } } : {}),
+          ...(opts.timeoutMs
+            ? { httpOptions: { timeout: opts.timeoutMs }, abortSignal: AbortSignal.timeout(opts.timeoutMs + 5_000) }
+            : {}),
         },
       });
       const text = (res.text ?? "").trim().replace(/^```(?:json)?\s*|\s*```$/g, "");
       return JSON.parse(text) as T;
     } catch (e) {
       const delay = retryDelayMs(e, attempt);
-      if (delay === null || attempt >= 4) throw e;
+      if (delay === null || attempt >= maxRetries) throw e;
       nextSlot = Math.max(nextSlot, Date.now() + delay);
     }
   }

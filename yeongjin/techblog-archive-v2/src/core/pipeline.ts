@@ -11,7 +11,7 @@ import { mergeDetailV2 } from "./1-analyze/detail-v2";
 import { classifyExperience, classifyFromGuide } from "./2-classify/classify";
 import { EXPERIENCE_META } from "./2-classify/taxonomy";
 import { hasGeminiKey } from "./shared/ai";
-import { getArticle, listArticles, markExcluded, markIncluded, saveGuide } from "./shared/db";
+import { getArticle, listArticles, markExcluded, markIncluded, missingDetail, saveGuide } from "./shared/db";
 import type { ArticleRow, Learning, ReadingGuide } from "./shared/types";
 
 /** 1차 게이트 → 2차 상세 분석 → "더 들어가 볼까요?" → 가이드 칸 기준 경험 분류 */
@@ -37,8 +37,9 @@ export async function classify(id: number, log: (m: string) => void) {
 
 /**
  * 글 상세 요약(한눈에 보기) · 읽기 전에 알아두면 좋은 개념 · 사내 도구 — hyeran/techblog-article-detail-prompt-v2.md 기준.
- * 실패하거나 게이트에서 두 번 떨어지면 예전 값을 그대로 둔다(화면은 가이드의 lead·points 로 대신한다).
- * 하루 한도(PerDay)여도 글 처리는 막지 않는다 — "daily" 를 돌려주고, 멈출지는 부르는 쪽(백필 스크립트)이 정한다.
+ * 실패하면 예전 값을 그대로 두고(화면은 가이드의 lead·points 로 대신한다) 이유를 l.detailError 에 남긴다.
+ * 저장은 부르는 쪽이 한다 — 그래야 이유가 DB 에 남고, 자동 처리(retryMissingDetail)가 나중에 다시 한다.
+ * 하루 한도(PerDay)여도 글 처리는 막지 않는다 — "daily" 를 돌려주고, 멈출지는 부르는 쪽이 정한다.
  */
 export async function attachDetail(
   l: Learning,
@@ -46,14 +47,20 @@ export async function attachDetail(
   text: string,
   log: (m: string) => void,
 ): Promise<"ok" | "kept" | "daily"> {
+  const failed = (reason: string) => {
+    l.detailError = { reason, at: new Date().toISOString(), attempts: (l.detailError?.attempts ?? 0) + 1 };
+    log(`    · 상세 요약 저장 안 함(${reason}) → 예전 값 유지, ${l.detailError.attempts}번째 실패`);
+  };
   try {
-    const d = await buildDetail({ title: a.title, company: companyById(a.companyId).name, url: a.url, text }, log);
-    if (!d) {
-      log("    · 상세 요약 저장 안 함(검사 두 번 탈락) → 예전 값 유지");
+    const r = await buildDetail({ title: a.title, company: companyById(a.companyId).name, url: a.url, text }, log);
+    if ("fail" in r) {
+      failed(r.fail);
       return "kept";
     }
+    const d = r.detail;
     // overview·concepts·tools·detailPromptVersion 네 칸을 한 번에 — 나머지 learning 은 그대로
     Object.assign(l, mergeDetailV2(l, d));
+    delete l.detailError;
     log(
       `    상세 요약 v2 · 개념 ${d.concepts.length}개: ${d.concepts.map((c) => c.term).join(", ") || "없음"}` +
         ` · 도구 ${d.tools.map((t) => t.name).join(", ") || "없음"}`,
@@ -62,9 +69,32 @@ export async function attachDetail(
   } catch (e) {
     const msg = (e as Error).message;
     const daily = /PerDay/.test(msg);
-    log(`    · 상세 요약 만들기 실패${daily ? "(하루 한도)" : ""}: ${msg.slice(0, 200)}`);
+    failed(daily ? "하루 한도" : `오류: ${msg.slice(0, 160)}`);
     return daily ? "daily" : "kept";
   }
+}
+
+/**
+ * 상세 요약이 빈 포함 글을 다시 만든다 — 자동 처리가 대기 글을 다 하고 시간이 남을 때 부른다.
+ * 최신 글부터, 3번 실패한 글은 건너뛴다. 결과(성공·실패 이유)는 바로 저장한다.
+ */
+export async function retryMissingDetail(
+  log: (m: string) => void,
+  hasTime: () => boolean,
+): Promise<{ retried: number; filled: number; daily: boolean }> {
+  let retried = 0;
+  let filled = 0;
+  for (const a of await missingDetail(5)) {
+    if (!hasTime()) break;
+    const l = a.learning!;
+    log(`  ↻ 상세 요약 다시 #${a.id} (${l.detailError ? `${l.detailError.attempts}번 실패: ${l.detailError.reason}` : "이유 기록 없음"})`);
+    const r = await attachDetail(l, a, htmlToText(a.contentHtml), log);
+    await markIncluded(a.id, l);
+    retried++;
+    if (r === "ok") filled++;
+    if (r === "daily") return { retried, filled, daily: true };
+  }
+  return { retried, filled, daily: false };
 }
 
 /** 가이드가 있으면 칸 기준(v3), 없으면 원문 기준(v2)으로 경험을 분류한다 */

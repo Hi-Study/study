@@ -104,6 +104,8 @@ export interface Learning {
   tools?: ArticleTool[];
   /** overview·concepts·tools 를 만든 프롬프트 버전 — 없으면 v1(hyeran/techblog-article-detail-prompt.md) */
   detailPromptVersion?: 2;
+  /** 상세 요약을 못 만들었을 때 — 이유·시각·누적 시도 횟수. 성공하면 지운다. 자동 처리는 3번까지 다시 한다 */
+  detailError?: { reason: string; at: string; attempts: number };
 }
 
 /** 글 상세 요약 — hyeran/techblog-article-detail-prompt.md 의 summary */

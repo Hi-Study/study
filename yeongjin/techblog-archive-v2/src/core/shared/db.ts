@@ -195,6 +195,24 @@ export async function pendingForAuto(limit: number): Promise<{ id: number; attem
 }
 export const bumpAttempts = (id: number, attempts: number) => update(id, { attempts: attempts + 1 });
 
+/** 상세 요약 v2 가 빈 포함 글 — 최신 글부터, 3번 실패한 글(learning.detailError.attempts)은 건너뛴다. 원문까지 가져온다 */
+export async function missingDetail(limit: number): Promise<ArticleRow[]> {
+  const rows = list(
+    await sb()
+      .from("articles")
+      .select(FULL_COLS)
+      .eq("status", "included")
+      .is("learning->detailPromptVersion", null)
+      .order("published_at", { ascending: false })
+      .limit(limit * 3)
+      .returns<Raw[]>(),
+  );
+  return rows
+    .map(toRow)
+    .filter((a) => a.learning && (a.learning.detailError?.attempts ?? 0) < 3)
+    .slice(0, limit);
+}
+
 /** 실행이 겹치지 않게 잠근다. 잡았으면 true */
 export async function tryLock(name: string, seconds: number): Promise<boolean> {
   return check(await sb().rpc("try_lock", { lock_name: name, seconds })) === true;

@@ -3,7 +3,7 @@
  * 기준 문서: docs/01_분류기준.md 1~2단계, docs/참고/더-들어가-볼까요-기준.md
  */
 import { ThinkingLevel, Type, type Schema } from "@google/genai";
-import { DETAIL_MODEL, json, obj, str, strArr } from "../shared/ai";
+import { DETAIL_MODEL, isTransient, json, obj, str, strArr } from "../shared/ai";
 import { splitBlocks, type Block } from "../0-collect/content";
 import type { Learning, ReadingGuide } from "../shared/types";
 import { DETAIL_V2_SCHEMA, DETAIL_V2_SYSTEM, detailV2Input, validateDetailV2, type DetailV2 } from "./detail-v2";
@@ -101,27 +101,45 @@ export async function analyzeArticle(title: string, text: string): Promise<Learn
 
 /* ───────────── 글 상세 요약 · 읽기 전에 알아두면 좋은 개념 · 사내 도구 (v2) ───────────── */
 
+/** 정상이면 30초 안팎 — 1분이 넘으면 서버가 막힌 것으로 보고 끊은 뒤 한 번 더 한다 */
+const DETAIL_TIMEOUT_MS = 60_000;
+
 /**
  * hyeran/techblog-article-detail-prompt-v2.md 그대로 — 예시나 코드 후처리를 덧붙이지 않는다.
- * 결과는 Claude Code 초기 백필과 같은 validateDetailV2 를 통과해야 쓴다. 걸리면 사유를 붙여 한 번 더 묻는다.
+ * 결과는 Claude Code 초기 백필과 같은 validateDetailV2 를 통과해야 쓴다.
+ * Gemini 호출은 최대 2번 — 일시 오류(시간 초과·과부하)면 그대로, 검사 탈락이면 사유를 붙여 한 번 더 묻는다.
+ * 실패하면 이유(fail)를 돌려준다 — 부르는 쪽이 learning.detailError 에 남기고 다음 자동 실행에서 다시 한다.
+ * 하루 한도(PerDay)는 다시 해도 소용없으니 그대로 던진다.
  */
 export async function buildDetail(
   a: { title: string; company: string; url: string; text: string },
   log: (m: string) => void = () => {},
-): Promise<DetailV2 | null> {
+): Promise<{ detail: DetailV2 } | { fail: string }> {
   const input = detailV2Input(a);
   let feedback = "";
+  let fail = "";
   for (let attempt = 0; attempt < 2; attempt++) {
-    const d = await json<DetailV2>(DETAIL_V2_SYSTEM, input + feedback, DETAIL_V2_SCHEMA, 8192, DETAIL_MODEL, {
-      thinkingLevel: ThinkingLevel.LOW,
-      timeoutMs: 120_000,
-    });
+    let d: DetailV2;
+    try {
+      d = await json<DetailV2>(DETAIL_V2_SYSTEM, input + feedback, DETAIL_V2_SCHEMA, 8192, DETAIL_MODEL, {
+        thinkingLevel: ThinkingLevel.LOW,
+        timeoutMs: DETAIL_TIMEOUT_MS,
+        maxRetries: 0,
+      });
+    } catch (e) {
+      if (!isTransient(e)) throw e;
+      const msg = String((e as Error).message);
+      fail = /504|DEADLINE|timed? ?out|abort/i.test(msg) ? "시간 초과" : "Gemini 일시 오류";
+      log(`    · 상세 요약 ${fail}${attempt === 0 ? " → 한 번 더" : ""}: ${msg.slice(0, 120)}`);
+      continue;
+    }
     const errs = validateDetailV2(d, a.text);
-    if (!errs.length) return d;
-    log(`    · 상세 요약 검사 탈락: ${errs.join(" / ")}`);
+    if (!errs.length) return { detail: d };
+    fail = `검사 탈락: ${errs.join(" / ")}`;
+    log(`    · 상세 요약 ${fail}`);
     feedback = `\n\n[지난 답이 규칙에 걸렸습니다: ${errs.join(" / ")}. 규칙을 지켜 다시 쓰세요.]`;
   }
-  return null;
+  return { fail };
 }
 
 /* ───────────── "더 들어가 볼까요?" 1단계 ───────────── */
