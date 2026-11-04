@@ -125,7 +125,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
         </div>
       )}
 
-      {/* "원문에서 짚어 볼 문장"과 같은 카드 형식 — 칩(개념 이름) → 이게 뭐야? → 이 글에서 왜 나와? */}
+      {/* "원문에서 짚어 볼 문장"과 같은 카드 형식 — 칩(개념 이름) → 무슨 뜻이에요? → 이 글에서 왜 나와요? */}
       {concepts.length > 0 && (
         <section className="mt-10">
           <h2 className="text-xl font-bold">읽기 전에 알아두면 좋은 개념</h2>
@@ -136,11 +136,11 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
                 <span className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${KIND_LABEL.technology.chip}`}>{x.term}</span>
                 <dl className="mt-3 space-y-2.5">
                   <div>
-                    <dt className="text-xs font-bold text-ink-3">이게 뭐야?</dt>
+                    <dt className="text-xs font-bold text-ink-3">무슨 뜻이에요?</dt>
                     <dd className="mt-0.5 text-[15px] leading-relaxed text-ink">{x.what}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs font-bold text-ink-3">이 글에서 왜 나와?</dt>
+                    <dt className="text-xs font-bold text-ink-3">이 글에서 왜 나와요?</dt>
                     <dd className="mt-0.5 text-sm leading-relaxed text-ink-2">{x.why}</dd>
                   </div>
                 </dl>

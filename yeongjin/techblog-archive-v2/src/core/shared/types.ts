@@ -125,9 +125,9 @@ export interface Overview {
 /** 글을 이해하는 데 실제로 필요한 개념 하나 — 사전식 정의가 아니라 이 글 안에서의 쓰임 */
 export interface Concept {
   term: string;
-  /** 이게 뭐야? — 비전문가가 이해할 수 있는 말 */
+  /** 무슨 뜻이에요? — 비전문가가 이해할 수 있는 말 */
   what: string;
-  /** 이 글에서 왜 나와? — 이 글에서 맡은 역할 */
+  /** 이 글에서 왜 나와요? — 이 글에서 맡은 역할 */
   why: string;
 }
 
