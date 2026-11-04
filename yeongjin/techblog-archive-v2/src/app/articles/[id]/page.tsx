@@ -13,6 +13,7 @@ import { companyLogo } from "@/core/0-collect/logos";
 import { EXPERIENCE_META } from "@/core/2-classify/taxonomy";
 import { cls } from "@/core/3-place/home";
 import { splitBlocks } from "@/core/0-collect/content";
+import { requireUser } from "@/core/shared/auth";
 import { getArticle } from "@/core/shared/db";
 import type { ReadingGuide } from "@/core/shared/types";
 
@@ -25,6 +26,7 @@ const SHOW_ANALYSIS = false;
 export default async function ArticlePage({ params }: PageProps<"/articles/[id]">) {
   await connection();
   const { id } = await params;
+  await requireUser(`/articles/${id}`); // 글 상세는 로그인한 사람만 — proxy 가 먼저 막고, 여기서 한 번 더
   const a = await getArticle(Number(id));
   if (!a) notFound();
   const l = a.learning;

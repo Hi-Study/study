@@ -48,6 +48,7 @@ src/core/
 ├─ shared/            공용
 │   ├─ ai.ts             Gemini 연결 — 호출 간격, 재시도, 스키마 도우미
 │   ├─ db.ts             Supabase 읽기·쓰기 (+ 자동 실행 잠금)
+│   ├─ auth.ts           구글 로그인(Supabase Auth) — 어디가 로그인 필요한지, 지금 로그인한 사람
 │   ├─ types.ts          단계 사이를 오가는 데이터 모양
 │   └─ local-store.ts    브라우저 저장 (북마크·읽은 글·최근 검색어)
 │
@@ -59,6 +60,8 @@ src/app/              ⑤ 화면 — 주소가 곧 폴더
 │   page.tsx             홈
 │   articles/[id]        글 상세          experiences/[slug]   경험 페이지
 │   tech/[slug]          기술 페이지      feed · search · my · excluded
+│   login · privacy      로그인 · 개인정보처리방침   auth/*  구글 로그인 시작·마무리·로그아웃
+src/proxy.ts          글 상세·마이에 로그인 안 한 사람을 /login 으로 (+ 선택: 사이트 비밀번호)
 src/components/
 │   home/                홈 자리별 UI — 새 글 카드 롤링, 경험 카드, 문제 카드, 기술 키워드 탭
 │   article/             글 상세 UI — 기획자 관점 바텀시트, "더 들어가 볼까요?" (둘 다 지금은 숨김 — 상세 page.tsx 의 SHOW_ANALYSIS)
