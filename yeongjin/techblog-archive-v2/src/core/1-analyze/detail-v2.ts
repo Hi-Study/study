@@ -1,5 +1,5 @@
 /**
- * 글 상세 v2 — hyeran/techblog-article-detail-prompt-v2.md 의 출력(lead·points·concepts·tools).
+ * 글 상세 v2 — docs/06_글상세_프롬프트_v2.md 의 출력(lead·points·concepts·tools).
  * Claude Code 초기 백필(scripts/run/import-detail-v2.mts)과 이후 Gemini 신규 글 경로가 같은 검사기를 쓴다.
  * 검사기는 형식·개수·문장 수·지어낸 숫자만 본다 — 어떤 개념이 중요한지 같은 내용 판단은 프롬프트(모델)에 맡긴다.
  */
@@ -12,8 +12,8 @@ import { numbersIn } from "./guide-gate";
 const sentenceCount = (s: string) => s.trim().split(/(?<=[.!?])\s+/).filter(Boolean).length;
 
 /**
- * hyeran/techblog-article-detail-prompt-v2.md 의 System prompt 를 글자 그대로 옮겼다 — 고치면 문서도 같이 고친다.
- * 배포 서버에는 hyeran/ 폴더가 없어 문서를 읽을 수 없다. 일치 여부는 npm run check-detail-prompt 로 확인한다.
+ * docs/06_글상세_프롬프트_v2.md 의 System prompt 를 글자 그대로 옮겼다 — 고치면 문서도 같이 고친다.
+ * 배포된 코드는 문서 파일을 읽지 않는다. 일치 여부는 npm run check-detail-prompt 로 확인한다.
  */
 export const DETAIL_V2_SYSTEM = `너는 기술 블로그 글을 비개발자
 (기획자·디자이너·마케터)에게 풀어 주는 한국어 편집자다.

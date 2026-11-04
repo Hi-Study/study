@@ -13,7 +13,7 @@
 
 ## 2. 기준 문서
 
-- 최종 프롬프트: [`hyeran/techblog-article-detail-prompt-v2.md`](./techblog-article-detail-prompt-v2.md)
+- 최종 프롬프트: [`yeongjin/techblog-archive-v2/docs/06_글상세_프롬프트_v2.md`](../yeongjin/techblog-archive-v2/docs/06_글상세_프롬프트_v2.md)
 - 대상 앱: `yeongjin/techblog-archive-v2`
 - 현재 상세 분석 코드: `yeongjin/techblog-archive-v2/src/core/1-analyze/analyze.ts`
 - 현재 상세 백필 코드: `yeongjin/techblog-archive-v2/scripts/run/backfill-detail.mts`
@@ -147,7 +147,7 @@ data/detail-v2/input-errors.jsonl
 Claude Code에 다음을 요청한다.
 
 ```text
-hyeran/techblog-article-detail-prompt-v2.md를 기준으로
+yeongjin/techblog-archive-v2/docs/06_글상세_프롬프트_v2.md를 기준으로
 data/detail-v2/input.jsonl의 각 글을 분석하세요.
 각 입력 ID마다 DetailV2 JSON 한 줄을 생성해
 data/detail-v2/output.jsonl에 저장하세요.
@@ -391,7 +391,7 @@ Claude Code에서 아래 요청문으로 시작한다.
 
 ```text
 hyeran/techblog-article-detail-v2-implementation-plan.md를 읽고 계획대로 구현하세요.
-최종 프롬프트는 hyeran/techblog-article-detail-prompt-v2.md를 단일 기준으로 사용하세요.
+최종 프롬프트는 yeongjin/techblog-archive-v2/docs/06_글상세_프롬프트_v2.md를 단일 기준으로 사용하세요.
 
 먼저 공통 타입·검증기, JSONL export/validate/import 스크립트, 상세 화면, Gemini 신규 글 경로를 구현하고 테스트하세요.
 기존 learning 전체를 덮어쓰지 말고 overview, concepts, tools, detailPromptVersion만 병합하세요.

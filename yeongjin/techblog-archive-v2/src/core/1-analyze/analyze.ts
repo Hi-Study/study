@@ -105,7 +105,7 @@ export async function analyzeArticle(title: string, text: string): Promise<Learn
 const DETAIL_TIMEOUT_MS = 60_000;
 
 /**
- * hyeran/techblog-article-detail-prompt-v2.md 그대로 — 예시나 코드 후처리를 덧붙이지 않는다.
+ * docs/06_글상세_프롬프트_v2.md 그대로 — 예시나 코드 후처리를 덧붙이지 않는다.
  * 결과는 Claude Code 초기 백필과 같은 validateDetailV2 를 통과해야 쓴다.
  * Gemini 호출은 최대 2번 — 일시 오류(시간 초과·과부하)면 그대로, 검사 탈락이면 사유를 붙여 한 번 더 묻는다.
  * 실패하면 이유(fail)를 돌려준다 — 부르는 쪽이 learning.detailError 에 남기고 다음 자동 실행에서 다시 한다.

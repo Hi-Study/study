@@ -8,7 +8,7 @@ import { listArticles } from "../../src/core/shared/db";
 // 사용: npm run export-detail-v2 — 글 상세 v2 백필용 입력(JSONL)을 만든다. DB 는 읽기만 한다.
 //   기본: 포함된 글 중 v2 가 아닌 글   --all  v2 여도 전부   --ids=8,22,42  특정 글만
 //   출력: data/detail-v2/input.jsonl (id·제목·회사·URL·원문 텍스트), input-errors.jsonl (본문이 없거나 너무 짧은 글)
-//   이 파일을 Claude Code 가 hyeran/techblog-article-detail-prompt-v2.md 로 분석해 output.jsonl 을 만든다.
+//   이 파일을 Claude Code 가 docs/06_글상세_프롬프트_v2.md 로 분석해 output.jsonl 을 만든다.
 const MIN_TEXT = 300;
 
 const ids = process.argv.find((a) => a.startsWith("--ids="))?.slice(6).split(",").map(Number);

@@ -36,7 +36,7 @@ export async function classify(id: number, log: (m: string) => void) {
 }
 
 /**
- * 글 상세 요약(한눈에 보기) · 읽기 전에 알아두면 좋은 개념 · 사내 도구 — hyeran/techblog-article-detail-prompt-v2.md 기준.
+ * 글 상세 요약(한눈에 보기) · 읽기 전에 알아두면 좋은 개념 · 사내 도구 — docs/06_글상세_프롬프트_v2.md 기준.
  * 실패하면 예전 값을 그대로 두고(화면은 가이드의 lead·points 로 대신한다) 이유를 l.detailError 에 남긴다.
  * 저장은 부르는 쪽이 한다 — 그래야 이유가 DB 에 남고, 자동 처리(retryMissingDetail)가 나중에 다시 한다.
  * 한도 초과(429)여도 글 처리는 막지 않는다 — "daily" 를 돌려주고, 멈출지는 부르는 쪽이 정한다.

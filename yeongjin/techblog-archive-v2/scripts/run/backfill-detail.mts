@@ -6,7 +6,7 @@ import { listArticles, markIncluded } from "../../src/core/shared/db";
 import type { Learning } from "../../src/core/shared/types";
 
 // 사용: npm run backfill-detail — 포함된 글 중 상세 v2(detailPromptVersion 2)가 아닌 글만 Gemini 로 만든다
-//   기준: hyeran/techblog-article-detail-prompt-v2.md (한눈에 보기 4칸 + 기획 포인트 + 개념 + 사내 도구)
+//   기준: docs/06_글상세_프롬프트_v2.md (한눈에 보기 4칸 + 기획 포인트 + 개념 + 사내 도구)
 //   여러 글을 한꺼번에 바꿀 때는 무료 한도 때문에 Claude Code 백필(export/validate/import-detail-v2)을 쓴다
 //   --all  이미 있어도 전부 다시   --ids=29,41  특정 글만(이미 있어도 다시)   --dry  저장하지 않고 결과만 출력
 // 무료 키 하루 한도(PerDay)에 걸리면 멈춘다. 같은 명령으로 이어서 돌리면 남은 글만 한다.
