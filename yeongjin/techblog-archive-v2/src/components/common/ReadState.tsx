@@ -5,7 +5,7 @@ import { useSyncExternalStore } from "react";
 import { toggleIn, useLocalList } from "@/core/shared/local-store";
 
 /**
- * 읽은 글 / 안 읽은 글 구분 — 글 상세를 열면 "읽음"이 된다(MarkRead). 기록은 이 브라우저에만 남는다.
+ * 읽은 글 / 안 읽은 글 구분 — 글 상세를 열면 "읽음"이 된다(MarkRead). 로그인한 계정에 저장된다(local-store.ts · AccountSync).
  *
  * 카드(서버 화면)는 그대로 두고, 카드 안의 ReadBadge 가 읽은 글이면 data-read="true" 표시를 단다.
  * ReadFilter 는 감싼 목록에 data-read-filter 를 달고, CSS(globals.css)가 표시 유무로 카드를 숨긴다.
@@ -126,67 +126,76 @@ export function ReadFilter({
   );
 }
 
-/* ── 홈 "내가 읽은 글" ON/OFF — ON 이면 다 보이고(✓ 읽음 표시), OFF 면 읽은 글을 빼고 안 읽은 글로 채운다 ── */
-const SHOW_KEY = "tbp:home-show-read";
-const SHOW_EVENT = "home-show-read-change";
+/* ── 홈 "읽은 글 빼기" ON/OFF — 기본은 OFF(전부 보이고 ✓ 읽음 표시). 켜면 읽은 글을 빼고 안 읽은 글로 채운다 ──
+   2026-11-11 방향 바꿈: 예전 "내가 읽은 글"(기본 ON = 보이기) → "읽은 글 빼기"(기본 OFF). 새 키라 모두 기본값(전체 보기)에서 시작한다 */
+const HIDE_KEY = "tbp:home-hide-read";
+const HIDE_EVENT = "home-hide-read-change";
 function readShow(): boolean {
   try {
-    return localStorage.getItem(SHOW_KEY) !== "off";
+    return localStorage.getItem(HIDE_KEY) !== "on";
   } catch {
     return true;
   }
 }
+/** true = 읽은 글도 보인다(기본) */
 export function useShowRead(): boolean {
   return useSyncExternalStore(
     (cb) => {
-      window.addEventListener(SHOW_EVENT, cb);
-      return () => window.removeEventListener(SHOW_EVENT, cb);
+      window.addEventListener(HIDE_EVENT, cb);
+      return () => window.removeEventListener(HIDE_EVENT, cb);
     },
     readShow,
     () => true,
   );
 }
-function setShow(on: boolean) {
+function setHide(hide: boolean) {
   try {
-    localStorage.setItem(SHOW_KEY, on ? "on" : "off");
+    localStorage.setItem(HIDE_KEY, hide ? "on" : "off");
   } catch {
     /* 저장 불가 — 이번 화면에서만 */
   }
-  window.dispatchEvent(new Event(SHOW_EVENT));
+  window.dispatchEvent(new Event(HIDE_EVENT));
+}
+
+/** 로그아웃할 때 — "읽은 글 빼기"도 기본값(꺼짐)으로 돌린다. 다음 사람(또는 다음 로그인)은 전체 보기부터 */
+export function resetHideRead() {
+  try {
+    localStorage.removeItem(HIDE_KEY);
+  } catch {}
+  window.dispatchEvent(new Event(HIDE_EVENT));
 }
 
 /** 맨 위 고정 바(유틸리티 영역)의 알약 모양 전환 버튼 — 홈에서만 보인다 */
 export function HomeReadToggle() {
-  const on = useShowRead();
+  const hide = !useShowRead();
   const read = useLocalList<number>("read");
   if (usePathname() !== "/") return null;
   return (
     <button
       role="switch"
-      aria-checked={on}
-      onClick={() => setShow(!on)}
-      title={on ? "읽은 글도 함께 보여요" : "읽은 글은 빼고 보여요"}
+      aria-checked={hide}
+      onClick={() => setHide(!hide)}
+      title={hide ? "읽은 글은 빼고 보여요" : "켜면 읽은 글을 빼고 보여요"}
       className={`inline-flex items-center gap-2 rounded-full py-1.5 pl-3 pr-1.5 text-sm font-bold transition ${
-        on ? "bg-brand-soft text-brand" : "bg-[#e5e8eb] text-ink-2"
+        hide ? "bg-brand-soft text-brand" : "bg-[#e5e8eb] text-ink-2"
       }`}
     >
-      <span className={`size-2 rounded-full ${on ? "bg-brand" : "bg-ink-3"}`} />
-      내가 읽은 글{read.length > 0 && <span className="font-medium opacity-70">{read.length}</span>}
-      <span className={`relative h-5 w-9 rounded-full transition ${on ? "bg-brand" : "bg-ink-3/50"}`}>
-        <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-all ${on ? "left-[18px]" : "left-0.5"}`} />
+      읽은 글 빼기{read.length > 0 && <span className="font-medium opacity-70">{read.length}</span>}
+      <span className={`relative h-5 w-9 rounded-full transition ${hide ? "bg-brand" : "bg-ink-3/50"}`}>
+        <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-all ${hide ? "left-[18px]" : "left-0.5"}`} />
       </span>
-      <span className="sr-only">{on ? "켜짐" : "꺼짐"}</span>
+      <span className="sr-only">{hide ? "켜짐" : "꺼짐"}</span>
     </button>
   );
 }
 
-/** 홈의 서버 화면(문제 카드 등)을 감싸 OFF 일 때 읽은 카드를 CSS 로 숨긴다 */
+/** 홈의 서버 화면(문제 카드 등)을 감싸 "읽은 글 빼기"가 켜졌을 때 읽은 카드를 CSS 로 숨긴다 */
 export function HomeReadScope({ children }: { children: React.ReactNode }) {
   const on = useShowRead();
   return <div data-read-filter={on ? "all" : "unread"}>{children}</div>;
 }
 
-/** 브라우저에서 그리는 목록(새 글 카드, 기술 탭) — OFF 면 읽은 글을 빼고 앞에서 n개 */
+/** 브라우저에서 그리는 목록(새 글 카드, 기술 탭) — "읽은 글 빼기"가 켜지면 읽은 글을 빼고 앞에서 n개 */
 export function useUnreadFirst<T extends { id: number }>(items: T[], n: number): T[] {
   const on = useShowRead();
   const read = useLocalList<number>("read");

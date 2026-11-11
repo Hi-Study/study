@@ -11,6 +11,11 @@ import { authConfig, loginHref, needsLogin } from "@/core/shared/auth";
 export async function proxy(req: NextRequest) {
   const blocked = sitePassword(req);
   if (blocked) return blocked;
+  // 로그인 돌아오는 주소가 허용 목록에 안 맞으면 Supabase 가 홈(Site URL)에 ?code= 를 붙여 보낸다 — 로그인 마무리로 넘긴다
+  const code = req.nextUrl.searchParams.get("code");
+  if (req.nextUrl.pathname === "/" && code) {
+    return NextResponse.redirect(new URL(`/auth/callback?code=${encodeURIComponent(code)}`, req.url));
+  }
   if (!needsLogin(req.nextUrl.pathname)) return NextResponse.next();
   return loginGate(req);
 }

@@ -51,6 +51,9 @@ export async function requireUser(path: string) {
   return user;
 }
 
+/** 로그인하러 가기 전 "가려던 주소"를 쿠키에도 적어 둔다 — 돌아오는 주소에서 ?next= 가 빠져도(Supabase 가 Site URL 로 보낼 때) 여기서 찾는다 */
+export const NEXT_COOKIE = "tbp-login-next";
+
 export const loginHref = (next: string) => `/login?next=${encodeURIComponent(next)}`;
 
 /** 로그인 뒤 돌아갈 주소 — 우리 사이트 안의 경로만 받는다(다른 사이트로 튕겨 보내는 링크 막기) */

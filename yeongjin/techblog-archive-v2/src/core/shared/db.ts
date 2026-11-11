@@ -6,6 +6,7 @@
  * 2026-10-08 전에는 로컬 SQLite(data/app.db)였다. 옮긴 기록: scripts/run/migrate-to-supabase.mts
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Item, Key } from "./list-ops";
 import type { ArticleRow, ArticleStatus, Learning, ReadingGuide } from "./types";
 
 const g = globalThis as unknown as { __sb?: SupabaseClient };
@@ -219,4 +220,31 @@ export async function tryLock(name: string, seconds: number): Promise<boolean> {
 }
 export async function releaseLock(name: string) {
   check(await sb().rpc("release_lock", { lock_name: name }));
+}
+
+/* ── 내 목록(북마크·읽은 글·최근 검색어) — 계정마다 한 줄씩. 스키마: supabase/schema.sql 의 user_lists ── */
+
+/** 표가 아직 없으면(SQL 을 안 돌림) null — 화면은 예전처럼 브라우저에만 저장한다 */
+export async function getUserLists(userId: string): Promise<Partial<Record<Key, Item[]>> | null> {
+  const res = await sb().from("user_lists").select("key, items").eq("user_id", userId).returns<{ key: Key; items: Item[] }[]>();
+  if (res.error) {
+    console.error("[user_lists] 읽기 실패", res.error.message);
+    return null;
+  }
+  return Object.fromEntries((res.data ?? []).map((r) => [r.key, r.items]));
+}
+
+export async function getUserList(userId: string, key: Key): Promise<Item[]> {
+  const r = check(
+    await sb().from("user_lists").select("items").eq("user_id", userId).eq("key", key).maybeSingle<{ items: Item[] }>(),
+  );
+  return r?.items ?? [];
+}
+
+export async function saveUserList(userId: string, key: Key, items: Item[]) {
+  check(
+    await sb()
+      .from("user_lists")
+      .upsert({ user_id: userId, key, items, updated_at: new Date().toISOString() }, { onConflict: "user_id,key" }),
+  );
 }

@@ -21,6 +21,6 @@ export function BookmarkButton({ id }: { id: number }) {
 
 /** 상세 화면에 들어오면 읽은 글로 기록 */
 export function MarkRead({ id }: { id: number }) {
-  useEffect(() => addFront("read", id, 200), [id]);
+  useEffect(() => addFront("read", id), [id]);
   return null;
 }

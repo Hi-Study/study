@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { KIND_LABEL } from "@/components/article/kinds";
 import { BookmarkButton, MarkRead } from "@/components/article/ArticleActions";
 import { ReadToggle } from "@/components/common/ReadState";
+import { BackLink } from "@/components/common/BackNav";
 import { formatDate } from "@/components/common/ArticleCard";
 import { PerspectiveSheet } from "@/components/article/PerspectiveSheet";
 import { ReadingDigest } from "@/components/article/ReadingDigest";
@@ -238,9 +239,8 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
         </a>
         <p className="mt-2 text-center text-xs text-ink-3">전체 글은 {c.name} 기술 블로그에서 읽어요</p>
       </div>
-      <Link href="/feed" className="mt-3 block text-center text-sm text-ink-3">
-        ← 피드로 돌아가기
-      </Link>
+      {/* 들어온 화면(검색 결과·피드·홈)으로 — 맨 위 고정 바 왼쪽의 "이전"과 같다 */}
+      <BackLink className="mx-auto mt-3 block text-center text-sm text-ink-3" />
     </article>
   );
 }

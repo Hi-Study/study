@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { LoggedInRedirect, LoginBackLink } from "@/components/common/BackNav";
 import { authConfig, currentUser, safeNext } from "@/core/shared/auth";
 
 export const metadata: Metadata = { title: "로그인 — INSIGHT" };
@@ -10,7 +10,8 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const sp = await searchParams;
   const next = safeNext(typeof sp.next === "string" ? sp.next : null);
   const ready = !!authConfig();
-  if (ready && (await currentUser())) redirect(next);
+  // 이미 로그인함 — 보통 로그인한 뒤 "뒤로"로 되돌아온 경우. 로그인 전에 있던 화면으로 보낸다
+  if (ready && (await currentUser())) return <LoggedInRedirect next={next} />;
 
   return (
     <div className="mx-auto flex max-w-sm flex-col items-center pt-14 text-center">
@@ -49,9 +50,8 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         에 동의하는 것으로 봐요
       </p>
 
-      <Link href="/" className="mt-10 text-sm font-semibold text-ink-2 transition hover:text-ink">
-        ← 홈으로 돌아가기
-      </Link>
+      {/* 로그인하지 않고 돌아가기 — 홈이 아니라 직전에 있던 화면(검색 결과 등)으로 */}
+      <LoginBackLink next={next} className="mt-10 text-sm font-semibold text-ink-2 transition hover:text-ink" />
     </div>
   );
 }

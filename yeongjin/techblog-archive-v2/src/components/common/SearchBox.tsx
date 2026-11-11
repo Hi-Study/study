@@ -11,7 +11,7 @@ export function SearchBox({ initial }: { initial: string }) {
 
   // 검색어가 바뀌면 page 쪽에서 key 로 다시 마운트되므로 q 를 따로 맞출 필요가 없다
   useEffect(() => {
-    if (initial) addFront("recent-search", initial, 10);
+    if (initial) addFront("recent-search", initial);
   }, [initial]);
 
   const go = (v: string) => {

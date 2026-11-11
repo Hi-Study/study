@@ -59,3 +59,15 @@ revoke execute on function public.reset_articles_id_seq() from public, anon, aut
 grant execute on function public.try_lock(text, int) to service_role;
 grant execute on function public.release_lock(text) to service_role;
 grant execute on function public.reset_articles_id_seq() to service_role;
+
+-- 4) 내 목록 — 계정마다 북마크·읽은 글·최근 검색어를 한 줄씩 (2026-11-11 추가: 브라우저가 아니라 계정에 저장)
+--    user_id 는 Supabase Auth 의 사용자 id. 화면은 /api/me/lists 를 거쳐 서버(service_role)로만 읽고 쓴다.
+create table if not exists public.user_lists (
+  user_id    uuid        not null references auth.users (id) on delete cascade,
+  key        text        not null check (key in ('bookmarks', 'read', 'recent-search')),
+  items      jsonb       not null default '[]'::jsonb,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, key)
+);
+alter table public.user_lists enable row level security;
+-- 정책 없음 = 브라우저에서 바로는 못 읽는다. 서버가 로그인한 사람을 확인한 뒤 그 사람 줄만 읽고 쓴다.

@@ -7,7 +7,7 @@ import { headlineOf } from "@/core/3-place/home";
 export default async function MyPage() {
   await connection();
   const user = await requireUser("/my");
-  // 북마크·읽은 글 id 는 브라우저에만 있으니, 목록 렌더에 필요한 최소 정보만 넘긴다
+  // 북마크·읽은 글 id 는 브라우저가 계정에서 받아 오니(AccountSync), 목록 렌더에 필요한 최소 정보만 넘긴다
   const items = (await listArticles("included")).map((a) => ({
     id: a.id,
     companyId: a.companyId,
@@ -27,10 +27,6 @@ export default async function MyPage() {
           <button className="text-sm font-semibold text-ink-3 transition hover:text-ink">로그아웃</button>
         </form>
       </div>
-      <p className="mt-3 rounded-xl bg-brand-soft px-4 py-3 text-sm leading-relaxed text-brand">
-        저장한 글과 읽은 글은 아직 계정이 아니라 <b>이 브라우저에만</b> 저장돼요. 다른 기기나 브라우저에서는 보이지 않고,
-        브라우저 데이터를 지우면 함께 사라져요.
-      </p>
       <MyLists items={items} />
     </div>
   );
