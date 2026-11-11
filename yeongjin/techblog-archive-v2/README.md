@@ -87,7 +87,7 @@ src/components/
 | `npm run add-url -- <URL>` | RSS 에 없는 글 1건 추가 | 0~8 |
 | `npm run backfill-content` | 본문이 너무 짧게 저장된 글 다시 받기 | 0 |
 | `npm run backfill-thumbnails` | 썸네일 아직 안 찾은 글 | 0 |
-| `npm run backfill-detail` | 글 상세 요약(한눈에 보기 5칸)·"읽기 전에 알아두면 좋은 개념"이 없는 포함 글 (`--all` 전부 다시 · `--ids=29,41` 특정 글 · `--dry` 저장 안 함). 기준: `hyeran/techblog-article-detail-prompt.md`, 모델은 `GEMINI_DETAIL_MODEL`(기본 gemini-flash-latest) | 1 |
+| `npm run backfill-detail` | 글 상세 요약(한눈에 보기 5칸)·"읽기 전에 알아두면 좋은 개념"이 없는 포함 글 (`--all` 전부 다시 · `--ids=29,41` 특정 글 · `--dry` 저장 안 함). 기준: `docs/06_글상세_프롬프트_v2.md`, 모델은 `GEMINI_DETAIL_MODEL`(기본 gemini-flash-lite-latest) | 1 |
 | `npm run fetch-logos` | 회사 로고 받기 → `public/logos/` (상표라 저장소에 없음 — 처음 받으면 한 번 실행) | 0 |
 | **점검** `scripts/check/` | | |
 | `npm run report` | 회사별 수집·포함·제외·대기 + 제외 이유 (01 문서 "수집 결과" 표의 원본) | 0~1 |

@@ -5,8 +5,12 @@
 import { GoogleGenAI, Type, type Schema, type ThinkingLevel } from "@google/genai";
 
 export const MODEL = process.env.GEMINI_MODEL || "gemini-flash-lite-latest";
-/** 글 상세 요약·개념만 한 단계 위 모델 — lite 는 제품 이름을 용어처럼 설명하고 풀이가 어려웠다(2026-10-21 비교) */
-export const DETAIL_MODEL = process.env.GEMINI_DETAIL_MODEL || "gemini-flash-latest";
+/**
+ * 글 상세 요약·개념·사내 도구 모델 — 2026-11-11 flash 에서 lite 로 바꿨다.
+ * flash 는 무료 키 요청을 503(high demand)으로 계속 거절해 11/5~11/10 동안 1건만 만들었다.
+ * lite 로 빈 글 22개를 시험해 21개를 만들었고 팀이 품질을 확인했다.
+ */
+export const DETAIL_MODEL = process.env.GEMINI_DETAIL_MODEL || "gemini-flash-lite-latest";
 
 let client: GoogleGenAI | null = null;
 export function hasGeminiKey(): boolean {
