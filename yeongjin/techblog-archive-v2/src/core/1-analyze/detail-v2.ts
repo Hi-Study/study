@@ -177,8 +177,10 @@ export function validateDetailV2(raw: unknown, source: string, allowNumbers: str
 /** 기존 learning 을 복사해 overview·concepts·tools·detailPromptVersion 만 바꾼다 — 분류·태그·카드 문구는 그대로 */
 export function mergeDetailV2(l: Learning, d: DetailV2): Learning {
   const t = (s: string) => s.trim();
+  // 만들었으면 지난 실패 기록(detailError)은 지운다 — 가져오기(import-detail-v2)로 채울 때도 남지 않게
+  const { detailError: _done, ...rest } = structuredClone(l);
   return {
-    ...structuredClone(l),
+    ...rest,
     overview: {
       what: t(d.lead.what),
       why: t(d.lead.why),
