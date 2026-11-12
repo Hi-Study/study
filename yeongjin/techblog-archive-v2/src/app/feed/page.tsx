@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { ArticleCard } from "@/components/common/ArticleCard";
-import { ReadFilter } from "@/components/common/ReadState";
+import { HomeReadScope } from "@/components/common/ReadState";
 import { companyById } from "@/core/0-collect/companies";
 import { listArticles } from "@/core/shared/db";
 import { allTags } from "@/core/3-place/home";
@@ -78,13 +78,14 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
         )}
       </p>
       <div className="mt-3">
-        <ReadFilter ids={rows.map((a) => a.id)}>
+        {/* 읽은 글 거르기는 맨 위 고정 바의 "읽은 글 포함" 스위치(홈과 같은 설정) */}
+        <HomeReadScope ids={rows.map((a) => a.id)}>
           <div className="grid gap-3 md:grid-cols-2">
             {rows.map((a) => (
               <ArticleCard key={a.id} a={a} />
             ))}
           </div>
-        </ReadFilter>
+        </HomeReadScope>
       </div>
     </div>
   );

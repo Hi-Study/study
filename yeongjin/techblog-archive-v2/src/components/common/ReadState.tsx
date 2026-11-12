@@ -126,13 +126,16 @@ export function ReadFilter({
   );
 }
 
-/* ── 홈 "읽은 글 빼기" ON/OFF — 기본은 OFF(전부 보이고 ✓ 읽음 표시). 켜면 읽은 글을 빼고 안 읽은 글로 채운다 ──
-   2026-11-11 방향 바꿈: 예전 "내가 읽은 글"(기본 ON = 보이기) → "읽은 글 빼기"(기본 OFF). 새 키라 모두 기본값(전체 보기)에서 시작한다 */
-const HIDE_KEY = "tbp:home-hide-read";
-const HIDE_EVENT = "home-hide-read-change";
+/* ── 홈·피드 "읽은 글 포함" ON/OFF — 기본은 켜짐(전부 보이고 ✓ 읽음 표시). 끄면 읽은 글을 빼고 안 읽은 글로 채운다 ──
+   2026-11-12 워딩 "읽은 글 빼기" → "읽은 글 포함"(스위치 켜짐 = 포함). 저장 이름도 새로 — 예전에 "빼기"를 켜 둔 브라우저도
+   모두 기본값(포함 켜짐)에서 다시 시작한다. 저장 값: "off" 일 때만 읽은 글을 뺀다 */
+const HIDE_KEY = "tbp:include-read";
+const HIDE_EVENT = "include-read-change";
+const OLD_KEYS = ["tbp:home-hide-read", "tbp:home-show-read"];
 function readShow(): boolean {
   try {
-    return localStorage.getItem(HIDE_KEY) !== "on";
+    OLD_KEYS.forEach((k) => localStorage.removeItem(k)); // 예전 이름으로 남은 설정 정리
+    return localStorage.getItem(HIDE_KEY) !== "off";
   } catch {
     return true;
   }
@@ -148,16 +151,16 @@ export function useShowRead(): boolean {
     () => true,
   );
 }
-function setHide(hide: boolean) {
+function setShow(show: boolean) {
   try {
-    localStorage.setItem(HIDE_KEY, hide ? "on" : "off");
+    localStorage.setItem(HIDE_KEY, show ? "on" : "off");
   } catch {
     /* 저장 불가 — 이번 화면에서만 */
   }
   window.dispatchEvent(new Event(HIDE_EVENT));
 }
 
-/** 로그아웃할 때 — "읽은 글 빼기"도 기본값(꺼짐)으로 돌린다. 다음 사람(또는 다음 로그인)은 전체 보기부터 */
+/** 로그아웃할 때 — "읽은 글 포함"도 기본값(켜짐)으로 돌린다. 다음 사람(또는 다음 로그인)은 전체 보기부터 */
 export function resetHideRead() {
   try {
     localStorage.removeItem(HIDE_KEY);
@@ -165,37 +168,51 @@ export function resetHideRead() {
   window.dispatchEvent(new Event(HIDE_EVENT));
 }
 
-/** 맨 위 고정 바(유틸리티 영역)의 알약 모양 전환 버튼 — 홈에서만 보인다 */
+/** 이 스위치가 보이는 화면 — 홈·피드 (설정 하나를 같이 쓴다) */
+const TOGGLE_PATHS = ["/", "/feed"];
+
+/** 맨 위 고정 바(유틸리티 영역)의 알약 모양 전환 버튼 — 홈·피드에서만 보인다 */
 export function HomeReadToggle() {
-  const hide = !useShowRead();
-  const read = useLocalList<number>("read");
-  if (usePathname() !== "/") return null;
+  const show = useShowRead();
+  if (!TOGGLE_PATHS.includes(usePathname())) return null;
   return (
     <button
       role="switch"
-      aria-checked={hide}
-      onClick={() => setHide(!hide)}
-      title={hide ? "읽은 글은 빼고 보여요" : "켜면 읽은 글을 빼고 보여요"}
+      aria-checked={show}
+      onClick={() => setShow(!show)}
+      title={show ? "끄면 읽은 글을 빼고 보여요" : "읽은 글은 빼고 보여요"}
       className={`inline-flex items-center gap-2 rounded-full py-1.5 pl-3 pr-1.5 text-sm font-bold transition ${
-        hide ? "bg-brand-soft text-brand" : "bg-[#e5e8eb] text-ink-2"
+        show ? "bg-brand-soft text-brand" : "bg-[#e5e8eb] text-ink-2"
       }`}
     >
-      읽은 글 빼기{read.length > 0 && <span className="font-medium opacity-70">{read.length}</span>}
-      <span className={`relative h-5 w-9 rounded-full transition ${hide ? "bg-brand" : "bg-ink-3/50"}`}>
-        <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-all ${hide ? "left-[18px]" : "left-0.5"}`} />
+      읽은 글 포함
+      <span className={`relative h-5 w-9 rounded-full transition ${show ? "bg-brand" : "bg-ink-3/50"}`}>
+        <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-all ${show ? "left-[18px]" : "left-0.5"}`} />
       </span>
-      <span className="sr-only">{hide ? "켜짐" : "꺼짐"}</span>
+      <span className="sr-only">{show ? "켜짐" : "꺼짐"}</span>
     </button>
   );
 }
 
-/** 홈의 서버 화면(문제 카드 등)을 감싸 "읽은 글 빼기"가 켜졌을 때 읽은 카드를 CSS 로 숨긴다 */
-export function HomeReadScope({ children }: { children: React.ReactNode }) {
+/** 홈·피드의 서버 화면(카드 목록)을 감싸 "읽은 글 포함"이 꺼졌을 때 읽은 카드를 CSS 로 숨긴다.
+ *  ids 를 주면(피드) 다 읽어서 남은 글이 없을 때 안내를 보여 준다 */
+export function HomeReadScope({ ids, children }: { ids?: number[]; children: React.ReactNode }) {
   const on = useShowRead();
-  return <div data-read-filter={on ? "all" : "unread"}>{children}</div>;
+  const read = useLocalList<number>("read");
+  const allRead = !on && !!ids && ids.length > 0 && ids.every((id) => read.includes(id));
+  return (
+    <div data-read-filter={on ? "all" : "unread"}>
+      {children}
+      {allRead && (
+        <p className="rounded-2xl border border-dashed border-line bg-surface p-8 text-center text-ink-3">
+          이 목록의 글을 모두 읽었어요. 위의 “읽은 글 포함”을 켜면 다시 보여요.
+        </p>
+      )}
+    </div>
+  );
 }
 
-/** 브라우저에서 그리는 목록(새 글 카드, 기술 탭) — "읽은 글 빼기"가 켜지면 읽은 글을 빼고 앞에서 n개 */
+/** 브라우저에서 그리는 목록(새 글 카드, 기술 탭) — "읽은 글 포함"이 꺼지면 읽은 글을 빼고 앞에서 n개 */
 export function useUnreadFirst<T extends { id: number }>(items: T[], n: number): T[] {
   const on = useShowRead();
   const read = useLocalList<number>("read");
