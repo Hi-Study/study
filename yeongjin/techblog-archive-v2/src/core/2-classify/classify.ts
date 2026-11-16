@@ -2,6 +2,7 @@
 import { Type, type Schema } from "@google/genai";
 import { excerptExists } from "../1-analyze/annotate";
 import { json, obj, str } from "../shared/ai";
+import { plainTextProblem } from "../shared/plain-text";
 import {
   ARTICLE_TYPES,
   BENEFICIARIES,
@@ -91,15 +92,7 @@ ${burdenGuide}
 8) productPattern — 서비스가 개입한 방식. 아래 중 하나, 맞는 게 없거나 NONE 이면 null.
 ${ppGuide}
 9) technologies — 그 방식을 실제로 구현한 기술 분류 1~3개: ${techGuide}
-10) articleType — fit 이 NONE 일 때만: ${ARTICLE_TYPES.join(" / ")}. 아니면 null.
-
-11) cardHeadline — 목록 카드에 크게 들어갈 **핵심 문장 하나**. 이 글을 처음 보는, 개발을 전혀 모르는 사람이 읽자마자 이해해야 한다.
-   - **누가** + **무엇이 어떻게 달라졌는지**. 주어는 사람(고객, 사장님, 상담원, 개발자 …)이다.
-   - 40자 이내, "~어요/~해요" 로 끝낸다.
-   - 개발 용어·영어 기술 이름을 쓰지 마라(파이프라인, 아키텍처, 비동기, 렌더링, 임베딩, 캐시, 큐, 스레드, LLM, API …). "AI" 는 써도 된다.
-   - 결론을 숨기는 낚시 문장, 과장, "~의 비밀" 같은 표현을 쓰지 마라. 숫자는 원문에 있는 것만.
-   - 좋은 예: "주문 취소, 이제 앱에서 버튼 한 번이면 돼요" · "사장님 입점 승인이 10분에서 10초로 빨라졌어요" · "개발자가 장애 원인을 찾느라 로그를 뒤지지 않아도 돼요"
-   - 나쁜 예: "비동기 큐로 로그 지연을 해결한 방법" · "LLM 기반 대화형 BI의 치명적 벽을 넘은 비결은?"`;
+10) articleType — fit 이 NONE 일 때만: ${ARTICLE_TYPES.join(" / ")}. 아니면 null.`;
 
 // 키 순서 = 생성 순서. 변경 전 행동(interpretation)을 먼저 쓰고 나서 burden 을 고르게 한다
 const CLASSIFY_SCHEMA: Schema = obj({
@@ -113,39 +106,11 @@ const CLASSIFY_SCHEMA: Schema = obj({
   productPattern: { type: Type.STRING, enum: [...PRODUCT_PATTERNS], nullable: true },
   technologies: { type: Type.ARRAY, items: { type: Type.STRING, enum: [...TECH_CATEGORIES] }, minItems: "1", maxItems: "3" },
   articleType: { type: Type.STRING, enum: [...ARTICLE_TYPES], nullable: true },
-  cardHeadline: str(8),
 });
 
-type Raw = Omit<Classification, "experience"> & { cardHeadline: string };
+type Raw = Omit<Classification, "experience">;
 
 /* ───────────── 코드 게이트 ───────────── */
-
-const JARGON =
-  /파이프라인|아키텍처|비동기|렌더링|임베딩|캐시|스레드|인프라|리팩터링|마이그레이션|레이턴시|오케스트레이션|프레임워크|컴포넌트|트래픽|쿼리|지오코딩|형상관리|디컴파일|커밋|브랜치|엔드포인트|스키마|로깅|번들/;
-const ALLOWED_LATIN = new Set(["AI", "QR", "PDF", "SNS", "PC", "TV", "OK"]);
-
-/** 썸네일 문장 규칙. 통과하면 null, 아니면 이유 */
-export function headlineProblem(h: string, sourceText: string): string | null {
-  return plainTextProblem(h, sourceText, 8, 40);
-}
-
-/** 누구나 읽는 문구 규칙 — 길이, "~요" 끝, 영어·개발 용어 금지, 숫자는 원문에 있는 것만 */
-export function plainTextProblem(h: string, sourceText: string, min: number, max: number): string | null {
-  const t = (h ?? "").trim();
-  if (t.length < min || t.length > max) return `길이 ${t.length}자 (${min}~${max}자)`;
-  if (!/요[.!?]?$/.test(t)) return "'~요'로 끝나지 않음";
-  const latin = (t.match(/[A-Za-z]{2,}/g) ?? []).filter((w) => !ALLOWED_LATIN.has(w.toUpperCase()));
-  if (latin.length) return `영어 용어: ${latin.join(", ")}`;
-  const j = t.match(JARGON);
-  if (j) return `개발 용어: ${j[0]}`;
-  // 숫자는 단위까지 같이 원문에 있어야 한다 ("12분" ≠ 원문의 "12개")
-  const flat = sourceText.replace(/\s+/g, "");
-  const bad = [...t.matchAll(/(\d+(?:[.,]\d+)*)\s*([가-힣%])?/g)]
-    .map((m) => m[1] + (m[2] ?? ""))
-    .filter((n) => !flat.includes(n));
-  if (bad.length) return `원문에 없는 숫자: ${bad.join(", ")}`;
-  return null;
-}
 
 export function gateClassification(raw: Raw, html: string): { c: Classification; notes: string[] } {
   const notes: string[] = [];
@@ -194,26 +159,13 @@ export async function classifyExperience(
   text: string,
   html: string,
   log: (m: string) => void = () => {},
-): Promise<{ classification: Classification; cardHeadline: string | null }> {
+): Promise<{ classification: Classification }> {
   const input = `제목: ${title}\n\n원문:\n${text}`;
-  let raw = await json<Raw>(CLASSIFY_SYS, input, CLASSIFY_SCHEMA, 3000);
-  let problem = headlineProblem(raw.cardHeadline ?? "", text);
-  if (problem) {
-    // 썸네일 문장만 다시 쓰게 한다
-    log(`    · 카드 문장 규칙 위반(${problem}): ${raw.cardHeadline}`);
-    const retry = await json<{ cardHeadline: string }>(
-      CLASSIFY_SYS,
-      `${input}\n\n[지난 cardHeadline "${raw.cardHeadline}" 이 규칙에 걸렸다: ${problem}. cardHeadline 만 규칙대로 다시 써라.]`,
-      obj({ cardHeadline: str(8) }),
-      300,
-    );
-    problem = headlineProblem(retry.cardHeadline ?? "", text);
-    raw = { ...raw, cardHeadline: retry.cardHeadline };
-  }
+  const raw = await json<Raw>(CLASSIFY_SYS, input, CLASSIFY_SCHEMA, 3000);
   const { c, notes } = gateClassification(raw, html);
   c.version = 2; // 가이드가 없는 글의 대체 경로 — v2 기준
   for (const n of notes) log(`    · ${n}`);
-  return { classification: c, cardHeadline: problem ? null : raw.cardHeadline.trim() };
+  return { classification: c };
 }
 
 /* ═════════════ v3: "더 들어가 볼까요?" 칸 기준 매핑 ═════════════ */
@@ -254,16 +206,12 @@ ${burdenGuide}
 ${ppGuide}
 5) technologies — 그 방식을 구현한 기술 분류 1~3개: ${techGuide}
 6) articleType — 모든 칸의 burden 이 null 일 때만: ${ARTICLE_TYPES.join(" / ")}. 아니면 null.
-7) cardHeadline — 목록 카드에 크게 들어갈 핵심 문장. 개발을 모르는 사람이 읽자마자 이해해야 한다.
-   누가 + 무엇이 어떻게 달라졌는지. 40자 이내, "~어요/~해요" 로 끝. 개발 용어·영어 기술 이름 금지("AI" 는 허용).
-   낚시·과장 금지, 숫자는 가이드에 있는 것만.
-   좋은 예: "주문 취소, 이제 앱에서 버튼 한 번이면 돼요" · "개발자가 장애 원인을 찾느라 로그를 뒤지지 않아도 돼요"
-8) problemTitle — 홈 "이런 문제를 어떻게 풀었을까요?" 카드의 **문제 제목**. 해결 전에 **누가 어떤 곤란을 겪었는지**.
+7) problemTitle — 홈 "이런 문제를 어떻게 풀었을까요?" 카드의 **문제 제목**. 해결 전에 **누가 어떤 곤란을 겪었는지**.
    개발을 모르는 사람도 바로 이해하는 말, 30자 이내, "~어요/~했어요" 로 끝. 해결책은 쓰지 마라.
    개발 용어·영어 기술 이름 금지("AI" 허용). 원문 문장을 그대로 옮기지 말고 쉬운 말로 다시 쓴다.
    좋은 예: "고객이 엉뚱한 입구에서 줄을 섰어요" · "장애 알림이 수십 개씩 한꺼번에 쏟아졌어요"
    나쁜 예: "주소 대표점과 실제 접수 지점의 불일치" · "형상관리와 운영 서버의 소스 불일치"
-9) problemSummary — 같은 카드의 **요약**. "어떤 문제를 어떻게 풀어 간 글인지" 가 보이게 **두 문장**, 90자 이내, "~어요/~해요" 로 끝.
+8) problemSummary — 같은 카드의 **요약**. "어떤 문제를 어떻게 풀어 간 글인지" 가 보이게 **두 문장**, 90자 이내, "~어요/~해요" 로 끝.
    첫 문장 = 무엇이 문제였나, 둘째 문장 = 어떻게 풀었고 무엇이 달라졌나. 같은 규칙(쉬운 말, 개발 용어 금지, 숫자는 가이드에 있는 것만).
    좋은 예: "매장 위치를 주소로만 잡아서 고객이 실제 줄 서는 곳과 달랐어요. 매장이 접수 위치를 직접 정하게 바꿔 헛걸음을 줄였어요."`;
 
@@ -288,7 +236,6 @@ const SECTION_SCHEMA: Schema = obj({
   productPattern: { type: Type.STRING, enum: [...PRODUCT_PATTERNS], nullable: true },
   technologies: { type: Type.ARRAY, items: { type: Type.STRING, enum: [...TECH_CATEGORIES] }, minItems: "1", maxItems: "3" },
   articleType: { type: Type.STRING, enum: [...ARTICLE_TYPES], nullable: true },
-  cardHeadline: str(8),
   problemTitle: str(6),
   problemSummary: str(20),
 });
@@ -304,7 +251,6 @@ type SectionRaw = {
   productPattern: Classification["productPattern"];
   technologies: Classification["technologies"];
   articleType: Classification["articleType"];
-  cardHeadline: string;
 };
 
 /** 결말이 결과가 아니라 의도·필요·시작을 말하는 문장 */
@@ -435,7 +381,6 @@ export async function classifyFromGuide(
   log: (m: string) => void = () => {},
 ): Promise<{
   classification: Classification;
-  cardHeadline: string | null;
   problemCard: { title: string; summary: string } | null;
 }> {
   const blocks = splitBlocks(html);
@@ -450,19 +395,7 @@ export async function classifyFromGuide(
     ),
   ].join("\n");
 
-  let raw = await json<SectionRaw>(SECTION_SYS, input, SECTION_SCHEMA, 3000);
-  let problem = headlineProblem(raw.cardHeadline ?? "", text);
-  if (problem) {
-    log(`    · 카드 문장 규칙 위반(${problem}): ${raw.cardHeadline}`);
-    const retry = await json<{ cardHeadline: string }>(
-      SECTION_SYS,
-      `${input}\n\n[지난 cardHeadline "${raw.cardHeadline}" 이 규칙에 걸렸다: ${problem}. cardHeadline 만 규칙대로 다시 써라.]`,
-      obj({ cardHeadline: str(8) }),
-      300,
-    );
-    problem = headlineProblem(retry.cardHeadline ?? "", text);
-    raw = { ...raw, cardHeadline: retry.cardHeadline };
-  }
+  const raw = await json<SectionRaw>(SECTION_SYS, input, SECTION_SCHEMA, 3000);
   // 문제 카드 — 규칙에 걸리면 그 두 칸만 한 번 더 쓰게 한다
   const cardIssue = (r: { problemTitle: string; problemSummary: string }) =>
     plainTextProblem(r.problemTitle, text, 6, 30) ?? plainTextProblem(r.problemSummary, text, 20, 90);
@@ -484,7 +417,6 @@ export async function classifyFromGuide(
   for (const r of c.review ?? []) log(`    ? 검토: ${r}`);
   return {
     classification: c,
-    cardHeadline: problem ? null : raw.cardHeadline.trim(),
     problemCard: issue ? null : { title: card.problemTitle.trim(), summary: card.problemSummary.trim() },
   };
 }

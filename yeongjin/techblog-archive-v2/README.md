@@ -35,6 +35,7 @@ src/core/
 │
 ├─ 1-analyze/         ② 읽기            docs/01 · 1~2단계
 │   ├─ analyze.ts        배제 판정 · 상세 분석 · 글 상세 요약·개념 · "더 들어가 볼까요?" 프롬프트
+│   ├─ headline.ts       제목 문장(목록·상세 공통) 규칙 · 코드 검사 · 한 번 다시 쓰기
 │   ├─ guide-gate.ts     칸 코드 게이트 (질문형, 숫자 대조, 말투 …)
 │   └─ annotate.ts       상세 화면 원문 하이라이트
 │
@@ -88,6 +89,7 @@ src/components/
 | `npm run backfill-content` | 본문이 너무 짧게 저장된 글 다시 받기 | 0 |
 | `npm run backfill-thumbnails` | 썸네일 아직 안 찾은 글 | 0 |
 | `npm run backfill-detail` | 글 상세 요약(한눈에 보기 5칸)·"읽기 전에 알아두면 좋은 개념"이 없는 포함 글 (`--all` 전부 다시 · `--ids=29,41` 특정 글 · `--dry` 저장 안 함). 기준: `docs/06_글상세_프롬프트_v2.md`, 모델은 `GEMINI_DETAIL_MODEL`(기본 gemini-flash-lite-latest) | 1 |
+| `npm run backfill-headline` | 제목 문장(목록·상세 공통)을 2026-11-16 기준으로 다시 — 이미 새 기준인 글은 건너뜀 (`--ids=29,41` 특정 글 · `--limit=5` 앞에서 N건 · `--dry` 저장 안 함 · `--from=파일.json` Gemini 없이 파일의 문장 `{"글 id": "문장"}` 을 같은 코드 검사 후 넣기 — 2026-11-16 137건은 이 방법으로 Claude Code 가 씀). 기준: `core/1-analyze/headline.ts` | 1 |
 | `npm run fetch-logos` | 회사 로고 받기 → `public/logos/` (상표라 저장소에 없음 — 처음 받으면 한 번 실행) | 0 |
 | **점검** `scripts/check/` | | |
 | `npm run report` | 회사별 수집·포함·제외·대기 + 제외 이유 (01 문서 "수집 결과" 표의 원본) | 0~1 |

@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CompanyBadge, formatDate } from "@/components/common/ArticleCard";
+import { CompanyBadge, formatDate } from "@/components/common/CompanyBadge";
 import { clearList, useLocalList } from "@/core/shared/local-store";
 
-type Item = { id: number; companyId: string; title: string; hook: string; publishedAt: string };
+type Item = { id: number; companyId: string; logo: string | null; title: string; hook: string; publishedAt: string };
 
 export function MyLists({ items }: { items: Item[] }) {
   const [tab, setTab] = useState<"bookmarks" | "read">("bookmarks");
@@ -44,7 +44,7 @@ export function MyLists({ items }: { items: Item[] }) {
             <li key={a.id}>
               <Link href={`/articles/${a.id}`} className="block px-5 py-4 hover:bg-bg">
                 <div className="flex items-center justify-between">
-                  <CompanyBadge id={a.companyId} />
+                  <CompanyBadge id={a.companyId} logo={a.logo} />
                   <span className="text-xs text-ink-3">{formatDate(a.publishedAt)}</span>
                 </div>
                 <p className="mt-1.5 font-bold leading-snug">{a.hook}</p>

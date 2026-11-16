@@ -63,12 +63,18 @@ export interface SectionMapping {
 
 /** 2차 상세 분석 결과 — articles.learning_json */
 export interface Learning {
-  /** 썸네일 핵심 문장 — 처음 보는 사람도 바로 이해하는 말 */
+  /**
+   * 제목 문장 — 목록 카드와 글 상세 맨 위에 똑같이 쓴다(1-analyze/headline.ts). 규칙에 걸려 버렸으면 비어 있고 화면은 원제목.
+   * 2026-11-16 전에는 분류 단계에서 만들었다.
+   */
   cardHeadline?: string;
+  /** 제목 문장을 몇 번째 기준으로 만들었나 — 2 = 상세 분석 단계 통일 기준 */
+  headlineVersion?: number;
   /** 홈 "이런 문제를 어떻게 풀었을까요?" 카드 — 문제 제목 + 어떻게 풀었는지 요약 (쉬운 말) */
   problemCard?: { title: string; summary: string };
   classification?: Classification;
-  hook: string;
+  /** 예전 상세 제목(미끼 문장) — 2026-11-16 제목 문장(cardHeadline)으로 통일하며 더 만들지 않는다. 예전 글에만 남아 있다 */
+  hook?: string;
   tags: string[];
   audience: Audience;
   difficulty: "입문" | "중급" | "심화";

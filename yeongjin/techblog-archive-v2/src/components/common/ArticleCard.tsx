@@ -1,19 +1,10 @@
 import Link from "next/link";
-import { companyById } from "@/core/0-collect/companies";
+import { companyLogo } from "@/core/0-collect/logos";
 import { cls, headlineOf } from "@/core/3-place/home";
 import { BENEFICIARY_LABEL, EXPERIENCE_META, INTERNAL_TAG, isInternal } from "@/core/2-classify/taxonomy";
 import type { ArticleRow } from "@/core/shared/types";
+import { CompanyBadge, formatDate } from "./CompanyBadge";
 import { ReadBadge } from "./ReadState";
-
-export function CompanyBadge({ id, size = "sm" }: { id: string; size?: "sm" | "md" }) {
-  const c = companyById(id);
-  return (
-    <span className={`inline-flex items-center gap-1.5 font-semibold text-ink-2 ${size === "md" ? "text-sm" : "text-xs"}`}>
-      <span className="size-2 rounded-full" style={{ background: c.color }} />
-      {c.name}
-    </span>
-  );
-}
 
 /** 사내 운영자·개발자의 부담을 덜어준 경험이라는 표시 */
 export function InternalTag({ who }: { who?: keyof typeof BENEFICIARY_LABEL }) {
@@ -27,11 +18,6 @@ export function InternalTag({ who }: { who?: keyof typeof BENEFICIARY_LABEL }) {
   );
 }
 
-export function formatDate(iso: string) {
-  const d = new Date(iso);
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
-}
-
 export function ArticleCard({ a, showExperience = true }: { a: ArticleRow; showExperience?: boolean }) {
   const l = a.learning;
   const c = cls(a);
@@ -43,7 +29,7 @@ export function ArticleCard({ a, showExperience = true }: { a: ArticleRow; showE
       className="group block rounded-2xl border border-line bg-surface p-5 transition hover:-translate-y-0.5 hover:shadow-[0_6px_24px_rgba(0,0,0,0.06)] has-[[data-read=true]]:opacity-60 has-[[data-read=true]]:hover:opacity-100"
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <CompanyBadge id={a.companyId} />
+        <CompanyBadge id={a.companyId} logo={companyLogo(a.companyId)} />
         <span className="flex items-center gap-1.5 text-xs text-ink-3">
           <ReadBadge id={a.id} />
           {formatDate(a.publishedAt)}

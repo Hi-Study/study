@@ -5,14 +5,14 @@ import { KIND_LABEL } from "@/components/article/kinds";
 import { BookmarkButton, MarkRead } from "@/components/article/ArticleActions";
 import { ReadToggle } from "@/components/common/ReadState";
 import { BackLink } from "@/components/common/BackNav";
-import { formatDate } from "@/components/common/ArticleCard";
+import { formatDate } from "@/components/common/CompanyBadge";
 import { PerspectiveSheet } from "@/components/article/PerspectiveSheet";
 import { ReadingDigest } from "@/components/article/ReadingDigest";
 import { collectAnnotations, excerptExists } from "@/core/1-analyze/annotate";
 import { companyById } from "@/core/0-collect/companies";
 import { companyLogo } from "@/core/0-collect/logos";
 import { EXPERIENCE_META } from "@/core/2-classify/taxonomy";
-import { cls } from "@/core/3-place/home";
+import { cls, headlineOf } from "@/core/3-place/home";
 import { splitBlocks } from "@/core/0-collect/content";
 import { requireUser } from "@/core/shared/auth";
 import { getArticle } from "@/core/shared/db";
@@ -34,6 +34,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
   const c = companyById(a.companyId);
   const logo = companyLogo(a.companyId);
   const k = cls(a);
+  const headline = headlineOf(a);
   // 칩은 쉬운 말인 경험 이름 하나만 — 영어 제품 패턴 이름은 상세 첫 화면에서 뺀다
   const experience = k?.experience && k.fit !== "NONE" ? EXPERIENCE_META[k.experience].short : null;
 
@@ -64,7 +65,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
   return (
     <article className="mx-auto max-w-[720px]">
       <MarkRead id={a.id} />
-      {/* 읽는 순서: 어느 회사 글인지 → 원제목 → 핵심 카피 → AI 정리 안내 → 경험 태그 → 한눈에 보기 · 기획 포인트 → 읽기 전에 알아두면 좋은 개념 → 글에 나온 사내 도구 → 원문에서 보기 */}
+      {/* 읽는 순서: 어느 회사 글인지 → 원제목 → 핵심 카피 → AI 정리 안내 → 경험 태그 → 한눈에 보기 → 읽기 전에 알아두면 좋은 개념 → 글에 나온 사내 도구 → 읽은 후에 얻어가는 기획 포인트 → 원문에서 보기 */}
       <div className="flex items-center justify-between gap-3">
         {/* 회사 로고·이름 → 피드에서 이 회사 글만(회사 필터가 켜진 채로). 원래 블로그는 아래 "원문에서 보기"로 간다 */}
         <Link href={`/feed?company=${a.companyId}`} className="flex min-w-0 items-center gap-2.5">
@@ -99,10 +100,13 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
         <p className="mt-4 rounded-xl bg-brand-soft p-3 text-sm text-brand">아직 AI 분석 전인 글이에요. 원문만 보여드려요.</p>
       )}
 
-      {/* 원문 제목은 출처 정보로 회사 줄 바로 아래에, AI가 쓴 핵심 카피는 "AI가 정리했어요" 안내와 붙여 둔다 */}
-      {l && <p className="mt-5 text-sm leading-relaxed text-ink-3">{a.title}</p>}
-      <h1 className={`${l ? "mt-1.5" : "mt-6"} text-[26px] font-bold leading-snug tracking-tight md:text-[30px]`}>
-        {l?.hook ?? a.title}
+      {/*
+        제목 = 목록 카드와 같은 제목 문장(headlineOf — 없으면 원제목). 2026-11-16 목록·상세 통일.
+        원문 제목은 출처 정보로 회사 줄 바로 아래에 — 제목 문장이 원제목과 같으면(규칙에 걸려 원제목을 쓰는 글) 한 번만
+      */}
+      {headline !== a.title && <p className="mt-5 text-sm leading-relaxed text-ink-3">{a.title}</p>}
+      <h1 className={`${headline !== a.title ? "mt-1.5" : "mt-6"} text-[26px] font-bold leading-snug tracking-tight md:text-[30px]`}>
+        {headline}
       </h1>
 
       {l && (
@@ -119,7 +123,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
         </>
       )}
 
-      {/* 한눈에 보기 · 기획 포인트는 늘 보이고, 그 아래 "더 들어가 볼까요?" 칸만 SHOW_ANALYSIS 를 따른다 */}
+      {/* 한눈에 보기는 늘 보이고, 그 아래 "더 들어가 볼까요?" 칸만 SHOW_ANALYSIS 를 따른다 */}
       {digest && (
         <div className="mt-8">
           <ReadingDigest guide={digest} quotes={guideQuotes} sourceUrl={a.url} showSections={SHOW_ANALYSIS} />
@@ -159,6 +163,22 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
             {tools.map((t) => (
               <li key={t.name} className="text-sm leading-relaxed text-ink-2">
                 <b className="font-semibold text-ink">{t.name}</b> — {t.description}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* 기획 포인트 — 원래 한눈에 보기 카드 안에 있던 것을 글을 다 읽은 뒤의 자리(개념 · 사내 도구 다음)로 옮겼다 */}
+      {digest && digest.points.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-xl font-bold">읽은 후에 얻어가는 기획 포인트</h2>
+          <p className="mt-1 text-sm text-ink-3">내 서비스를 기획할 때 가져가 볼 만한 점이에요.</p>
+          <ul className="mt-4 space-y-2.5 rounded-2xl border border-line bg-surface p-5">
+            {digest.points.map((p) => (
+              <li key={p} className="flex gap-2 leading-relaxed">
+                <span className="text-brand">✓</span>
+                {p}
               </li>
             ))}
           </ul>

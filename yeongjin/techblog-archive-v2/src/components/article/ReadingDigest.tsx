@@ -16,7 +16,10 @@ const LEAD_LABEL: [keyof ReadingGuide["lead"], string][] = [
   ["soWhat", "그래서 어떻게 됐대요?"],
 ];
 
-/** "더 들어가 볼까요?" — 한눈에(lead) · 기획 포인트 · 질문형 소제목 칸. showSections=false 면 질문형 칸만 숨긴다 */
+/**
+ * 한눈에 보기(lead) + "더 들어가 볼까요?" 질문형 소제목 칸. showSections=false 면 질문형 칸만 숨긴다.
+ * 기획 포인트(points)는 글 상세 맨 아래 "읽은 후에 얻어가는 기획 포인트"로 따로 그린다(2026-11-16)
+ */
 export function ReadingDigest({
   guide,
   quotes: sectionQuotes,
@@ -44,20 +47,6 @@ export function ReadingDigest({
           </div>
         ))}
       </dl>
-
-      {guide.points.length > 0 && (
-        <div className="mt-5">
-          <p className="text-sm font-bold">기획 포인트</p>
-          <ul className="mt-2 space-y-1.5">
-            {guide.points.map((p) => (
-              <li key={p} className="flex gap-2 leading-relaxed">
-                <span className="text-brand">✓</span>
-                {p}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       {showSections && (
       <>

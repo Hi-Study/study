@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { MyLists } from "@/components/common/MyLists";
+import { companyLogo } from "@/core/0-collect/logos";
 import { requireUser } from "@/core/shared/auth";
 import { listArticles } from "@/core/shared/db";
 import { headlineOf } from "@/core/3-place/home";
@@ -11,6 +12,7 @@ export default async function MyPage() {
   const items = (await listArticles("included")).map((a) => ({
     id: a.id,
     companyId: a.companyId,
+    logo: companyLogo(a.companyId),
     title: a.title,
     hook: headlineOf(a),
     publishedAt: a.publishedAt,

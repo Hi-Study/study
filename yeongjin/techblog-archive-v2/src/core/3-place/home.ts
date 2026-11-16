@@ -40,7 +40,8 @@ export function cls(a: ArticleRow): Classification | null {
   };
 }
 
-export const headlineOf = (a: ArticleRow) => a.learning?.cardHeadline || a.title;
+/** 목록 카드·글 상세가 같이 쓰는 제목 — 제목 문장(1-analyze/headline.ts), 없으면 원제목 */
+export const headlineOf =(a: ArticleRow) => a.learning?.cardHeadline || a.title;
 export const internalOf = (a: ArticleRow) => isInternal(cls(a)?.beneficiary);
 
 export type ExperienceStat = {

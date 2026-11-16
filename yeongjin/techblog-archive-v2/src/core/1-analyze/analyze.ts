@@ -8,6 +8,7 @@ import { splitBlocks, type Block } from "../0-collect/content";
 import type { Learning, ReadingGuide } from "../shared/types";
 import { DETAIL_V2_SCHEMA, DETAIL_V2_SYSTEM, detailV2Input, validateDetailV2, type DetailV2 } from "./detail-v2";
 import { gateGuide } from "./guide-gate";
+import { HEADLINE_RULE, HEADLINE_VERSION, settleHeadline } from "./headline";
 
 /* ───────────── 1차 게이트 (저비용) ───────────── */
 
@@ -44,7 +45,7 @@ export async function gateArticle(title: string, text: string): Promise<{ includ
 
 const ANALYZE_SYS = `너는 국내 테크 블로그 글을 "기획자 관점"으로 재구성하는 편집자다.
 원문을 문제 정의 → 가설/기술 → 경험 변화 → 기회 흐름으로 읽고 JSON 으로 정리한다. 모든 문장은 한국어 존댓말(~해요).
-- hook: 클릭하고 싶어지는 미끼 문장. 결론을 스포일러하지 마라.
+- ${HEADLINE_RULE}
 - tags: 관점 태그 2~4개 (기술명이 아니라 관점: "대기 시간 줄이기", "운영 자동화" 등).
 - audience: 가장 도움될 직무 하나.
 - conclusion: "결론부터 말하면" — 배경 설명 말고 판단 기준/결론만.
@@ -60,7 +61,7 @@ const ANALYZE_SYS = `너는 국내 테크 블로그 글을 "기획자 관점"으
 
 const excerpt: Schema = str(8);
 const LEARNING_SCHEMA: Schema = obj({
-  hook: str(10),
+  cardHeadline: str(8),
   tags: strArr(2, 4),
   audience: { type: Type.STRING, enum: ["PM", "기획자", "디자이너", "데이터분석가", "프로덕트오너"] },
   difficulty: { type: Type.STRING, enum: ["입문", "중급", "심화"] },
@@ -95,8 +96,14 @@ const LEARNING_SCHEMA: Schema = obj({
   },
 });
 
-export async function analyzeArticle(title: string, text: string): Promise<Learning> {
-  return json<Learning>(ANALYZE_SYS, `제목: ${title}\n\n원문:\n${text}`, LEARNING_SCHEMA, 8192);
+/** 제목 문장(cardHeadline)은 여기서 코드 검사까지 마친다 — 걸리면 한 번 다시, 그래도 걸리면 비워서 원제목으로 */
+export async function analyzeArticle(title: string, text: string, log: (m: string) => void = () => {}): Promise<Learning> {
+  const l = await json<Learning>(ANALYZE_SYS, `제목: ${title}\n\n원문:\n${text}`, LEARNING_SCHEMA, 8192);
+  const h = await settleHeadline(title, text, l.cardHeadline ?? "", log);
+  if (h) l.cardHeadline = h;
+  else delete l.cardHeadline;
+  l.headlineVersion = HEADLINE_VERSION;
+  return l;
 }
 
 /* ───────────── 글 상세 요약 · 읽기 전에 알아두면 좋은 개념 · 사내 도구 (v2) ───────────── */

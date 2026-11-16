@@ -15,6 +15,7 @@
     "backfill-content": "tsx scripts/run/backfill-content.mts",
     "backfill-thumbnails": "tsx scripts/run/backfill-thumbnails.mts",
     "backfill-detail": "tsx scripts/run/backfill-detail.mts",
+    "backfill-headline": "tsx scripts/run/backfill-headline.mts",
     "fetch-logos": "tsx scripts/run/fetch-logos.mts",
     "import-analysis": "tsx scripts/run/import-analysis.mts",
     "export-detail-v2": "tsx scripts/run/export-detail-v2-input.mts",

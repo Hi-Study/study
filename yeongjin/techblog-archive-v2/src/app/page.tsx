@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { formatDate } from "@/components/common/ArticleCard";
+import { formatDate } from "@/components/common/CompanyBadge";
 import { NewArticlesHero, type HeroSlide } from "@/components/home/NewArticlesHero";
 import { HomeReadScope } from "@/components/common/ReadState";
 import { ExperienceCarousel } from "@/components/home/ExperienceCarousel";

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { CompanyBadge, formatDate } from "@/components/common/ArticleCard";
+import { CompanyBadge, formatDate } from "@/components/common/CompanyBadge";
+import { companyLogo } from "@/core/0-collect/logos";
 import { listArticles } from "@/core/shared/db";
 
 export default async function ExcludedPage() {
@@ -17,7 +18,7 @@ export default async function ExcludedPage() {
         {rows.map((a) => (
           <li key={a.id} className="rounded-2xl border border-line bg-surface p-5">
             <div className="flex items-center justify-between">
-              <CompanyBadge id={a.companyId} />
+              <CompanyBadge id={a.companyId} logo={companyLogo(a.companyId)} />
               <span className="text-xs text-ink-3">{formatDate(a.publishedAt)}</span>
             </div>
             <Link href={`/articles/${a.id}`} className="mt-1.5 block font-bold leading-snug hover:text-brand">

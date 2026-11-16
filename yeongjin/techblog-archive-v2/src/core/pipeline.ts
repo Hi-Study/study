@@ -25,8 +25,8 @@ export async function classify(id: number, log: (m: string) => void) {
     log(`  − 제외: ${a.title} — ${gate.reason}`);
     return;
   }
-  const learning = await analyzeArticle(a.title, text);
-  log(`  + 포함: ${a.title}`);
+  const learning = await analyzeArticle(a.title, text, log);
+  log(`  + 포함: ${a.title}${learning.cardHeadline ? ` · "${learning.cardHeadline}"` : " · 제목 문장 탈락(원제목)"}`);
   await attachDetail(learning, a, text, log);
   const guide = await buildReadingGuide(a.title, a.contentHtml, log);
   log(guide ? `    가이드 ${guide.sections.length}칸` : "    가이드 저장 안 함(게이트 탈락)");
@@ -131,17 +131,16 @@ async function attachClassification(
   const r = guide?.sections.length
     ? await classifyFromGuide(title, guide, html, text, log)
     : { ...(await classifyExperience(title, text, html, log)), problemCard: null };
-  const { classification, cardHeadline } = r;
+  // 제목 문장(cardHeadline)은 상세 분석 단계(analyzeArticle)가 만든다 — 분류를 다시 해도 그대로 둔다
+  const { classification } = r;
   l.classification = classification;
-  l.cardHeadline = cardHeadline ?? undefined;
   l.problemCard = r.problemCard ?? undefined;
   // v01 호환 필드
   l.experiencePattern = classification.experience ? EXPERIENCE_META[classification.experience].label : "";
   const c = classification;
   log(
     `    경험: ${c.experience ?? `해당 없음(${c.articleType})`} · ${c.fit} · ${c.beneficiary}` +
-      (c.primarySection ? ` · 칸${c.primarySection}` : "") +
-      (cardHeadline ? ` · "${cardHeadline}"` : " · 카드 문장 탈락"),
+      (c.primarySection ? ` · 칸${c.primarySection}` : ""),
   );
   if (r.problemCard) log(`    문제 카드: ${r.problemCard.title} / ${r.problemCard.summary}`);
 }
@@ -168,7 +167,7 @@ export async function rebuildIncluded(
   const a = await getArticle(id);
   if (!a) return;
   const text = htmlToText(a.contentHtml);
-  const learning = opts.reanalyze || !a.learning ? await analyzeArticle(a.title, text) : a.learning;
+  const learning = opts.reanalyze || !a.learning ? await analyzeArticle(a.title, text, log) : a.learning;
   if (learning.detailPromptVersion !== 2) await attachDetail(learning, a, text, log);
   let guide = a.guide;
   if (opts.reguide || !guide) {
