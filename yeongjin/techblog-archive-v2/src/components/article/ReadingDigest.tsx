@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ReadingGuide } from "@/core/shared/types";
+import { DetailCard, DetailItem, DetailQA } from "./DetailCard";
 
 /**
  * 칸마다 근거 문장 — 원문 문단 전체가 아니라 앞부분 짧은 발췌(서버에서 120자 안으로 잘라 넘긴다).
@@ -36,15 +37,12 @@ export function ReadingDigest({
   const terms = new Map(guide.terms.map((t) => [t.term, t.plain]));
 
   return (
-    <section className="rounded-3xl border border-line bg-surface p-5 md:p-7">
-      <p className="text-xs font-bold tracking-wide text-brand">READING GUIDE</p>
-      <h2 className="mt-1 text-xl font-bold">한눈에 보기</h2>
-      <dl className="mt-4 grid gap-3">
+    <DetailCard eyebrow="READING GUIDE" title="한눈에 보기" desc="이 글이 무슨 이야기인지 네 가지로 정리했어요.">
+      <dl className="grid gap-3">
         {LEAD_LABEL.filter(([k]) => guide.lead[k]).map(([k, label]) => (
-          <div key={k} className="rounded-2xl bg-bg p-4">
-            <dt className="text-xs font-bold text-ink-3">{label}</dt>
-            <dd className="mt-1 leading-relaxed">{guide.lead[k]}</dd>
-          </div>
+          <DetailItem key={k}>
+            <DetailQA q={label}>{guide.lead[k]}</DetailQA>
+          </DetailItem>
         ))}
       </dl>
 
@@ -143,6 +141,6 @@ export function ReadingDigest({
       </div>
       </>
       )}
-    </section>
+    </DetailCard>
   );
 }

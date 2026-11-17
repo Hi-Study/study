@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- INSIGHT. 로고의 축소판 — 검은 바탕에 흰 I + 키컬러 점 (글꼴 없이 도형으로 그려 어디서나 같게 보인다) -->
+  <rect width="64" height="64" rx="14" fill="#191f28"/>
+  <rect x="20" y="14" width="11" height="36" rx="1.5" fill="#ffffff"/>
+  <circle cx="43" cy="44" r="6.5" fill="#ff4a28"/>
+</svg>

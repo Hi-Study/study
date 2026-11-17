@@ -8,6 +8,7 @@ import { BackLink } from "@/components/common/BackNav";
 import { formatDate } from "@/components/common/CompanyBadge";
 import { PerspectiveSheet } from "@/components/article/PerspectiveSheet";
 import { ReadingDigest } from "@/components/article/ReadingDigest";
+import { DetailCard, DetailItem, DetailQA } from "@/components/article/DetailCard";
 import { collectAnnotations, excerptExists } from "@/core/1-analyze/annotate";
 import { companyById } from "@/core/0-collect/companies";
 import { companyLogo } from "@/core/0-collect/logos";
@@ -125,64 +126,64 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
 
       {/* 한눈에 보기는 늘 보이고, 그 아래 "더 들어가 볼까요?" 칸만 SHOW_ANALYSIS 를 따른다 */}
       {digest && (
-        <div className="mt-8">
+        <div className="mt-6">
           <ReadingDigest guide={digest} quotes={guideQuotes} sourceUrl={a.url} showSections={SHOW_ANALYSIS} />
         </div>
       )}
 
-      {/* "원문에서 짚어 볼 문장"과 같은 카드 형식 — 칩(개념 이름) → 무슨 뜻이에요? → 이 글에서 왜 나와요? */}
-      {concepts.length > 0 && (
-        <section className="mt-10">
-          <h2 className="text-xl font-bold">읽기 전에 알아두면 좋은 개념</h2>
-          <p className="mt-1 text-sm text-ink-3">이 글을 따라가는 데 꼭 필요한 개념만 골랐어요.</p>
-          <ul className="mt-4 space-y-3">
-            {concepts.map((x) => (
-              <li key={x.term} className="rounded-2xl border border-line bg-surface p-4">
-                <span className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${KIND_LABEL.technology.chip}`}>{x.term}</span>
-                <dl className="mt-3 space-y-2.5">
-                  <div>
-                    <dt className="text-xs font-bold text-ink-3">무슨 뜻이에요?</dt>
-                    <dd className="mt-0.5 text-[15px] leading-relaxed text-ink">{x.what}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-bold text-ink-3">이 글에서 왜 나와요?</dt>
-                    <dd className="mt-0.5 text-sm leading-relaxed text-ink-2">{x.why}</dd>
-                  </div>
-                </dl>
-              </li>
-            ))}
-          </ul>
-        </section>
+      {/*
+        한눈에 보기 · 개념 · 기획 포인트는 같은 틀(DetailCard) — 흰 박스 안에 영문 머리말 → 제목 → 안내 → 회색 칸들.
+        개념 칸은 개념 이름 → 무슨 뜻이에요? → 이 글에서 왜 나와요?, 사내 도구는 개념 박스 아래쪽에 각주처럼 한 줄씩
+      */}
+      {(concepts.length > 0 || tools.length > 0) && (
+        <div className="mt-5">
+          <DetailCard eyebrow="BEFORE READING" title="읽기 전에 알아두면 좋은 개념" desc="이 글을 따라가는 데 꼭 필요한 개념만 골랐어요.">
+            {concepts.length > 0 && (
+              <ul className="grid gap-3">
+                {concepts.map((x) => (
+                  <DetailItem key={x.term} as="li">
+                    <p className="font-bold">{x.term}</p>
+                    <dl className="mt-2.5 space-y-2.5">
+                      <DetailQA q="무슨 뜻이에요?">{x.what}</DetailQA>
+                      <DetailQA q="이 글에서 왜 나와요?">{x.why}</DetailQA>
+                    </dl>
+                  </DetailItem>
+                ))}
+              </ul>
+            )}
+            {/* 사내 도구 — 외부 서비스인지 사내 전용인지 헷갈릴 이름만. 개념 칸보다 가볍게 */}
+            {tools.length > 0 && (
+              <div className={concepts.length > 0 ? "mt-5 border-t border-line pt-4" : ""}>
+                <h3 className="text-xs font-bold text-ink-3">글에 나온 사내 도구</h3>
+                <ul className="mt-2 space-y-1.5">
+                  {tools.map((t) => (
+                    <li key={t.name} className="text-sm leading-relaxed text-ink-2">
+                      <b className="font-semibold text-ink">{t.name}</b> — {t.description}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </DetailCard>
+        </div>
       )}
 
-      {/* 사내 도구 — 외부 서비스인지 사내 전용인지 헷갈릴 이름만. 개념 카드보다 가볍게, 각주처럼 한 줄씩 */}
-      {tools.length > 0 && (
-        <section className="mt-8 border-t border-line pt-5">
-          <h2 className="text-sm font-bold text-ink-3">글에 나온 사내 도구</h2>
-          <ul className="mt-2 space-y-1.5">
-            {tools.map((t) => (
-              <li key={t.name} className="text-sm leading-relaxed text-ink-2">
-                <b className="font-semibold text-ink">{t.name}</b> — {t.description}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {/* 기획 포인트 — 원래 한눈에 보기 카드 안에 있던 것을 글을 다 읽은 뒤의 자리(개념 · 사내 도구 다음)로 옮겼다 */}
+      {/* 기획 포인트 — 원래 한눈에 보기 박스 안에 있던 것을 글을 다 읽은 뒤의 자리(개념 다음)로 옮겼다 */}
       {digest && digest.points.length > 0 && (
-        <section className="mt-10">
-          <h2 className="text-xl font-bold">읽은 후에 얻어가는 기획 포인트</h2>
-          <p className="mt-1 text-sm text-ink-3">내 서비스를 기획할 때 가져가 볼 만한 점이에요.</p>
-          <ul className="mt-4 space-y-2.5 rounded-2xl border border-line bg-surface p-5">
-            {digest.points.map((p) => (
-              <li key={p} className="flex gap-2 leading-relaxed">
-                <span className="text-brand">✓</span>
-                {p}
-              </li>
-            ))}
-          </ul>
-        </section>
+        <div className="mt-5">
+          <DetailCard eyebrow="TAKEAWAYS" title="읽은 후에 얻어가는 기획 포인트" desc="내 서비스를 기획할 때 가져가 볼 만한 점이에요.">
+            <ul className="grid gap-3">
+              {digest.points.map((p) => (
+                <DetailItem key={p} as="li">
+                  <p className="flex gap-2 leading-relaxed">
+                    <span className="font-bold text-brand">✓</span>
+                    {p}
+                  </p>
+                </DetailItem>
+              ))}
+            </ul>
+          </DetailCard>
+        </div>
       )}
 
       {l && SHOW_ANALYSIS && (

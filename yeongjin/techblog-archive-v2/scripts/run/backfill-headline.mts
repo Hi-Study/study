@@ -6,12 +6,14 @@ import { hasGeminiKey, isQuota } from "../../src/core/shared/ai";
 import { listArticles, markIncluded } from "../../src/core/shared/db";
 import type { Learning } from "../../src/core/shared/types";
 
-// 사용: npm run backfill-headline — 포함된 글의 제목 문장(목록·상세 공통)을 2026-11-16 통일 기준으로 다시 만든다
+// 사용: npm run backfill-headline — 포함된 글의 제목 문장(목록·상세 공통)을 지금 기준(headline.ts)으로 다시 만든다
 //   기준: src/core/1-analyze/headline.ts · docs/01_분류기준.md 2단계 "제목 문장"
-//   이미 새 기준(headlineVersion 2)으로 만든 글은 건너뛴다 — 한도에 걸려 멈췄으면 같은 명령으로 이어서 돌린다
+//   이미 지금 기준(HEADLINE_VERSION)으로 만든 글은 건너뛴다 — 한도에 걸려 멈췄으면 같은 명령으로 이어서 돌린다
 //   --ids=29,41  특정 글만(이미 있어도 다시)   --limit=5  앞에서 N건만   --dry  저장하지 않고 예전 → 새 문장만 출력
 //   --from=headlines.json  Gemini 를 쓰지 않고 파일의 문장({"글 id": "문장"})을 넣는다(Claude Code 가 쓴 문장 등).
 //                          같은 코드 검사를 거치고, 걸린 문장은 저장하지 않고 이유만 보여 준다 — 고쳐서 다시 돌린다
+//   --no-check             --from 과 함께: 검사 없이 파일 문장을 그대로 넣는다
+//                          (2026-11-17 예전 상세 제목 137건을 그대로 되살릴 때 썼다 — 41건이 영어·개발 용어를 담고 있었다)
 // Gemini 로 만들 때는 글 하나에 1번(규칙에 걸리면 2번). 두 번 다 걸리면 제목 문장을 비워 원제목이 보이게 한다.
 const arg = (k: string) => process.argv.find((a) => a.startsWith(`--${k}=`))?.slice(k.length + 3);
 const from = arg("from");
@@ -19,6 +21,7 @@ const given: Record<string, string> | null = from ? JSON.parse(fs.readFileSync(f
 const ids = arg("ids")?.split(",").map(Number) ?? (given ? Object.keys(given).map(Number) : undefined);
 const limit = Number(arg("limit") ?? Infinity);
 const dry = process.argv.includes("--dry");
+const noCheck = !!given && process.argv.includes("--no-check");
 
 if (!given && !hasGeminiKey()) {
   log("✗ GEMINI_API_KEY 가 없어요.");
@@ -40,18 +43,17 @@ const dropped: number[] = [];
 const rejected: string[] = [];
 for (const a of todo) {
   const l: Learning = structuredClone(a.learning!);
-  const text = htmlToText(a.contentHtml);
   let h: string | null;
   if (given) {
     h = (given[String(a.id)] ?? "").trim();
-    const p = headlineProblem(h, text);
+    const p = noCheck ? null : headlineProblem(h);
     if (p) {
       rejected.push(`#${a.id} ${p}: ${h}`);
       continue;
     }
   } else {
     try {
-      h = await settleHeadline(a.title, text, undefined, log);
+      h = await settleHeadline(a.title, htmlToText(a.contentHtml), undefined, log);
     } catch (e) {
       if (isQuota(e)) {
         log(`■ 무료 키 한도에 걸려 멈춰요. 저장 ${saved}건. 한도가 풀리면 같은 명령으로 이어서 돌리세요.`);
