@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { NEXT_COOKIE, authClient, loginHref, safeNext } from "@/core/shared/auth";
+import { LOGIN_MARK_COOKIE } from "@/lib/analytics";
 
 /** 구글 로그인을 마치고 돌아오는 곳 — 받은 코드를 로그인 쿠키로 바꾸고, 누르려던 글로 보낸다 */
 export async function GET(req: NextRequest) {
@@ -11,6 +12,8 @@ export async function GET(req: NextRequest) {
     if (!error) {
       const res = NextResponse.redirect(new URL(next, req.url));
       res.cookies.delete(NEXT_COOKIE);
+      // GA — 화면(AccountSync)이 이 표시를 보고 login 이벤트를 한 번 보낸 뒤 지운다
+      res.cookies.set(LOGIN_MARK_COOKIE, "1", { path: "/", sameSite: "lax", maxAge: 300 });
       return res;
     }
     console.error("[auth] 로그인 마무리 실패", error.message);
