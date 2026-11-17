@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { getOwner, localEdits, readLocal, sendOp, setOwner, writeLocal } from "@/core/shared/local-store";
 import { LIST_KEYS, type Item } from "@/core/shared/list-ops";
 import { resetHideRead } from "@/components/common/ReadState";
+import { setUserId, takeLoginMark, track } from "@/lib/analytics";
 
 /**
  * 화면을 열 때 한 번 — 이 브라우저의 목록 사본을 로그인한 계정의 목록으로 맞춘다(규칙: local-store.ts 맨 위).
@@ -11,6 +12,8 @@ import { resetHideRead } from "@/components/common/ReadState";
  */
 export function AccountSync() {
   useEffect(() => {
+    // GA — 구글 로그인을 막 마치고 돌아왔으면 login 이벤트를 한 번 보낸다
+    if (takeLoginMark()) track("login", { method: "google" });
     let cancelled = false;
     (async () => {
       const edits = localEdits;
@@ -20,6 +23,8 @@ export function AccountSync() {
       if (!res.ok) return; // 서버 표가 아직 없음 — 브라우저에만 저장(예전 방식)
 
       const { userId, lists } = (await res.json()) as { userId: string | null; lists?: Partial<Record<string, Item[]>> };
+      // GA — 로그인한 사람이면 재방문을 계정 기준으로 세도록 user id 를 알린다
+      if (userId) setUserId(userId);
       if (!userId || !lists) {
         // 로그아웃 상태 — 앞사람 계정의 기록·"읽은 글 빼기" 설정이 남아 보이지 않게 비운다
         if (getOwner()) {
