@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LoggedInRedirect, LoginBackLink } from "@/components/common/BackNav";
+import { TrackedAnchor } from "@/components/common/TrackedAnchor";
 import { authConfig, currentUser, safeNext } from "@/core/shared/auth";
 
 export const metadata: Metadata = { title: "로그인 — INSIGHT" };
@@ -29,14 +30,16 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       )}
 
       {ready ? (
-        // 라우트 핸들러로 가는 링크라 Link(미리 불러오기)가 아니라 a 로 둔다
-        <a
+        // 라우트 핸들러로 가는 링크라 Link(미리 불러오기)가 아니라 a 로 둔다. 누르면 GA login_start 를 보낸다
+        <TrackedAnchor
+          event="login_start"
+          params={{ method: "google" }}
           href={`/auth/google?next=${encodeURIComponent(next)}`}
           className="mt-8 flex w-full items-center justify-center gap-2.5 rounded-2xl border border-line bg-surface py-4 font-bold text-ink transition hover:border-ink-3"
         >
           <GoogleMark />
           Google로 계속하기
-        </a>
+        </TrackedAnchor>
       ) : (
         <p className="mt-8 w-full rounded-xl bg-before px-4 py-3 text-sm text-ink-2">
           로그인 설정이 아직 안 됐어요. 배포 환경변수에 <b>SUPABASE_ANON_KEY</b> 를 넣어 주세요.
