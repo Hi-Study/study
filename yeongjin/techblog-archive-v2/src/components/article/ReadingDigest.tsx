@@ -37,7 +37,7 @@ export function ReadingDigest({
   const terms = new Map(guide.terms.map((t) => [t.term, t.plain]));
 
   return (
-    <DetailCard eyebrow="READING GUIDE" title="한눈에 보기" desc="이 글이 무슨 이야기인지 네 가지로 정리했어요.">
+    <DetailCard eyebrow="READING GUIDE" ga="reading_guide" title="한눈에 보기" desc="이 글이 무슨 이야기인지 네 가지로 정리했어요.">
       <dl className="grid gap-3">
         {LEAD_LABEL.filter(([k]) => guide.lead[k]).map(([k, label]) => (
           <DetailItem key={k}>
