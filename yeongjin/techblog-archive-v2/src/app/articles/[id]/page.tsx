@@ -141,7 +141,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
       */}
       {(concepts.length > 0 || tools.length > 0) && (
         <div className="mt-5">
-          <DetailCard eyebrow="BEFORE READING" title="읽기 전에 알아두면 좋은 개념" desc="이 글을 따라가는 데 꼭 필요한 개념만 골랐어요.">
+          <DetailCard eyebrow="BEFORE READING" ga="before_reading" title="읽기 전에 알아두면 좋은 개념" desc="이 글을 따라가는 데 꼭 필요한 개념만 골랐어요.">
             {concepts.length > 0 && (
               <ul className="grid gap-3">
                 {concepts.map((x) => (
@@ -175,7 +175,7 @@ export default async function ArticlePage({ params }: PageProps<"/articles/[id]"
       {/* 기획 포인트 — 원래 한눈에 보기 박스 안에 있던 것을 글을 다 읽은 뒤의 자리(개념 다음)로 옮겼다 */}
       {digest && digest.points.length > 0 && (
         <div className="mt-5">
-          <DetailCard eyebrow="TAKEAWAYS" title="읽은 후에 얻어가는 기획 포인트" desc="내 서비스를 기획할 때 가져가 볼 만한 점이에요.">
+          <DetailCard eyebrow="TAKEAWAYS" ga="takeaways" title="읽은 후에 얻어가는 기획 포인트" desc="내 서비스를 기획할 때 가져가 볼 만한 점이에요.">
             <ul className="grid gap-3">
               {digest.points.map((p) => (
                 <DetailItem key={p} as="li">
