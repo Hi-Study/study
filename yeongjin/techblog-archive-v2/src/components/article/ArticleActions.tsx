@@ -10,7 +10,11 @@ export function BookmarkButton({ id }: { id: number }) {
   const on = marks.includes(id);
   return (
     <button
-      onClick={() => toggleIn("bookmarks", id)}
+      onClick={() => {
+        // GA — 저장 안 된 글을 저장할 때만 article_save (저장 취소는 세지 않는다)
+        if (!on) track("article_save");
+        toggleIn("bookmarks", id);
+      }}
       className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
         on ? "border-brand bg-brand-soft text-brand" : "border-line text-ink-2 hover:border-ink-3"
       }`}
