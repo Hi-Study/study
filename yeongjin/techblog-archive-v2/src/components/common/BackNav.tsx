@@ -71,6 +71,15 @@ function previous(skip?: string): { step: Step | undefined; viaHistory: boolean 
   return { step: t[i], viaHistory };
 }
 
+/** GA article_view 의 entry_source 용 — 지금 화면 바로 앞에 있던 화면 주소(없으면 null). 로그인 화면은 발자취에 없어서 건너뛴다 */
+export function cameFromUrl(): string | null {
+  const t = readTrail();
+  const here = window.location.pathname + window.location.search;
+  let i = t.length - 1;
+  if (t[i]?.url === here) i--;
+  return t[i]?.url ?? null;
+}
+
 function useGoBack(fallback: string) {
   const router = useRouter();
   return () => {
