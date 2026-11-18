@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { connection } from "next/server";
 import { MyLists } from "@/components/common/MyLists";
 import { companyLogo } from "@/core/0-collect/logos";
 import { requireUser } from "@/core/shared/auth";
 import { listArticles } from "@/core/shared/db";
 import { headlineOf } from "@/core/3-place/home";
+
+export const metadata: Metadata = { title: "마이" };
 
 export default async function MyPage() {
   await connection();

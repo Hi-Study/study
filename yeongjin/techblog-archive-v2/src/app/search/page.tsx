@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { ArticleCard } from "@/components/common/ArticleCard";
@@ -6,6 +7,8 @@ import { SearchBox } from "@/components/common/SearchBox";
 import { listArticles, searchArticles } from "@/core/shared/db";
 import { allTags } from "@/core/3-place/home";
 import { EXPERIENCE_META, EXPERIENCES } from "@/core/2-classify/taxonomy";
+
+export const metadata: Metadata = { title: "검색" }; // 검색어는 넣지 않는다(GA에서 검색 페이지를 한 줄로 보기)
 
 /** "이런 관점은 어때요?" — 기술명이 아니라 질문으로 시작하는 추천 */
 const SUGGESTIONS: { label: string; href: string }[] = [

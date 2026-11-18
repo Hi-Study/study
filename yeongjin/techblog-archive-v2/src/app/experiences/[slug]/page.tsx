@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
@@ -12,6 +13,9 @@ const WHO = [
   { key: "user", label: "서비스 사용자" },
   { key: "internal", label: INTERNAL_TAG },
 ] as const;
+
+/** 탭 제목은 경험마다 다르게 하지 않고 하나로 통일 */
+export const metadata: Metadata = { title: "경험 모아보기" };
 
 export default async function ExperiencePage({ params, searchParams }: PageProps<"/experiences/[slug]">) {
   await connection();

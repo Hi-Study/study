@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { ArticleCard } from "@/components/common/ArticleCard";
@@ -7,6 +8,8 @@ import { companyById } from "@/core/0-collect/companies";
 import { companyLogo } from "@/core/0-collect/logos";
 import { listArticles } from "@/core/shared/db";
 import { allTags } from "@/core/3-place/home";
+
+export const metadata: Metadata = { title: "피드" };
 
 type Filter = { company?: string; tag?: string };
 

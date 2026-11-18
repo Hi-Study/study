@@ -21,7 +21,11 @@ const pretendard = localFont({
 const GA_ID = "G-VD3QXQHVJY";
 
 export const metadata: Metadata = {
-  title: "관점 아카이브 — 기획자를 위한 테크블로그",
+  // 페이지마다 탭 제목을 다르게(GA "페이지 제목"으로 구분) — 각 페이지는 이름만 쓰고 " — INSIGHT"는 여기서 붙인다
+  title: {
+    default: "관점 아카이브 — 기획자를 위한 테크블로그",
+    template: "%s — INSIGHT",
+  },
   description: "국내 테크 기업 블로그 글을 기획자 관점으로 다시 읽어요.",
 };
 

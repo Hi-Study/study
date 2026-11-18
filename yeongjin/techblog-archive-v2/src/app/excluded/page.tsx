@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { CompanyBadge, formatDate } from "@/components/common/CompanyBadge";
 import { companyLogo } from "@/core/0-collect/logos";
 import { listArticles } from "@/core/shared/db";
+
+export const metadata: Metadata = { title: "제외된 글" };
 
 export default async function ExcludedPage() {
   await connection();

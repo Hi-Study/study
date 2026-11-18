@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "개인정보처리방침 — INSIGHT" };
+export const metadata: Metadata = { title: "개인정보처리방침" };
 
 /** 구글 로그인 동의 화면(Google Cloud → 브랜딩)의 "개인정보처리방침 링크"가 가리키는 곳 — 로그인 없이 볼 수 있어야 한다 */
 const ITEMS: { title: string; body: string }[] = [

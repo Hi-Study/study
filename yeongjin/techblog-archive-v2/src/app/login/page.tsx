@@ -4,7 +4,7 @@ import { LoggedInRedirect, LoginBackLink } from "@/components/common/BackNav";
 import { TrackedAnchor } from "@/components/common/TrackedAnchor";
 import { authConfig, currentUser, safeNext } from "@/core/shared/auth";
 
-export const metadata: Metadata = { title: "로그인 — INSIGHT" };
+export const metadata: Metadata = { title: "로그인" };
 
 /** 글 상세·마이에 로그인 없이 들어오면 proxy 가 여기로 보낸다(?next=가려던 주소) */
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {

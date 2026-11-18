@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
@@ -24,6 +25,9 @@ import type { ReadingGuide } from "@/core/shared/types";
  * 화면에서 숨겨 둔다(한눈에 보기 · 기획 포인트는 그대로 보인다). 코드와 데이터는 그대로라 true 로 바꾸면 다시 보인다.
  */
 const SHOW_ANALYSIS = false;
+
+/** 탭 제목은 글마다 다르게 하지 않고 하나로 통일 — GA에서 글 상세를 한 줄로 본다 */
+export const metadata: Metadata = { title: "아티클" };
 
 export default async function ArticlePage({ params }: PageProps<"/articles/[id]">) {
   await connection();

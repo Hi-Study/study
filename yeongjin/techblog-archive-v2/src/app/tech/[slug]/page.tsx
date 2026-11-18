@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
@@ -6,6 +7,9 @@ import { ReadFilter } from "@/components/common/ReadState";
 import { listArticles } from "@/core/shared/db";
 import { articlesForTech, cls, techKeywords, techNames } from "@/core/3-place/home";
 import { EXPERIENCE_META, EXPERIENCES, TECH_DESC, TECH_LABEL, techBySlug, techSlug } from "@/core/2-classify/taxonomy";
+
+/** 탭 제목은 기술마다 다르게 하지 않고 하나로 통일 */
+export const metadata: Metadata = { title: "기술 모아보기" };
 
 export default async function TechPage({ params, searchParams }: PageProps<"/tech/[slug]">) {
   await connection();
