@@ -7,19 +7,21 @@ import { ExperienceCarousel } from "@/components/home/ExperienceCarousel";
 import { ProblemCard } from "@/components/home/ProblemCard";
 import { ProblemRail } from "@/components/home/ProblemRail";
 import { TechExplorer, type TechItem } from "@/components/home/TechExplorer";
+import { TrackSection } from "@/components/home/TrackSection";
 import { companyById } from "@/core/0-collect/companies";
 import { companyLogo } from "@/core/0-collect/logos";
 import { countByStatus, listArticles } from "@/core/shared/db";
 import { cls, experienceStats, headlineOf, internalOf, latestProblems, techExplorer } from "@/core/3-place/home";
 import { EXPERIENCE_META, TECH_LABEL, techSlug } from "@/core/2-classify/taxonomy";
 
-function Section({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
+/** name — GA section_view · section_click 의 section_name 값(구글 시트 이벤트 사전) */
+function Section({ name, title, sub, children }: { name: string; title: string; sub?: string; children: React.ReactNode }) {
   return (
-    <section className="mt-12">
+    <TrackSection name={name} className="mt-12">
       <h2 className="text-xl font-bold tracking-tight">{title}</h2>
       {sub && <p className="mt-1 text-sm text-ink-3">{sub}</p>}
       <div className="mt-4">{children}</div>
-    </section>
+    </TrackSection>
   );
 }
 
@@ -66,7 +68,9 @@ export default async function Home() {
   return (
     <div>
       <h1 className="sr-only">관점 아카이브 — 요즘 서비스는 어떤 문제를 기술로 풀고 있을까요?</h1>
-      <NewArticlesHero slides={slides} />
+      <TrackSection name="new_articles">
+        <NewArticlesHero slides={slides} />
+      </TrackSection>
       <p className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-3">
         <span>
           국내 테크 블로그 글 <b className="text-ink-2">{counts.included}</b>건을 사용자가 덜게 된 부담으로 다시 묶었어요.
@@ -77,6 +81,7 @@ export default async function Home() {
       </p>
 
       <Section
+        name="experience"
         title="우리 사용자에게 어떤 경험을 주고 싶나요?"
         sub="경험을 고르면 다른 서비스의 사례를 보여드려요."
       >
@@ -110,7 +115,7 @@ export default async function Home() {
       </Section>
 
       {problems.length > 0 && (
-        <Section title="이런 문제를 어떻게 풀었을까요?" sub="서비스가 마주한 문제부터 살펴보세요.">
+        <Section name="problem" title="이런 문제를 어떻게 풀었을까요?" sub="서비스가 마주한 문제부터 살펴보세요.">
           <HomeReadScope>
             <ProblemRail>
               {problems.map(({ article, title, summary }) => {
@@ -133,7 +138,7 @@ export default async function Home() {
       )}
 
       {techItems.length > 0 && (
-        <Section title="요즘 자주 나오는 기술" sub="기술을 고르면 그 기술을 다룬 테크 블로그 글을 모아 보여드려요.">
+        <Section name="tech" title="요즘 자주 나오는 기술" sub="기술을 고르면 그 기술을 다룬 테크 블로그 글을 모아 보여드려요.">
           <TechExplorer items={techItems} />
         </Section>
       )}

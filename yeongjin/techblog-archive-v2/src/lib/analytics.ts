@@ -59,3 +59,43 @@ export function takeLoginMark(): boolean {
   if (on) document.cookie = `${LOGIN_MARK_COOKIE}=; Max-Age=0; path=/`;
   return on;
 }
+
+/**
+ * 홈 섹션에서 링크를 누를 때 어느 섹션이었는지 이 탭에 잠깐 적어 둔다 — 글 상세의 article_view 가 entry_source 를 정할 때 읽고 지운다.
+ * (로그인 화면을 거쳐도 같은 탭이면 남아 있다)
+ */
+const HOME_SECTION_KEY = "ga:home-section";
+
+export function markHomeSection(name: string) {
+  try {
+    sessionStorage.setItem(HOME_SECTION_KEY, name);
+  } catch {}
+}
+
+function takeHomeSection(): string | null {
+  try {
+    const v = sessionStorage.getItem(HOME_SECTION_KEY);
+    sessionStorage.removeItem(HOME_SECTION_KEY);
+    return v;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 글 상세에 어디서 들어왔나(article_view 의 entry_source) — 바로 앞 화면 주소(BackNav 발자취)로 정한다.
+ * 값 목록은 구글 시트 이벤트 사전과 같다. 앞 화면이 없으면(링크를 받아 바로 들어옴) external.
+ */
+export function entrySourceOf(prevUrl: string | null): string {
+  const section = takeHomeSection();
+  if (!prevUrl) return "external";
+  const path = prevUrl.split("?")[0];
+  if (path === "/") return section ? `home_${section}` : "home";
+  if (path.startsWith("/feed")) return "feed";
+  if (path.startsWith("/search")) return "search";
+  if (path.startsWith("/my")) return "my";
+  if (path.startsWith("/experiences/")) return "experience_page";
+  if (path.startsWith("/tech/")) return "tech_page";
+  if (path.startsWith("/articles/")) return "article";
+  return "other";
+}
