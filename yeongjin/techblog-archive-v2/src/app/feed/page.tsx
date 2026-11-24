@@ -57,28 +57,32 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
       <p className="mt-1 text-sm text-ink-3">기획 관점이 있는 글만 최신순으로 모았어요</p>
 
       <div className="mt-6 space-y-3">
-        <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 scrollbar-none">
-          <span className="sticky left-4 z-10 w-10 shrink-0 self-center bg-bg text-xs font-bold text-ink-3">회사</span>
-          <Chip on={!f.company} to={href(f, "company")}>
-            전체
-          </Chip>
-          {companies.map((c) => (
-            <Chip key={c} on={f.company === c} to={href(f, "company", c)}>
-              <CompanyLogo id={c} logo={companyLogo(c)} />
-              {companyById(c).name}
+        <div className="flex items-center gap-1.5">
+          <span className="w-10 shrink-0 text-xs font-bold text-ink-3">회사</span>
+          <div className="-mr-4 flex gap-1.5 overflow-x-auto pr-4 scrollbar-none">
+            <Chip on={!f.company} to={href(f, "company")}>
+              전체
             </Chip>
-          ))}
+            {companies.map((c) => (
+              <Chip key={c} on={f.company === c} to={href(f, "company", c)}>
+                <CompanyLogo id={c} logo={companyLogo(c)} />
+                {companyById(c).name}
+              </Chip>
+            ))}
+          </div>
         </div>
-        <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 scrollbar-none">
-          <span className="sticky left-4 z-10 w-10 shrink-0 self-center bg-bg text-xs font-bold text-ink-3">태그</span>
-          <Chip on={!f.tag} to={href(f, "tag")}>
-            전체
-          </Chip>
-          {tags.map((t) => (
-            <Chip key={t.label} on={f.tag === t.label} to={href(f, "tag", t.label)}>
-              #{t.label}
+        <div className="flex items-center gap-1.5">
+          <span className="w-10 shrink-0 text-xs font-bold text-ink-3">태그</span>
+          <div className="-mr-4 flex gap-1.5 overflow-x-auto pr-4 scrollbar-none">
+            <Chip on={!f.tag} to={href(f, "tag")}>
+              전체
             </Chip>
-          ))}
+            {tags.map((t) => (
+              <Chip key={t.label} on={f.tag === t.label} to={href(f, "tag", t.label)}>
+                #{t.label}
+              </Chip>
+            ))}
+          </div>
         </div>
       </div>
 
