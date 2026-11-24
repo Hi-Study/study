@@ -11,6 +11,7 @@
     "migrate-to-supabase": "tsx scripts/run/migrate-to-supabase.mts",
     "reclassify": "tsx scripts/run/reclassify.mts",
     "regenerate": "tsx scripts/run/regenerate.mts",
+    "reinclude-non-event": "tsx scripts/run/reinclude-non-event.mts",
     "add-url": "tsx scripts/run/add-url.mts",
     "backfill-content": "tsx scripts/run/backfill-content.mts",
     "backfill-thumbnails": "tsx scripts/run/backfill-thumbnails.mts",

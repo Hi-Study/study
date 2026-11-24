@@ -87,11 +87,71 @@ export async function getArticleIdByUrl(url: string): Promise<number | null> {
   return r?.id ?? null;
 }
 
-/** 제목·회사·분석·가이드 전체에서 찾는다. 포함 글이 수십~수백 건이라 서버에서 걸러도 충분하다 */
+/**
+ * 분석·가이드 전체를 JSON.stringify 해서 검색하면 스키마 키 이름("problem", "terms" 등)까지
+ * 검색 대상이 되고, 영문 단어 안의 부분 문자열("AI" ⊂ "domain"/"detail"/"container")도 걸린다.
+ * 그래서 실제로 사람이 쓴 문장·단어만 모아 검색 텍스트를 만든다 — 원문 그대로 발췌한 근거 문장(originalExcerpt)은
+ * 빼서 노이즈를 더 줄인다.
+ */
+function learningText(l: Learning | null): string {
+  if (!l) return "";
+  const parts: (string | undefined)[] = [
+    l.cardHeadline,
+    l.hook,
+    ...l.tags,
+    l.conclusion,
+    l.before,
+    l.after,
+    ...l.productPatterns,
+    ...l.plannerQuestions,
+    ...l.quickView.summary,
+    ...l.quickView.whyItMatters,
+    ...l.quickView.keywords,
+    ...l.problem.items.flatMap((i) => [i.title, i.description]),
+    ...l.technology.flatMap((t) => [t.name, t.simpleExplanation, t.plannerExplanation]),
+    ...l.experienceImpact.flatMap((e) => [e.technology, e.capability, e.uxImpact, e.description]),
+    ...l.discussionQuestions.flatMap((d) => [d.question, ...d.options]),
+    l.problemCard?.title,
+    l.problemCard?.summary,
+    l.overview?.what,
+    l.overview?.why,
+    l.overview?.actions,
+    l.overview?.results,
+    ...(l.overview?.takeaways ?? []),
+    ...(l.concepts ?? []).flatMap((c) => [c.term, c.what, c.why]),
+    ...(l.tools ?? []).flatMap((t) => [t.name, t.description]),
+  ];
+  return parts.filter(Boolean).join(" ");
+}
+
+function guideText(g: ReadingGuide | null): string {
+  if (!g) return "";
+  const parts: (string | undefined)[] = [
+    g.lead.what,
+    g.lead.why,
+    g.lead.how,
+    g.lead.soWhat,
+    ...g.points,
+    ...g.sections.flatMap((s) => [s.question, s.problem, ...s.paras, s.outcome, ...s.terms]),
+    ...g.terms.flatMap((t) => [t.term, t.plain]),
+  ];
+  return parts.filter(Boolean).join(" ");
+}
+
+/** 영문·숫자로만 된 검색어는 단어 경계로 찾는다 — "AI" 가 "domain"/"detail" 안에서 걸리지 않게 */
+const ASCII_WORD = /^[a-z0-9+#.]+$/i;
+function textMatches(haystack: string, needle: string): boolean {
+  if (ASCII_WORD.test(needle)) {
+    const esc = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\b${esc}\\b`, "i").test(haystack);
+  }
+  return haystack.toLowerCase().includes(needle.toLowerCase());
+}
+
+/** 제목·회사·분석·가이드에서 찾는다. 포함 글이 수십~수백 건이라 서버에서 걸러도 충분하다 */
 export async function searchArticles(q: string): Promise<ArticleRow[]> {
-  const needle = q.toLowerCase();
   return (await listArticles("included")).filter((a) =>
-    [a.title, a.companyId, JSON.stringify(a.learning ?? ""), JSON.stringify(a.guide ?? "")].some((s) => s.toLowerCase().includes(needle)),
+    [a.title, a.companyId, learningText(a.learning), guideText(a.guide)].some((s) => textMatches(s, q)),
   );
 }
 
