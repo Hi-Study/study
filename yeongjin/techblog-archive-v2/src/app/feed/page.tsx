@@ -58,7 +58,7 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
 
       <div className="mt-6 space-y-3">
         <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 scrollbar-none">
-          <span className="w-10 shrink-0 self-center text-xs font-bold text-ink-3">회사</span>
+          <span className="sticky left-4 z-10 w-10 shrink-0 self-center bg-bg text-xs font-bold text-ink-3">회사</span>
           <Chip on={!f.company} to={href(f, "company")}>
             전체
           </Chip>
@@ -70,7 +70,7 @@ export default async function FeedPage({ searchParams }: PageProps<"/feed">) {
           ))}
         </div>
         <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 scrollbar-none">
-          <span className="w-10 shrink-0 self-center text-xs font-bold text-ink-3">태그</span>
+          <span className="sticky left-4 z-10 w-10 shrink-0 self-center bg-bg text-xs font-bold text-ink-3">태그</span>
           <Chip on={!f.tag} to={href(f, "tag")}>
             전체
           </Chip>
