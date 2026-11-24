@@ -8,10 +8,13 @@ import { ProblemCard } from "@/components/home/ProblemCard";
 import { ProblemRail } from "@/components/home/ProblemRail";
 import { TechExplorer, type TechItem } from "@/components/home/TechExplorer";
 import { TrackSection } from "@/components/home/TrackSection";
+import { PersonalizedSection } from "@/components/home/PersonalizedSection";
 import { companyById } from "@/core/0-collect/companies";
 import { companyLogo } from "@/core/0-collect/logos";
-import { countByStatus, listArticles } from "@/core/shared/db";
+import { currentUser } from "@/core/shared/auth";
+import { countByStatus, getUserPreferences, listArticles } from "@/core/shared/db";
 import { cls, experienceStats, headlineOf, internalOf, latestProblems, techExplorer } from "@/core/3-place/home";
+import { ROLE_INTERESTS, ROLES, recommendFor, type Role } from "@/core/3-place/onboarding";
 import { EXPERIENCE_META, TECH_LABEL, techSlug } from "@/core/2-classify/taxonomy";
 
 /** name — GA section_view · section_click 의 section_name 값(구글 시트 이벤트 사전) */
@@ -31,6 +34,15 @@ export default async function Home() {
   const counts = await countByStatus();
   const stats = experienceStats(rows);
   const problems = latestProblems(rows);
+
+  // 홈 "나를 위한 관점" — 온보딩을 마친 로그인 사용자만. 건너뛴 사용자·비로그인은 기존 홈 그대로(스펙 11절)
+  const user = await currentUser();
+  const prefs = user ? await getUserPreferences(user.id) : null;
+  const personalRole = prefs?.onboardingStatus === "completed" && ROLES.includes(prefs.role as Role) ? (prefs.role as Role) : null;
+  const personalRecs = personalRole ? recommendFor(rows, personalRole, prefs!.interests, 3) : [];
+  const personalInterestLabels = personalRole
+    ? ROLE_INTERESTS[personalRole].filter((i) => prefs!.interests.includes(i.id)).map((i) => i.label)
+    : [];
   // 기술마다 최신 12건까지 넘긴다 — 화면은 4건을 보여주되, "내가 읽은 글" OFF 면 읽은 글을 빼고 채운다
   const techItems: TechItem[] = techExplorer(rows, 8, 12).map((t) => ({
     slug: techSlug(t.tech),
@@ -74,6 +86,8 @@ export default async function Home() {
       <p className="mt-6 text-sm text-ink-3">
         국내 테크 블로그 글 <b className="text-ink-2">{counts.included}</b>건을 사용자가 덜게 된 부담으로 다시 묶었어요.
       </p>
+
+      {personalRole && <PersonalizedSection role={personalRole} interestLabels={personalInterestLabels} recommendations={personalRecs} />}
 
       <Section
         name="experience"

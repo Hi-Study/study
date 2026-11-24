@@ -7,7 +7,7 @@
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Item, Key } from "./list-ops";
-import type { ArticleRow, ArticleStatus, Learning, ReadingGuide } from "./types";
+import type { ArticleRow, ArticleStatus, Learning, OnboardingStatus, ReadingGuide, UserPreferences } from "./types";
 
 const g = globalThis as unknown as { __sb?: SupabaseClient };
 
@@ -307,4 +307,49 @@ export async function saveUserList(userId: string, key: Key, items: Item[]) {
       .from("user_lists")
       .upsert({ user_id: userId, key, items, updated_at: new Date().toISOString() }, { onConflict: "user_id,key" }),
   );
+}
+
+/* ── 직군별 개인화 온보딩 — 계정마다 한 줄씩. 스키마: supabase/schema.sql 의 user_preferences ── */
+
+type PreferencesRaw = {
+  role: string | null;
+  interests: string[];
+  onboarding_status: OnboardingStatus;
+  onboarding_version: number;
+  onboarding_completed_at: string | null;
+};
+
+/** 표가 아직 없으면(SQL 을 안 돌림) null — 화면은 온보딩을 매번 새로 보여주지 않고 조용히 건너뛴다 */
+export async function getUserPreferences(userId: string): Promise<UserPreferences | null> {
+  const res = await sb()
+    .from("user_preferences")
+    .select("role, interests, onboarding_status, onboarding_version, onboarding_completed_at")
+    .eq("user_id", userId)
+    .maybeSingle<PreferencesRaw>();
+  if (res.error) {
+    console.error("[user_preferences] 읽기 실패", res.error.message);
+    return null;
+  }
+  if (!res.data) return null;
+  return {
+    role: res.data.role,
+    interests: res.data.interests ?? [],
+    onboardingStatus: res.data.onboarding_status,
+    onboardingVersion: res.data.onboarding_version,
+    onboardingCompletedAt: res.data.onboarding_completed_at,
+  };
+}
+
+export async function saveUserPreferences(
+  userId: string,
+  patch: Partial<{ role: string; interests: string[]; onboardingStatus: OnboardingStatus }>,
+): Promise<void> {
+  const row: Record<string, unknown> = { user_id: userId, updated_at: new Date().toISOString() };
+  if (patch.role !== undefined) row.role = patch.role;
+  if (patch.interests !== undefined) row.interests = patch.interests;
+  if (patch.onboardingStatus !== undefined) {
+    row.onboarding_status = patch.onboardingStatus;
+    if (patch.onboardingStatus === "completed") row.onboarding_completed_at = new Date().toISOString();
+  }
+  check(await sb().from("user_preferences").upsert(row, { onConflict: "user_id" }));
 }
