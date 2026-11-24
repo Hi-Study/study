@@ -5,8 +5,10 @@ import { RoleIcon } from "./RoleIcon";
 export function RoleStep({ selected, onSelect }: { selected: Role | null; onSelect: (role: Role) => void }) {
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight">어떤 일을 하고 계신가요?</h1>
-      <p className="mt-2 text-sm leading-relaxed text-ink-3">같은 기술도 하는 일에 따라 발견할 수 있는 인사이트가 달라요.</p>
+      <h1 className="text-2xl font-bold tracking-tight">인사이트에 오신 걸 환영해요!</h1>
+      <p className="mt-2 text-sm leading-relaxed text-ink-3">
+        어떤 일을 하고 계신지 알려주시면, 같은 기술도 당신에게 맞는 인사이트로 보여드릴게요.
+      </p>
 
       <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-3">
         {ROLES.map((role, i) => {

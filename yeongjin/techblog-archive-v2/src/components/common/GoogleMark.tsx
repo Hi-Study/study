@@ -1,4 +1,4 @@
-/** 구글 공식 G 로고 — 로그인 버튼에는 구글 브랜드 가이드대로 원래 색을 쓴다. login/page.tsx · OnboardingLoginGate.tsx 가 같이 쓴다 */
+/** 구글 공식 G 로고 — 로그인 버튼에는 구글 브랜드 가이드대로 원래 색을 쓴다. login/page.tsx 가 쓴다 */
 export function GoogleMark() {
   return (
     <svg viewBox="0 0 48 48" aria-hidden className="size-5">

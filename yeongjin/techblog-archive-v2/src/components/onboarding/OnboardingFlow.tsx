@@ -6,7 +6,6 @@ import { track } from "@/lib/analytics";
 import { ROLE_INTERESTS, type Role } from "@/core/3-place/onboarding";
 import type { ArticleRow } from "@/core/shared/types";
 import { OnboardingProgress } from "./OnboardingProgress";
-import { OnboardingLoginGate } from "./OnboardingLoginGate";
 import { RoleStep } from "./RoleStep";
 import { InterestStep } from "./InterestStep";
 import { PerspectiveStep } from "./PerspectiveStep";
@@ -15,7 +14,7 @@ import { RecommendStep, type RecommendationWithLogo } from "./RecommendStep";
 const STEP_NAMES = ["role", "interest", "perspective", "recommend"] as const;
 const DRAFT_KEY = "tbp:onboarding-draft";
 
-type Draft = { step: number; role: Role | null; interests: string[]; awaitingLogin?: boolean; startedAt?: number };
+type Draft = { step: number; role: Role | null; interests: string[] };
 
 function readDraft(): Draft | null {
   try {
@@ -47,16 +46,15 @@ function savePrefs(patch: { role?: string; interests?: string[]; onboardingStatu
   }).catch(() => {});
 }
 
+/** 구글 로그인 직후(또는 마이페이지 "온보딩 다시 경험하기")에만 보이는 4단계 환영 온보딩 — 로그인은 이미 끝난 상태로 들어온다 */
 export function OnboardingFlow({
   next,
-  isLoggedIn,
   initialRole,
   initialInterests,
   perspectiveArticle,
   perspectiveLogo,
 }: {
   next: string;
-  isLoggedIn: boolean;
   initialRole: Role | null;
   initialInterests: string[];
   perspectiveArticle: ArticleRow | null;
@@ -64,49 +62,25 @@ export function OnboardingFlow({
 }) {
   const router = useRouter();
   const [draft] = useState(() => readDraft());
-  // 로그인하고 /onboarding 으로 막 돌아온 경우 — 임시 저장해 둔 대로 STEP 04 로 이어간다(초기 상태에서 바로 반영)
-  const [resuming] = useState(() => isLoggedIn && !!draft?.awaitingLogin);
 
-  const [step, setStep] = useState(resuming ? 4 : (draft?.step ?? 1));
+  const [step, setStep] = useState(draft?.step ?? 1);
   const [role, setRole] = useState<Role | null>(draft?.role ?? initialRole);
   const [interests, setInterests] = useState<string[]>(draft?.interests ?? initialInterests);
   const [viewRole, setViewRole] = useState<Role>(draft?.role ?? initialRole ?? "PLANNER");
   const [recs, setRecs] = useState<RecommendationWithLogo[]>([]);
-  const [loadingRecs, setLoadingRecs] = useState(resuming);
-  // STEP 03→04 사이 로그인 요청 화면 — 로그인 전에는 STEP 04(맞춤 추천) 대신 이게 뜬다
-  const [awaitingLogin, setAwaitingLogin] = useState(resuming ? false : (draft?.awaitingLogin ?? false));
-  const startedAt = useRef<number | null>(draft?.startedAt ?? null);
-
-  /** loadingRecs 는 부르는 쪽이 앞뒤로 관리한다 — 마운트 시 이어가기(resuming)는 초기 상태값으로 이미 true 라 */
-  async function fetchRecs() {
-    const result = await fetch("/api/onboarding/recommend", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role: role ?? "PLANNER", interests }),
-    })
-      .then((res) => (res.ok ? res.json() : { recommendations: [] }))
-      .then((data) => data.recommendations as RecommendationWithLogo[])
-      .catch(() => [] as RecommendationWithLogo[]);
-    setRecs(result);
-    setLoadingRecs(false);
-  }
+  const [loadingRecs, setLoadingRecs] = useState(false);
+  const startedAt = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!startedAt.current) {
-      startedAt.current = Date.now();
-      track("onboarding_start", { onboarding_version: 1 });
-    }
-    // 마운트 시 한 번만, 로그인 뒤 돌아왔을 때만 부른다 — 평범한 "조건부로 한 번 가져오기" 패턴이라 의도적으로 막는다
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (resuming) void fetchRecs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    startedAt.current = Date.now();
+    track("onboarding_start", { onboarding_version: 1 });
   }, []);
 
   useEffect(() => {
     track("onboarding_step_view", { step_number: step, step_name: STEP_NAMES[step - 1] });
-    writeDraft({ step, role, interests, awaitingLogin, startedAt: startedAt.current ?? undefined });
+    writeDraft({ step, role, interests });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, awaitingLogin]);
+  }, [step]);
 
   function goTo(n: number) {
     setStep(n);
@@ -143,13 +117,18 @@ export function OnboardingFlow({
   }
 
   async function goToRecommend() {
-    if (!isLoggedIn) {
-      setAwaitingLogin(true); // STEP 03 에 머문 채 로그인 요청 화면을 보여준다 — 로그인 뒤 /onboarding 으로 돌아오면 이어간다
-      return;
-    }
     goTo(4);
     setLoadingRecs(true);
-    await fetchRecs();
+    const result = await fetch("/api/onboarding/recommend", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: role ?? "PLANNER", interests }),
+    })
+      .then((res) => (res.ok ? res.json() : { recommendations: [] }))
+      .then((data) => data.recommendations as RecommendationWithLogo[])
+      .catch(() => [] as RecommendationWithLogo[]);
+    setRecs(result);
+    setLoadingRecs(false);
   }
 
   function pickArticle(id: number) {
@@ -178,11 +157,10 @@ export function OnboardingFlow({
         </button>
       </div>
 
-      <div key={awaitingLogin ? "login-gate" : step} className="ob-pop-in mt-8">
+      <div key={step} className="ob-pop-in mt-8">
         {step === 1 && <RoleStep selected={role} onSelect={pickRole} />}
         {step === 2 && role && <InterestStep role={role} selected={interests} onToggle={toggleInterest} onNext={confirmInterests} />}
-        {step === 3 && role && awaitingLogin && <OnboardingLoginGate role={role} interestLabels={interestLabels} />}
-        {step === 3 && !awaitingLogin && (
+        {step === 3 && (
           <PerspectiveStep
             article={perspectiveArticle}
             articleLogo={perspectiveLogo}

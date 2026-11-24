@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 
 /** 로그인해야 들어갈 수 있는 경로 — proxy 와 페이지가 같은 목록을 본다 */
-const LOGIN_REQUIRED = ["/articles", "/my"];
+const LOGIN_REQUIRED = ["/articles", "/my", "/onboarding"];
 export const needsLogin = (path: string) => LOGIN_REQUIRED.some((p) => path === p || path.startsWith(`${p}/`));
 
 /** 로그인에 쓰는 공개 키(anon) — 없으면 null. 로그인 화면이 "설정이 안 됐어요"로 알린다 */
