@@ -7,6 +7,10 @@ import { AccountSync } from "@/components/common/AccountSync";
 import { HeaderBack, NavTrail } from "@/components/common/BackNav";
 import { NavTabs } from "@/components/common/NavTabs";
 import { HomeReadToggle } from "@/components/common/ReadState";
+import { OnboardingModal } from "@/components/onboarding/OnboardingModal";
+import { currentUser } from "@/core/shared/auth";
+import { getUserPreferences } from "@/core/shared/db";
+import { ROLES, type Role } from "@/core/3-place/onboarding";
 import "./globals.css";
 
 /** 서비스 전체 폰트 — Pretendard 가변 폰트를 프로젝트에 내장 (CDN 의존 없음) */
@@ -29,7 +33,12 @@ export const metadata: Metadata = {
   description: "국내 테크 기업 블로그 글을 기획자 관점으로 다시 읽어요.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // 온보딩 팝업에 쓸 최소 정보만 미리 본다(행 하나 조회) — 글 목록 같은 무거운 조회는 팝업이 열릴 때 /api/onboarding/* 가 한다
+  const user = await currentUser();
+  const prefs = user ? await getUserPreferences(user.id) : null;
+  const initialRole = prefs?.role && ROLES.includes(prefs.role as Role) ? (prefs.role as Role) : null;
+
   return (
     <html lang="ko" className={pretendard.variable}>
       <body className="min-h-dvh">
@@ -54,6 +63,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <NavTrail />
         </Suspense>
         <AccountSync />
+        {user && <OnboardingModal initialRole={initialRole} initialInterests={prefs?.interests ?? []} />}
         {/* Google Analytics 4 — 모든 페이지에서 방문·페이지 조회를 수집한다 */}
         <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
         <Script id="ga4-init" strategy="afterInteractive">

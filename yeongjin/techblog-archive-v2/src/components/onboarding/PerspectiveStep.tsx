@@ -1,3 +1,4 @@
+import { Blob } from "./Blob";
 import { OnboardingArticleCard } from "./OnboardingArticleCard";
 import { ROLE_META, ROLE_PERSPECTIVE_QUESTION, ROLES, type Role } from "@/core/3-place/onboarding";
 import type { ArticleRow } from "@/core/shared/types";
@@ -5,12 +6,14 @@ import type { ArticleRow } from "@/core/shared/types";
 export function PerspectiveStep({
   article,
   articleLogo,
+  loading,
   viewRole,
   onSwitch,
   onNext,
 }: {
   article: ArticleRow | null;
   articleLogo: string | null;
+  loading: boolean;
   viewRole: Role;
   onSwitch: (role: Role) => void;
   onNext: () => void;
@@ -20,7 +23,14 @@ export function PerspectiveStep({
       <h1 className="text-2xl font-bold tracking-tight">{ROLE_META[viewRole].title}</h1>
       <p className="mt-2 text-sm leading-relaxed text-ink-3">{ROLE_META[viewRole].description}</p>
 
-      {article && (
+      {loading && (
+        <div className="mt-6 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-line bg-surface p-8 text-center text-ink-3">
+          <Blob variant="breathe" className="size-10 blur-[2px]" />
+          <span>사례를 불러오고 있어요…</span>
+        </div>
+      )}
+
+      {!loading && article && (
         <div className="mt-6">
           <OnboardingArticleCard a={article} logo={articleLogo} />
           <div key={viewRole} className="ob-pop-in mt-3 rounded-2xl bg-brand-soft p-4">

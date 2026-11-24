@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { ArticleCard } from "@/components/common/ArticleCard";
 import { HomeReadScope } from "@/components/common/ReadState";
+import { OpenOnboardingButton } from "@/components/onboarding/OpenOnboardingButton";
 import { TrackSection } from "./TrackSection";
 import { ROLE_HOME_TITLE, type Recommendation, type Role } from "@/core/3-place/onboarding";
 
@@ -19,9 +19,7 @@ export function PersonalizedSection({
     <TrackSection name="personalized" className="mt-10">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-bold tracking-tight">{ROLE_HOME_TITLE[role]}</h2>
-        <Link href="/onboarding?restart=1" className="text-sm font-semibold text-ink-3 hover:text-brand">
-          관심사 수정
-        </Link>
+        <OpenOnboardingButton label="관심사 수정" />
       </div>
       {interestLabels.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { connection } from "next/server";
 import { MyLists } from "@/components/common/MyLists";
+import { OpenOnboardingButton } from "@/components/onboarding/OpenOnboardingButton";
 import { companyLogo } from "@/core/0-collect/logos";
 import { requireUser } from "@/core/shared/auth";
 import { getUserPreferences, listArticles } from "@/core/shared/db";
@@ -41,9 +41,7 @@ export default async function MyPage() {
       <div className="mt-4 rounded-xl border border-line bg-surface px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm font-bold text-ink">나의 관심 관점</p>
-          <Link href="/onboarding?restart=1" className="text-sm font-semibold text-ink-3 hover:text-ink">
-            {role ? "수정" : "설정하기"}
-          </Link>
+          <OpenOnboardingButton label={role ? "수정" : "설정하기"} />
         </div>
         {role ? (
           <div className="mt-2 flex flex-wrap items-center gap-1.5">

@@ -60,6 +60,16 @@ export function takeLoginMark(): boolean {
   return on;
 }
 
+/** 로그인 직후 온보딩을 아직 안 겪었다는 표시 — /auth/callback 이 남기고, OnboardingModal 이 읽어서 팝업을 한 번 띄운 뒤 지운다 */
+export const ONBOARDING_MARK_COOKIE = "ob-open";
+
+export function takeOnboardingMark(): boolean {
+  if (typeof document === "undefined") return false;
+  const on = document.cookie.split("; ").includes(`${ONBOARDING_MARK_COOKIE}=1`);
+  if (on) document.cookie = `${ONBOARDING_MARK_COOKIE}=; Max-Age=0; path=/`;
+  return on;
+}
+
 /**
  * 홈 섹션에서 링크를 누를 때 어느 섹션이었는지 이 탭에 잠깐 적어 둔다 — 글 상세의 article_view 가 entry_source 를 정할 때 읽고 지운다.
  * (로그인 화면을 거쳐도 같은 탭이면 남아 있다)

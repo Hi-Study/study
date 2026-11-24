@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { track } from "@/lib/analytics";
 import { ROLE_INTERESTS, type Role } from "@/core/3-place/onboarding";
 import type { ArticleRow } from "@/core/shared/types";
@@ -46,21 +45,19 @@ function savePrefs(patch: { role?: string; interests?: string[]; onboardingStatu
   }).catch(() => {});
 }
 
-/** 구글 로그인 직후(또는 마이페이지 "온보딩 다시 경험하기")에만 보이는 4단계 환영 온보딩 — 로그인은 이미 끝난 상태로 들어온다 */
+/**
+ * 구글 로그인 직후(또는 마이페이지 "설정하기/수정")에 팝업으로 뜨는 4단계 환영 온보딩 — 로그인은 이미 끝난 상태로 들어온다.
+ * 어디로 이동하지 않는다 — 지금 보고 있던 화면 위에 떴다가, 끝나거나 건너뛰면 그 화면으로 돌아간다(onClose).
+ */
 export function OnboardingFlow({
-  next,
+  onClose,
   initialRole,
   initialInterests,
-  perspectiveArticle,
-  perspectiveLogo,
 }: {
-  next: string;
+  onClose: () => void;
   initialRole: Role | null;
   initialInterests: string[];
-  perspectiveArticle: ArticleRow | null;
-  perspectiveLogo: string | null;
 }) {
-  const router = useRouter();
   const [draft] = useState(() => readDraft());
 
   const [step, setStep] = useState(draft?.step ?? 1);
@@ -69,11 +66,23 @@ export function OnboardingFlow({
   const [viewRole, setViewRole] = useState<Role>(draft?.role ?? initialRole ?? "PLANNER");
   const [recs, setRecs] = useState<RecommendationWithLogo[]>([]);
   const [loadingRecs, setLoadingRecs] = useState(false);
+  const [perspectiveArticle, setPerspectiveArticle] = useState<ArticleRow | null>(null);
+  const [perspectiveLogo, setPerspectiveLogo] = useState<string | null>(null);
+  const [loadingPerspective, setLoadingPerspective] = useState(true);
   const startedAt = useRef<number | null>(null);
 
   useEffect(() => {
     startedAt.current = Date.now();
     track("onboarding_start", { onboarding_version: 1 });
+    // STEP 01~02 를 고르는 동안 미리 받아 둔다 — STEP 03 에 도착할 즈음엔 대개 이미 와 있다
+    fetch("/api/onboarding/perspective", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { article: ArticleRow | null; logo: string | null } | null) => {
+        setPerspectiveArticle(data?.article ?? null);
+        setPerspectiveLogo(data?.logo ?? null);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingPerspective(false));
   }, []);
 
   useEffect(() => {
@@ -90,7 +99,7 @@ export function OnboardingFlow({
     track("onboarding_skip", { step_number: step });
     savePrefs({ onboardingStatus: "skipped" });
     clearDraft();
-    router.push(next);
+    onClose();
   }
 
   function pickRole(r: Role) {
@@ -135,7 +144,8 @@ export function OnboardingFlow({
     track("personalized_content_click", { content_id: id, role: role ?? "", recommendation_source: "onboarding" });
     savePrefs({ role: role ?? undefined, interests, onboardingStatus: "completed" });
     clearDraft();
-    // ArticleCard 의 Link 가 이어서 평소처럼 이동한다 — 저장은 막지 않고 같은 틱에 먼저 보낸다
+    onClose();
+    // OnboardingArticleCard 의 Link 가 이어서 평소처럼 글 상세로 이동한다 — 저장·닫기는 막지 않고 같은 틱에 먼저 처리한다
   }
 
   function complete() {
@@ -143,7 +153,7 @@ export function OnboardingFlow({
     track("onboarding_complete", { role: role ?? "", interest_count: interests.length, elapsed_time: elapsed });
     savePrefs({ role: role ?? undefined, interests, onboardingStatus: "completed" });
     clearDraft();
-    router.push(next);
+    onClose();
   }
 
   const interestLabels = (role ? ROLE_INTERESTS[role] : []).filter((i) => interests.includes(i.id)).map((i) => i.label);
@@ -164,6 +174,7 @@ export function OnboardingFlow({
           <PerspectiveStep
             article={perspectiveArticle}
             articleLogo={perspectiveLogo}
+            loading={loadingPerspective}
             viewRole={viewRole}
             onSwitch={switchPerspective}
             onNext={goToRecommend}
