@@ -12,7 +12,7 @@ import { PersonalizedSection } from "@/components/home/PersonalizedSection";
 import { companyById } from "@/core/0-collect/companies";
 import { companyLogo } from "@/core/0-collect/logos";
 import { currentUser } from "@/core/shared/auth";
-import { countByStatus, getUserPreferences, listArticles } from "@/core/shared/db";
+import { getUserPreferences, listArticles } from "@/core/shared/db";
 import { cls, experienceStats, headlineOf, internalOf, latestProblems, techExplorer } from "@/core/3-place/home";
 import { ROLE_INTERESTS, ROLES, recommendFor, type Role } from "@/core/3-place/onboarding";
 import { EXPERIENCE_META, TECH_LABEL, techSlug } from "@/core/2-classify/taxonomy";
@@ -31,7 +31,6 @@ function Section({ name, title, sub, children }: { name: string; title: string; 
 export default async function Home() {
   await connection();
   const rows = await listArticles("included");
-  const counts = await countByStatus();
   const stats = experienceStats(rows);
   const problems = latestProblems(rows);
 
@@ -83,10 +82,6 @@ export default async function Home() {
       <TrackSection name="new_articles">
         <NewArticlesHero slides={slides} />
       </TrackSection>
-      <p className="mt-6 text-sm text-ink-3">
-        국내 테크 블로그 글 <b className="text-ink-2">{counts.included}</b>건을 사용자가 덜게 된 부담으로 다시 묶었어요.
-      </p>
-
       {personalRole && <PersonalizedSection role={personalRole} interestLabels={personalInterestLabels} recommendations={personalRecs} />}
 
       <Section
