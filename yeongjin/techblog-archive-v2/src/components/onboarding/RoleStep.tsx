@@ -20,7 +20,7 @@ export function RoleStep({ selected, onSelect }: { selected: Role | null; onSele
                 active ? "border-brand bg-brand-soft" : "border-line bg-surface hover:border-ink-3"
               }`}
             >
-              <span className="relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-full">
+              <span className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-full">
                 <Blob
                   variant="breathe"
                   delay={-i * 0.7}
@@ -28,7 +28,7 @@ export function RoleStep({ selected, onSelect }: { selected: Role | null; onSele
                   to={active ? "var(--brand)" : "#c6cbd1"}
                   className="absolute inset-0"
                 />
-                <RoleIcon role={role} className={`relative size-5 ${active ? "text-white" : "text-ink-2"}`} />
+                <RoleIcon role={role} className={`relative size-6 transition-colors duration-300 ${active ? "text-white" : "text-ink-2"}`} />
               </span>
               <span className="font-bold leading-snug text-ink">{ROLE_META[role].label}</span>
               <span className="text-xs leading-snug text-ink-3">{ROLE_META[role].valueProp}</span>
