@@ -58,3 +58,34 @@ body {
 
 .scrollbar-none { scrollbar-width: none; }
 .scrollbar-none::-webkit-scrollbar { display: none; }
+
+/* ── 온보딩 — 말랑한 블롭 모션 (components/onboarding/Blob.tsx)
+ * 캐릭터(얼굴)는 안 쓴다(스펙 3절) — 대신 숨 쉬듯 모양이 흔들리는 모션만 빌려서
+ * 배경 장식·직군 아이콘 원·"추천 글 고르는 중" 로딩 표시에 쓴다. */
+@keyframes ob-breathe {
+  0%, 100% { border-radius: 42% 58% 65% 35% / 45% 45% 55% 55%; transform: scale(1); }
+  50% { border-radius: 58% 42% 38% 62% / 55% 60% 40% 45%; transform: scale(1.05); }
+}
+@keyframes ob-drift {
+  0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  33% { transform: translate(3%, -4%) scale(1.08) rotate(8deg); }
+  66% { transform: translate(-4%, 3%) scale(0.95) rotate(-6deg); }
+}
+@keyframes ob-float {
+  0%, 100% { border-radius: 42% 58% 65% 35% / 45% 45% 55% 55%; transform: translate(0, 0) scale(1) rotate(0deg); }
+  33% { border-radius: 58% 42% 38% 62% / 55% 60% 40% 45%; transform: translate(3%, -4%) scale(1.08) rotate(8deg); }
+  66% { border-radius: 48% 52% 55% 45% / 40% 50% 50% 60%; transform: translate(-4%, 3%) scale(0.95) rotate(-6deg); }
+}
+.ob-breathe { animation: ob-breathe 5.5s ease-in-out infinite; }
+.ob-drift { animation: ob-drift 14s ease-in-out infinite; }
+.ob-float { animation: ob-float 16s ease-in-out infinite; }
+
+@keyframes ob-pop-in {
+  0% { opacity: 0; transform: translateY(6px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.ob-pop-in { animation: ob-pop-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ob-breathe, .ob-drift, .ob-float, .ob-pop-in { animation: none; }
+}

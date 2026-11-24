@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
+import { companyLogo } from "@/core/0-collect/logos";
 import { requireUser } from "@/core/shared/auth";
 import { getUserPreferences, listArticles } from "@/core/shared/db";
 import { experienceStats } from "@/core/3-place/home";
@@ -22,6 +23,7 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/onboa
   // STEP 03 데모 글 — 특정 글을 하드코딩하지 않고, 사례가 가장 많이 쌓인 경험 유형의 대표 글을 그대로 쓴다
   const stats = experienceStats(rows);
   const perspectiveArticle = stats.find((s) => s.example)?.example ?? rows[0] ?? null;
+  const perspectiveLogo = perspectiveArticle ? companyLogo(perspectiveArticle.companyId) : null;
 
   return (
     <OnboardingFlow
@@ -29,6 +31,7 @@ export default async function OnboardingPage({ searchParams }: PageProps<"/onboa
       initialRole={savedRole}
       initialInterests={prefs?.interests ?? []}
       perspectiveArticle={perspectiveArticle}
+      perspectiveLogo={perspectiveLogo}
     />
   );
 }

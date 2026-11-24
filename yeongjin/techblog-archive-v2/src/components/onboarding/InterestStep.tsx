@@ -25,8 +25,8 @@ export function InterestStep({
               key={interest.id}
               onClick={() => onToggle(interest.id)}
               aria-pressed={active}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                active ? "bg-ink text-white" : "bg-surface text-ink-2 ring-1 ring-line hover:text-ink"
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition duration-200 active:scale-90 ${
+                active ? "bg-ink text-white scale-105" : "bg-surface text-ink-2 ring-1 ring-line hover:text-ink"
               }`}
             >
               {active && "✓ "}
@@ -38,7 +38,7 @@ export function InterestStep({
 
       <button
         onClick={onNext}
-        className="mt-10 flex h-14 w-full items-center justify-center rounded-full bg-brand text-[17px] font-bold text-white transition hover:brightness-110"
+        className="mt-10 flex h-14 w-full items-center justify-center rounded-full bg-brand text-[17px] font-bold text-white transition duration-200 hover:brightness-110 active:scale-[0.97]"
       >
         선택한 관점으로 시작하기
       </button>

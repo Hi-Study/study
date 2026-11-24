@@ -1,14 +1,16 @@
-import { ArticleCard } from "@/components/common/ArticleCard";
+import { OnboardingArticleCard } from "./OnboardingArticleCard";
 import { ROLE_META, ROLE_PERSPECTIVE_QUESTION, ROLES, type Role } from "@/core/3-place/onboarding";
 import type { ArticleRow } from "@/core/shared/types";
 
 export function PerspectiveStep({
   article,
+  articleLogo,
   viewRole,
   onSwitch,
   onNext,
 }: {
   article: ArticleRow | null;
+  articleLogo: string | null;
   viewRole: Role;
   onSwitch: (role: Role) => void;
   onNext: () => void;
@@ -20,8 +22,8 @@ export function PerspectiveStep({
 
       {article && (
         <div className="mt-6">
-          <ArticleCard a={article} />
-          <div className="mt-3 rounded-2xl bg-brand-soft p-4">
+          <OnboardingArticleCard a={article} logo={articleLogo} />
+          <div key={viewRole} className="ob-pop-in mt-3 rounded-2xl bg-brand-soft p-4">
             <p className="text-xs font-semibold text-brand">이런 관점으로 읽을 수 있어요</p>
             <p className="mt-1.5 text-sm leading-relaxed text-ink">{ROLE_PERSPECTIVE_QUESTION[viewRole]}</p>
           </div>
@@ -35,8 +37,8 @@ export function PerspectiveStep({
             key={role}
             onClick={() => onSwitch(role)}
             aria-pressed={viewRole === role}
-            className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
-              viewRole === role ? "bg-ink text-white" : "bg-surface text-ink-2 ring-1 ring-line hover:text-ink"
+            className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition duration-200 active:scale-90 ${
+              viewRole === role ? "bg-ink text-white scale-105" : "bg-surface text-ink-2 ring-1 ring-line hover:text-ink"
             }`}
           >
             {ROLE_META[role].label}
@@ -46,7 +48,7 @@ export function PerspectiveStep({
 
       <button
         onClick={onNext}
-        className="mt-10 flex h-14 w-full items-center justify-center rounded-full bg-brand text-[17px] font-bold text-white transition hover:brightness-110"
+        className="mt-10 flex h-14 w-full items-center justify-center rounded-full bg-brand text-[17px] font-bold text-white transition duration-200 hover:brightness-110 active:scale-[0.97]"
       >
         내 관심사에 맞는 콘텐츠 만나기
       </button>

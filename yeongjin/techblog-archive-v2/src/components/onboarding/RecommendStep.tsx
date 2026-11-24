@@ -1,7 +1,10 @@
 "use client";
 
-import { ArticleCard } from "@/components/common/ArticleCard";
+import { Blob } from "./Blob";
+import { OnboardingArticleCard } from "./OnboardingArticleCard";
 import { ROLE_META, type Recommendation, type Role } from "@/core/3-place/onboarding";
+
+export type RecommendationWithLogo = Recommendation & { logo: string | null };
 
 export function RecommendStep({
   role,
@@ -14,7 +17,7 @@ export function RecommendStep({
 }: {
   role: Role;
   interestLabels: string[];
-  recommendations: Recommendation[];
+  recommendations: RecommendationWithLogo[];
   loading: boolean;
   onEditInterests: () => void;
   /** 추천 글을 직접 눌렀을 때 — ArticleCard 는 그대로 쓰고, 클릭을 가로채 저장을 먼저 보낸다(TrackSection.tsx 와 같은 방식) */
@@ -48,11 +51,14 @@ export function RecommendStep({
         }}
       >
         {loading ? (
-          <div className="rounded-2xl border border-dashed border-line bg-surface p-8 text-center text-ink-3">추천 글을 고르고 있어요…</div>
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-line bg-surface p-8 text-center text-ink-3">
+            <Blob variant="breathe" className="size-10 blur-[2px]" />
+            <span>추천 글을 고르고 있어요…</span>
+          </div>
         ) : (
-          recommendations.map(({ article, reason }) => (
-            <div key={article.id}>
-              <ArticleCard a={article} />
+          recommendations.map(({ article, reason, logo }, i) => (
+            <div key={article.id} className="ob-pop-in" style={{ animationDelay: `${i * 90}ms` }}>
+              <OnboardingArticleCard a={article} logo={logo} />
               <p className="mt-1.5 px-1 text-xs text-ink-3">✦ {reason}</p>
             </div>
           ))
@@ -61,7 +67,7 @@ export function RecommendStep({
 
       <button
         onClick={onStart}
-        className="mt-10 flex h-14 w-full items-center justify-center rounded-full bg-brand text-[17px] font-bold text-white transition hover:brightness-110"
+        className="mt-10 flex h-14 w-full items-center justify-center rounded-full bg-brand text-[17px] font-bold text-white transition duration-200 hover:brightness-110 active:scale-[0.97]"
       >
         관점 아카이브 시작하기
       </button>

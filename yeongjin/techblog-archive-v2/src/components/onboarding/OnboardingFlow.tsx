@@ -2,15 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchRecommendations } from "@/app/onboarding/actions";
 import { track } from "@/lib/analytics";
-import { ROLE_INTERESTS, type Recommendation, type Role } from "@/core/3-place/onboarding";
+import { ROLE_INTERESTS, type Role } from "@/core/3-place/onboarding";
 import type { ArticleRow } from "@/core/shared/types";
+import { Blob } from "./Blob";
 import { OnboardingProgress } from "./OnboardingProgress";
 import { RoleStep } from "./RoleStep";
 import { InterestStep } from "./InterestStep";
 import { PerspectiveStep } from "./PerspectiveStep";
-import { RecommendStep } from "./RecommendStep";
+import { RecommendStep, type RecommendationWithLogo } from "./RecommendStep";
 
 const STEP_NAMES = ["role", "interest", "perspective", "recommend"] as const;
 const DRAFT_KEY = "tbp:onboarding-draft";
@@ -52,11 +52,13 @@ export function OnboardingFlow({
   initialRole,
   initialInterests,
   perspectiveArticle,
+  perspectiveLogo,
 }: {
   next: string;
   initialRole: Role | null;
   initialInterests: string[];
   perspectiveArticle: ArticleRow | null;
+  perspectiveLogo: string | null;
 }) {
   const router = useRouter();
   const [draft] = useState(() => readDraft());
@@ -65,7 +67,7 @@ export function OnboardingFlow({
   const [role, setRole] = useState<Role | null>(draft?.role ?? initialRole);
   const [interests, setInterests] = useState<string[]>(draft?.interests ?? initialInterests);
   const [viewRole, setViewRole] = useState<Role>(draft?.role ?? initialRole ?? "PLANNER");
-  const [recs, setRecs] = useState<Recommendation[]>([]);
+  const [recs, setRecs] = useState<RecommendationWithLogo[]>([]);
   const [loadingRecs, setLoadingRecs] = useState(false);
   const startedAt = useRef<number | null>(null);
 
@@ -117,7 +119,14 @@ export function OnboardingFlow({
   async function goToRecommend() {
     goTo(4);
     setLoadingRecs(true);
-    const result = await fetchRecommendations(role ?? "PLANNER", interests).catch(() => [] as Recommendation[]);
+    const result = await fetch("/api/onboarding/recommend", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: role ?? "PLANNER", interests }),
+    })
+      .then((res) => (res.ok ? res.json() : { recommendations: [] }))
+      .then((data) => data.recommendations as RecommendationWithLogo[])
+      .catch(() => [] as RecommendationWithLogo[]);
     setRecs(result);
     setLoadingRecs(false);
   }
@@ -140,7 +149,17 @@ export function OnboardingFlow({
   const interestLabels = (role ? ROLE_INTERESTS[role] : []).filter((i) => interests.includes(i.id)).map((i) => i.label);
 
   return (
-    <div className="mx-auto flex max-w-lg flex-col pb-10 pt-2">
+    <div className="relative mx-auto flex max-w-lg flex-col overflow-hidden pb-10 pt-2">
+      {/* 장식용 배경 블롭 — 내용 뒤에서 천천히 숨 쉬며 떠다닌다. 콘텐츠를 가리지 않게 흐릿하고 옅다 */}
+      <Blob variant="float" className="pointer-events-none absolute -right-16 -top-20 -z-10 size-64 opacity-[0.12] blur-3xl" />
+      <Blob
+        variant="float"
+        from="#60a5fa"
+        to="#6366f1"
+        delay={-7}
+        className="pointer-events-none absolute -bottom-24 -left-20 -z-10 size-56 opacity-[0.10] blur-3xl"
+      />
+
       <div className="flex items-center gap-3">
         <OnboardingProgress step={step} />
         <button onClick={skip} className="shrink-0 text-sm font-semibold text-ink-3 hover:text-ink">
@@ -148,11 +167,17 @@ export function OnboardingFlow({
         </button>
       </div>
 
-      <div className="mt-8">
+      <div key={step} className="ob-pop-in mt-8">
         {step === 1 && <RoleStep selected={role} onSelect={pickRole} />}
         {step === 2 && role && <InterestStep role={role} selected={interests} onToggle={toggleInterest} onNext={confirmInterests} />}
         {step === 3 && (
-          <PerspectiveStep article={perspectiveArticle} viewRole={viewRole} onSwitch={switchPerspective} onNext={goToRecommend} />
+          <PerspectiveStep
+            article={perspectiveArticle}
+            articleLogo={perspectiveLogo}
+            viewRole={viewRole}
+            onSwitch={switchPerspective}
+            onNext={goToRecommend}
+          />
         )}
         {step === 4 && role && (
           <RecommendStep
