@@ -190,3 +190,13 @@ export interface ArticleRow {
   /** 대표 이미지 — 없으면 null (화면이 회사 로고·색으로 대신한다) */
   thumbnail: string | null;
 }
+
+/** 직군별 개인화 온보딩 — articles.user_preferences 한 행. 스키마: supabase/schema.sql 5번 */
+export type OnboardingStatus = "not_started" | "in_progress" | "completed" | "skipped";
+export interface UserPreferences {
+  role: string | null;
+  interests: string[];
+  onboardingStatus: OnboardingStatus;
+  onboardingVersion: number;
+  onboardingCompletedAt: string | null;
+}

@@ -71,3 +71,24 @@ create table if not exists public.user_lists (
 );
 alter table public.user_lists enable row level security;
 -- 정책 없음 = 브라우저에서 바로는 못 읽는다. 서버가 로그인한 사람을 확인한 뒤 그 사람 줄만 읽고 쓴다.
+
+-- 5) 직군별 개인화 온보딩 — 계정마다 직군·관심 관점·온보딩 진행 상태를 한 줄씩 (2026-11-24 추가)
+--    user_id 는 user_lists 와 동일하게 Supabase Auth 의 사용자 id. 화면은 /api/me/preferences 를 거쳐 서버(service_role)로만 읽고 쓴다.
+create table if not exists public.user_preferences (
+  user_id                 uuid        not null references auth.users (id) on delete cascade primary key,
+  role                    text,                                    -- null = 아직 미선택. 값은 ROLES(코드) 중 하나
+  interests               jsonb       not null default '[]'::jsonb, -- 관심사 ID 배열(한글 문구가 아니라 코드가 아는 고유 ID)
+  onboarding_status       text        not null default 'not_started'
+                            check (onboarding_status in ('not_started', 'in_progress', 'completed', 'skipped')),
+  onboarding_version      int         not null default 1,
+  onboarding_completed_at timestamptz,
+  updated_at              timestamptz not null default now()
+);
+alter table public.user_preferences enable row level security;
+-- 정책 없음 = user_lists 와 동일한 패턴: 서버의 service_role 키만 로그인한 사람의 행을 읽고 쓴다.
+
+-- 이미 북마크·읽은 글이 있는(= 이미 서비스를 쓰던) 계정은 신규 온보딩으로 강제 이동시키지 않는다 — 'skipped'로 미리 채워 둔다.
+-- 여러 번 실행해도 안전: onConflict 로 이미 있는 행은 건드리지 않는다.
+insert into public.user_preferences (user_id, onboarding_status)
+select distinct user_id, 'skipped' from public.user_lists
+on conflict (user_id) do nothing;
