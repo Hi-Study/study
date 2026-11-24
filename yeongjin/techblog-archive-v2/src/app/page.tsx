@@ -71,13 +71,8 @@ export default async function Home() {
       <TrackSection name="new_articles">
         <NewArticlesHero slides={slides} />
       </TrackSection>
-      <p className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-3">
-        <span>
-          국내 테크 블로그 글 <b className="text-ink-2">{counts.included}</b>건을 사용자가 덜게 된 부담으로 다시 묶었어요.
-        </span>
-        <Link href="/excluded" className="underline underline-offset-4 hover:text-brand">
-          제외된 글 {counts.excluded}
-        </Link>
+      <p className="mt-6 text-sm text-ink-3">
+        국내 테크 블로그 글 <b className="text-ink-2">{counts.included}</b>건을 사용자가 덜게 된 부담으로 다시 묶었어요.
       </p>
 
       <Section
